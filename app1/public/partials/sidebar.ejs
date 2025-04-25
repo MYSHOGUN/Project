@@ -10,11 +10,19 @@
             <div class="sidebar-brand-text mx-3">KMUTNB Project</div>
         </a>
 
+        <hr class="sidebar-divider my-0">
+
+        <li class="nav-item <%= currentPath === '/chat' ? 'active' : '' %>">
+            <a class="nav-link" href="/chat">
+                <i class="fas fa-comments"></i>
+                <span>แชท</span></a>
+        </li>
+
         <!-- Divider -->
         <hr class="sidebar-divider my-0">
 
         <!-- Nav Item - Dashboard -->
-        <li class="nav-item active">
+        <li class="nav-item <%= currentPath.startsWith('/upload') || currentPath === '/file' ? 'active' : '' %>">
             <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseFile"
                 aria-expanded="true" aria-controls="collapseFile">
                 <i class="fas fa-regular fa-file"></i>
@@ -22,7 +30,7 @@
             </a>
             <div id="collapseFile" class="collapse" aria-labelledby="headingFile" data-parent="#accordionSidebar">
                 <div class="bg-white py-2 collapse-inner rounded">
-                    <a class="collapse-item" href="/login">ไฟล์ที่เก็บไว้</a>
+                    <a class="collapse-item" href="/file">ไฟล์ที่เก็บไว้</a>
                     <a class="collapse-item" href="/upload">ไฟล์ที่ต้องการอัปโหลด</a>
                 </div>
             </div>
@@ -31,7 +39,7 @@
         <!-- Divider -->
         <hr class="sidebar-divider my-0">
 
-        <li class="nav-item">
+        <li class="nav-item <%= currentPath === '/status' ? 'active' : '' %>">
             <a class="nav-link" href="/status">
                 <i class="fas fa-fw fa-table"></i>
                 <span>สถานะปริญญานิพนธ์</span></a>
@@ -40,7 +48,7 @@
         <!-- Divider -->
         <hr class="sidebar-divider my-0">
 
-        <li class="nav-item">
+        <li class="nav-item <%= currentPath === '/flowchart' ? 'active' : '' %>">
             <a class="nav-link" href="/flowchart">
                 <i class="fas fa-project-diagram"></i>
                 <span>ผังการดำเนินงาน</span></a>
