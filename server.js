@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/upload", (req, res) => {
-  renderWithLayout(res, "status", { title: "KMUTNB Project - Upload" });
+  renderWithLayout(res, "upload", { title: "KMUTNB Project - Upload" });
 });
 
 app.get("/status", (req, res) => {
@@ -42,8 +42,8 @@ app.get("/login", (req, res) => {
   renderWithLayout(res, "login", { title: "KMUTNB Project - Login" });
 });
 
-app.get("/info", (req, res) => {
-  renderWithLayout(res, "info", { title: "KMUTNB Project - Information" });
+app.get("/flowchart", (req, res) => {
+  renderWithLayout(res, "flowchart", { title: "KMUTNB Project - Flowchart" });
 });
 
 // เส้นทางหน้าโปรไฟล์
