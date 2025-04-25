@@ -30,6 +30,10 @@ app.get("/", (req, res) => {
   renderWithLayout(res, "index", { title: "KMUTNB Project - Main" });
 });
 
+app.get("/upload", (req, res) => {
+  renderWithLayout(res, "status", { title: "KMUTNB Project - Upload" });
+});
+
 app.get("/status", (req, res) => {
   renderWithLayout(res, "status", { title: "KMUTNB Project - Status" });
 });
