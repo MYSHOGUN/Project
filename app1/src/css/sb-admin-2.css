@@ -9795,14 +9795,12 @@ a:focus {
 
 #wrapper {
   display: flex;
-  
 }
 
 #wrapper #content-wrapper {
   background-color: #f8f9fc;
   width: 100%;
   overflow-x: hidden;
-  height: 100vh;
 }
 
 #wrapper #content-wrapper #content {
@@ -10325,6 +10323,7 @@ a:focus {
 .sidebar {
   width: 6.5rem;
   min-height: 100vh;
+  transition: all 0.3s ease;
 }
 
 .sidebar .nav-item {
@@ -10412,22 +10411,8 @@ a:focus {
   color: #4e73df;
   font-weight: 700;
 }
-
-.sidebar {
-  width: 250px;
-  transition: width 0.3s ease-in-out;
-}
-
-.sidebar.toggled {
-  width: 70px;
-}
-
-.sidebar .nav-item {
-  transition: opacity 0.3s ease-in-out;
-}
-
-.sidebar.toggled .nav-item {
-  opacity: 1;
+.sidebar .nav-item .collapse.show .collapse-inner {
+  animation: growIn 0.2s ease-out;
 }
 
 .sidebar #sidebarToggle {
@@ -10443,6 +10428,8 @@ a:focus {
   content: '\f104';
   font-family: 'Font Awesome 5 Free';
   margin-right: 0.1rem;
+  display: inline-block; /* สำคัญสำหรับให้ transform ใช้ได้ */
+  transition: transform 0.5s ease; /* ใส่ transition */
 }
 
 .sidebar #sidebarToggle:hover {
@@ -10459,9 +10446,10 @@ a:focus {
 }
 
 .sidebar.toggled #sidebarToggle::after {
-  content: '\f105';
-  font-family: 'Font Awesome 5 Free';
+  /*content: '\f105';
+  font-family: 'Font Awesome 5 Free';*/
   margin-left: 0.25rem;
+  transform: rotate(180deg); /* หมุน */
 }
 
 .sidebar.toggled .sidebar-card {
@@ -11303,6 +11291,6 @@ footer.sticky-footer .copyright {
 }
 
 body.sidebar-toggled footer.sticky-footer {
-  width: 50%;
+  width: 100%;
 }
 
