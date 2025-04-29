@@ -3,7 +3,8 @@ const path = require("path");
 const ejs = require("ejs");
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
+
 
 // ตั้งค่า View Engine (views = app1/public)
 app.set("view engine", "ejs");
