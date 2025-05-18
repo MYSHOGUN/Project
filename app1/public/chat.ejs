@@ -1,0 +1,46 @@
+<div class="container-fluid" style="padding: 0; margin: 0; height: 85vh;">
+    <div class="row" style="height: 100%;">
+        <div class="col-3" style="background-color:lightgrey; height: 100%;">
+            <div class="ml-4 mt-4">
+                <h1>รายชื่อ</h1>
+            </div>
+        </div>
+        <div class="col-9" style="display: flex; flex-direction: column; height: 100%;">
+            <div class="mt-4">
+                <h1>ระบบแชท</h1>
+            </div>
+            <div  style="flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;" id="messages-container">
+            </div>
+            <form id="chat-form" class="d-flex align-items-center mb-2" style="gap: 10px;">
+                <input id="message-input" autocomplete="off" placeholder="พิมพ์ข้อความ..." class="form-control form-control-chat" style="width: 90%;">
+                <button class="form-control form-control-chat" style="width: 8%;">ส่ง</button>
+            </form>            
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const socket = io();
+    
+        const form = document.getElementById("chat-form");
+        const input = document.getElementById("message-input");
+        const container = document.getElementById("messages-container");
+    
+        socket.on("chat message", (msg) => {
+            const messageDiv = document.createElement("div");
+            messageDiv.classList.add("chat-messages-sent");
+            messageDiv.innerText = msg;
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        });
+    
+        form.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const msg = input.value.trim();
+            if (msg === "") return;
+            socket.emit("chat message", msg);
+            input.value = "";
+        });
+    });
+</script>
+

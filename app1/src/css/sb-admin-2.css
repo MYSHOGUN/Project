@@ -10902,6 +10902,37 @@ form.user .form-control-user {
   padding: 1.5rem 1rem;
 }
 
+.form-control-chat{
+  font-size: 1rem;
+  border-radius: 10rem;;
+}
+
+.chat-messages-sent{
+    align-self: end;
+    display: inline-block;
+    background-color: dodgerblue;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 20px;
+    margin-bottom: 10px;
+    word-wrap: break-word; /* ตัดคำถ้าข้อความยาวเกิน */
+    white-space: pre-line; /* แสดงการขึ้นบรรทัดใหม่ */
+    max-width: 50%; /* จำกัดความกว้างของข้อความ */
+}
+
+.chat-messages-recieived{
+  align-self: start;
+  display: inline-block;
+  background-color: grey;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 20px;
+  margin-bottom: 10px;
+  word-wrap: break-word; /* ตัดคำถ้าข้อความยาวเกิน */
+  white-space: pre-line; /* แสดงการขึ้นบรรทัดใหม่ */
+  max-width: 50%; /* จำกัดความกว้างของข้อความ */
+}
+
 form.user .btn-user {
   font-size: 0.8rem;
   border-radius: 10rem;
