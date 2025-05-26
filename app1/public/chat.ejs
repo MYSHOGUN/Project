@@ -1,11 +1,11 @@
 <div class="container-fluid" style="padding: 0; margin: 0; height: 85vh;">
     <div class="row" style="height: 100%;">
-        <div class="col-3" style="background-color:lightgrey; height: 100%;">
+        <div class="col-xl-3 col-lg-4 col-md-5 col-sm-6 col-12" style="background-color:lightgrey; height: 100%;">
             <div class="ml-4 mt-4">
                 <h1>รายชื่อ</h1>
             </div>
         </div>
-        <div class="col-9" style="display: flex; flex-direction: column; height: 100%;">
+        <div class="col-xl-9 col-lg-8 col-md-7 col-sm-6" style="display: flex; flex-direction: column; height: 100%;">
             <div class="mt-4">
                 <h1>ระบบแชท</h1>
             </div>
@@ -25,6 +25,16 @@
         const form = document.getElementById("chat-form");
         const input = document.getElementById("message-input");
         const container = document.getElementById("messages-container");
+
+        socket.on("chat history", (messages) => {
+            messages.forEach((msg) => {
+                const messageDiv = document.createElement("div");
+                messageDiv.classList.add("chat-messages-sent");
+                messageDiv.innerText = msg.text; // ข้อความจาก MongoDB
+                container.appendChild(messageDiv);
+            });
+            container.scrollTop = container.scrollHeight;
+        });
     
         socket.on("chat message", (msg) => {
             const messageDiv = document.createElement("div");
