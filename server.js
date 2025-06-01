@@ -121,7 +121,7 @@ app.post("/login", async (req, res) => {
   if (!match) return res.send("❌ รหัสผ่านไม่ถูกต้อง");
 
   req.session.user = {
-    email: user.email,
+    username: user.username,
     name: user.name,
     lastname: user.lastname,
     role: user.role
