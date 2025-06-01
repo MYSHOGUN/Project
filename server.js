@@ -12,6 +12,18 @@ const server = http.createServer(app);
 const io = new Server(server);
 const port = process.env.PORT || 3000;
 
+const session = require("express-session");
+const bcrypt = require("bcrypt");
+const User = require("./models/User"); // ✅ import model
+
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(session({
+  secret: "secret-key", // เปลี่ยนเป็น secret จริงใน production
+  resave: false,
+  saveUninitialized: true
+}));
+
 // ✅ เชื่อม MongoDB ก่อนเริ่มเซิร์ฟเวอร์
 connectDB();
 
@@ -21,49 +33,101 @@ app.set("views", path.join(__dirname, "app1", "public"));
 app.use(express.static(path.join(__dirname, "app1", "src")));
 
 // ฟังก์ชัน render
-function renderWithLayout(res, view, data = {}, reqPath = "") {
+function renderWithLayout(res, view, data = {}, reqPath = "",req) {
+  const extendedData = { ...data, currentPath: reqPath };
+
+  // เพิ่ม user ถ้ามี req และ session.user
+  if (req && req.session && req.session.user) {
+    extendedData.user = req.session.user;
+  }
   ejs.renderFile(
     path.join(__dirname, "app1", "public", `${view}.ejs`),
-    { ...data, currentPath: reqPath },
+    extendedData,
     (err, str) => {
       if (err) {
         res.status(500).send(err.message);
       } else if (view === "login") {
-        return res.render(view, data);
+        return res.render(view, extendedData);
       } else {
-        res.render("layout", { ...data, body: str, currentPath: reqPath });
+        res.render("layout", { ...extendedData, body: str});
       }
     }
   );
 }
+// Middleware ตรวจว่า login แล้ว
+function requireLogin(req, res, next) {
+  if (!req.session.user) {
+    return res.redirect("/login");
+  }
+  next();
+}
 
+// Middleware ตรวจ role (ถ้าใช้ role เช่น admin)
+function requireRole(role) {
+  return function (req, res, next) {
+    if (!req.session.user || req.session.user.role !== role) {
+      return res.status(403).send("⛔ ไม่ได้รับอนุญาต");
+    }
+    next();
+  };
+}
 // Routes
 app.get("/", (req, res) => {
-  renderWithLayout(res, "index", { title: "KMUTNB Project - Main" }, req.path);
+  renderWithLayout(res, "index", { title: "KMUTNB Project - Main" }, req.path,req);
 });
-app.get("/upload", (req, res) => {
-  renderWithLayout(res, "upload", { title: "KMUTNB Project - Upload" }, req.path);
+app.get("/upload", requireLogin, (req, res) => {
+  renderWithLayout(res, "upload", { title: "KMUTNB Project - Upload" }, req.path,req);
 });
-app.get("/status", (req, res) => {
-  renderWithLayout(res, "status", { title: "KMUTNB Project - Status" }, req.path);
+app.get("/status", requireLogin, (req, res) => {
+  renderWithLayout(res, "status", { title: "KMUTNB Project - Status" }, req.path,req);
 });
 app.get("/login", (req, res) => {
-  renderWithLayout(res, "login", { title: "KMUTNB Project - Login" }, req.path);
+  renderWithLayout(res, "login", { title: "KMUTNB Project - Login" }, req.path,req);
 });
 app.get("/flowchart", (req, res) => {
-  renderWithLayout(res, "flowchart", { title: "KMUTNB Project - Flowchart" }, req.path);
+  renderWithLayout(res, "flowchart", { title: "KMUTNB Project - Flowchart" }, req.path,req);
 });
-app.get("/file", (req, res) => {
-  renderWithLayout(res, "file", { title: "KMUTNB Project - File" }, req.path);
+app.get("/file", requireLogin, (req, res) => {
+  renderWithLayout(res, "file", { title: "KMUTNB Project - File" }, req.path,req);
 });
-app.get("/chat", (req, res) => {
-  renderWithLayout(res, "chat", { title: "KMUTNB Project - Chat" }, req.path);
+app.get("/chat", requireLogin, (req, res) => {
+  renderWithLayout(res, "chat", { title: "KMUTNB Project - Chat" }, req.path,req);
 });
-app.get("/profile", (req, res) => {
-  renderWithLayout(res, "profile", { title: "Profile" }, req.path);
+app.get("/profile", requireLogin, (req, res) => {
+  renderWithLayout(res, "profile", { title: "Profile" }, req.path,req);
 });
 app.get("/api/message", (req, res) => {
   res.json({ message: "Hello from Node.js API!" });
+});
+app.get('/logout', (req, res) => {
+  req.session.destroy(err => {
+    if (err) {
+      console.error(err);
+      return res.status(500).send('Logout failed');
+    }
+    res.clearCookie('connect.sid'); // ล้าง cookie session (ชื่ออาจต่างกันตาม config)
+    res.redirect('/'); // ไปหน้า main หลัง logout
+  });
+});
+
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+  const user = await User.findOne({ username });
+
+  //console.log("✅ User from DB:", user); // <-- ใส่ตรงนี้
+  if (!user) return res.send("❌ ไม่พบผู้ใช้");
+
+  const match = await bcrypt.compare(password, user.password);
+  if (!match) return res.send("❌ รหัสผ่านไม่ถูกต้อง");
+
+  req.session.user = {
+    email: user.email,
+    name: user.name,
+    lastname: user.lastname,
+    role: user.role
+  };
+
+  res.redirect("/");
 });
 
 // Socket.IO

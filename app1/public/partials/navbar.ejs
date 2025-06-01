@@ -170,7 +170,15 @@
         <li class="nav-item dropdown no-arrow">
             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                <span class="mr-2 d-none d-lg-inline text-gray-600 small">Yod-anan Pitchayanonthapat</span>
+                <% if (typeof user !== "undefined") { %>
+                    <span class="mr-2 d-none d-lg-inline text-gray-600 small">
+                    <%= user.name %> <%= user.lastname %>
+                    </span>
+                <% } else { %>
+                    <span class="mr-2 d-none d-lg-inline text-gray-600 small">
+                    Guest
+                    </span>
+                <% } %>
                 <!-- <img class="img-profile rounded-circle"
                     src="img/EverythingBecomesADragonTheCloserItApproachesTheOmnipotent.jpg"> -->
                 <img class="img-profile rounded-circle"
@@ -179,6 +187,7 @@
             <!-- Dropdown - User Information -->
             <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
                 aria-labelledby="userDropdown">
+                <% if (typeof user !== "undefined") { %>
                 <a class="dropdown-item" href="/profile">
                     <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
                     Profile
@@ -196,6 +205,12 @@
                     <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
                     Logout
                 </a>
+                <% } else { %>
+                    <a class="dropdown-item" href="/login">
+                    <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                        Login
+                    </a>
+                <% } %>
             </div>
         </li>
 
