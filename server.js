@@ -90,8 +90,36 @@ app.get("/flowchart", (req, res) => {
 app.get("/file", requireLogin, (req, res) => {
   renderWithLayout(res, "file", { title: "KMUTNB Project - File" }, req.path,req);
 });
-app.get("/chat", requireLogin, (req, res) => {
-  renderWithLayout(res, "chat", { title: "KMUTNB Project - Chat" }, req.path,req);
+
+app.get("/chat", requireLogin, async (req, res) => {
+  try {
+    // ดึงรายชื่อ user ทั้งหมด ยกเว้นตัวเอง
+    const users = await User.find({ username: { $ne: req.session.user.username } });
+    renderWithLayout(res, "chat", { 
+      title: "KMUTNB Project - Chat", 
+      users,
+      user: req.session.user
+    }, req.path, req);
+  } catch (err) {
+    res.status(500).send("Error loading users");
+  }
+});
+app.get("/chat/messages/:username", requireLogin, async (req, res) => {
+  const fromUser = req.session.user.username;
+  const toUser = req.params.username;
+
+  try {
+    const messages = await Message.find({
+      $or: [
+        { sender: fromUser, receiver: toUser },
+        { sender: toUser, receiver: fromUser }
+      ]
+    }).sort({ timestamp: 1 });
+
+    res.json({ messages });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load messages" });
+  }
 });
 app.get("/profile", requireLogin, (req, res) => {
   renderWithLayout(res, "profile", { title: "Profile" }, req.path,req);
@@ -131,34 +159,39 @@ app.post("/login", async (req, res) => {
 });
 
 // Socket.IO
-io.on("connection", async (socket) => {
-  console.log("🔌 A user connected");
+io.on("connection", (socket) => {
+  socket.username = socket.handshake.query.username;
+  console.log("User connected:", socket.username);
 
-  // 👉 ส่งประวัติแชททันทีเมื่อผู้ใช้ใหม่เชื่อม
-  try {
-    const messages = await Message.find().sort({ timestamp: 1 }).limit(100);
-    socket.emit("chat history", messages); // ส่ง array กลับไป
-  } catch (err) {
-    console.error("❌ Error loading chat history:", err.message);
-  }
-
+  // รับข้อความใหม่
   socket.on("chat message", async (msg) => {
-    console.log("📩 Message received:", msg);
+     console.log("Received chat message:", msg);
     try {
-      const message = new Message({ text: msg });
+      // msg = { from, to, text }
+      const message = new Message({
+        sender: msg.from,
+        receiver: msg.to,
+        text: msg.text,
+        timestamp: new Date()
+      });
       await message.save();
-    } catch (err) {
-      console.error("❌ Error saving message to DB:", err.message);
-    }
 
-    io.emit("chat message", msg); // ส่งข้อความใหม่ให้ทุกคน
+      // ส่งข้อความเฉพาะผู้ที่เกี่ยวข้อง (sender และ receiver)
+      io.sockets.sockets.forEach((s) => {
+        if (s.handshake.query.username === msg.from || s.handshake.query.username === msg.to) {
+        s.emit("chat message", msg);
+      }
+      });
+    } catch (err) {
+      console.error("Error saving message:", err);
+    }
+    console.log("Emitted message to users:", msg.from, msg.to);
   });
 
   socket.on("disconnect", () => {
-    console.log("❌ A user disconnected");
+    console.log("User disconnected");
   });
 });
-
 
 // Start server
 server.listen(port, () => {
