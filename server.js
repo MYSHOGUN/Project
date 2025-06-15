@@ -177,11 +177,14 @@ io.on("connection", (socket) => {
       await message.save();
 
       // ส่งข้อความเฉพาะผู้ที่เกี่ยวข้อง (sender และ receiver)
-      io.sockets.sockets.forEach((s) => {
-        if (s.handshake.query.username === msg.from || s.handshake.query.username === msg.to) {
-        s.emit("chat message", msg);
-      }
-      });
+      io.sockets.sockets.forEach(s => {
+  if (
+    s.handshake.query.username === msg.from ||
+    s.handshake.query.username === msg.to
+  ) {
+    s.emit("chat message", msg);
+  }
+});
     } catch (err) {
       console.error("Error saving message:", err);
     }

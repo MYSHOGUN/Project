@@ -33,7 +33,7 @@
 </div>
 
 <script>
-  const socket = io({ query: { username: "<%= user.username %>" } });
+  const socket = io({ query: { username: "<%= user?.username || '' %>" } });
 
   const userList = document.getElementById('user-list');
   const chatWithEl = document.getElementById('chat-with');
