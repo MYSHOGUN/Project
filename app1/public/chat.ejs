@@ -34,6 +34,7 @@
 
 <script>
   const socket = io({ query: { username: "<%= user?.username || '' %>" } });
+  socket.emit("register", "<%= user.username %>");
 
   const userList = document.getElementById('user-list');
   const chatWithEl = document.getElementById('chat-with');

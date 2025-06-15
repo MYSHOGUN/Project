@@ -1,5 +1,7 @@
 const Message = require("./models/Message"); // ✅ import model
 
+const userSockets = new Map();
+
 const express = require("express");
 const path = require("path");
 const ejs = require("ejs");
@@ -160,14 +162,18 @@ app.post("/login", async (req, res) => {
 
 // Socket.IO
 io.on("connection", (socket) => {
-  socket.username = socket.handshake.query.username;
   console.log("User connected:", socket.username);
 
   // รับข้อความใหม่
+  socket.on("register", (username) => {
+    socket.username = username;
+    userSockets.set(username, socket.id);
+    console.log("🔗 Registered user:", username);
+  });
+
   socket.on("chat message", async (msg) => {
-     console.log("Received chat message:", msg);
+    console.log("📨 Received chat message:", msg);
     try {
-      // msg = { from, to, text }
       const message = new Message({
         sender: msg.from,
         receiver: msg.to,
@@ -176,23 +182,24 @@ io.on("connection", (socket) => {
       });
       await message.save();
 
-      // ส่งข้อความเฉพาะผู้ที่เกี่ยวข้อง (sender และ receiver)
-      io.sockets.sockets.forEach(s => {
-  if (
-    s.handshake.query.username === msg.from ||
-    s.handshake.query.username === msg.to
-  ) {
-    s.emit("chat message", msg);
-  }
-});
+      // ส่งไปยังทั้ง sender และ receiver ถ้ามีใน map
+      [msg.from, msg.to].forEach(user => {
+        const socketId = userSockets.get(user);
+        if (socketId && io.sockets.sockets.get(socketId)) {
+          io.to(socketId).emit("chat message", msg);
+        }
+      });
+
     } catch (err) {
-      console.error("Error saving message:", err);
+      console.error("❌ Error saving message:", err);
     }
-    console.log("Emitted message to users:", msg.from, msg.to);
   });
 
   socket.on("disconnect", () => {
-    console.log("User disconnected");
+    if (socket.username) {
+      userSockets.delete(socket.username);
+      console.log("🔌 Disconnected:", socket.username);
+    }
   });
 });
 
