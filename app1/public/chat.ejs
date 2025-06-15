@@ -79,13 +79,20 @@
 
   // รับข้อความใหม่
   socket.on("chat message", msg => {
-    if (
-      (msg.sender === "<%= user.username %>" && msg.receiver === currentChatUser) ||
-      (msg.sender === currentChatUser && msg.receiver === "<%= user.username %>")
-    ) {
-      addMessage(msg);
-    }
-  });
+  // ถ้าไม่ได้เลือก user แต่อีกฝั่งพิมพ์มา
+  if (!currentChatUser && msg.sender !== "<%= user.username %>") {
+    currentChatUser = msg.sender;
+    chatWithEl.textContent = msg.sender;
+    messageInput.disabled = false;
+  }
+
+  if (
+    (msg.sender === "<%= user.username %>" && msg.receiver === currentChatUser) ||
+    (msg.sender === currentChatUser && msg.receiver === "<%= user.username %>")
+  ) {
+    addMessage(msg);
+  }
+});
 
   // ส่งข้อความ
   chatForm.addEventListener("submit", (e) => {
