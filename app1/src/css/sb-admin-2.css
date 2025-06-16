@@ -10944,6 +10944,33 @@ form.user .btn-user {
   padding: 0.75rem 1rem;
 }
 
+
+#message-input {
+  width: 90%;
+}
+
+#message-sent {
+  width: 8%;
+}
+
+@media (max-width: 961px) {
+  #message-input {
+    width: 85%;
+  }
+  #message-sent {
+    width: 12%;
+  }
+}
+
+@media (max-width: 721px) {
+  #message-input {
+    width: 80%;
+  }
+  #message-sent {
+    width: 16%;
+  }
+}
+
 .btn-google {
   color: #fff;
   background-color: #ea4335;
