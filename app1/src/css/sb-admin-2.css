@@ -10933,6 +10933,11 @@ form.user .form-control-user {
   max-width: 50%; /* จำกัดความกว้างของข้อความ */
 }
 
+.user-item {
+  cursor: pointer;
+  user-select: none;
+}
+
 form.user .btn-user {
   font-size: 0.8rem;
   border-radius: 10rem;

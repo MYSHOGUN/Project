@@ -1,31 +1,38 @@
 <div class="container-fluid" style="padding: 0; margin: 0; height: 85vh;">
   <div class="row flex-column flex-sm-row" style="height: 100%;">
-    
+
     <!-- รายชื่อ -->
-    <div class="col-sm-4 col-12" style="background-color: lightgrey; height: 100%;">
+    <div id="user-list-section" class="col-sm-4 col-12" style="background-color: lightgrey; height: 100%;">
       <div class="mx-4 mt-4">
         <h1>รายชื่อ</h1>
         <ul class="list-group" id="user-list">
-            <% users.forEach(u => { %>
-            <li class="list-group-item user-item " data-username="<%= u.username %>">
-            <%= u.name %> (<%= u.username %>)
+          <% users.forEach(u => { %>
+            <li class="list-group-item user-item" data-username="<%= u.username %>" data-name="<%= u.name %>">
+              <%= u.name %> (<%= u.username %>)
             </li>
-            <% }) %>
+          <% }) %>
         </ul>
       </div>
     </div>
 
     <!-- ระบบแชท -->
-    <div class="col-sm-8 col-12 d-flex flex-column" style="height: 100%;">
-      <div class="mt-4">
-        <h1>ระบบแชทกับ <span id="chat-with">-</span></h1>
+    <div id="chat-section" class="col-sm-8 col-12 d-flex flex-column" style="height: 100%; display: none;">
+      <div class="mt-4 mx-4 d-flex align-items-center justify-content-between">
+        <h2 style="margin: 0;">
+          ระบบแชทกับ <span id="chat-with">-</span>
+        </h2>
+        <button id="back-button" class="btn btn-secondary d-sm-none">
+          <i class="bi bi-arrow-bar-left"></i> ย้อนกลับ
+        </button>
       </div>
       <div style="flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;" id="messages-container">
         <!-- ข้อความแชท -->
       </div>
       <form id="chat-form" class="d-flex align-items-center mb-2" style="gap: 10px;">
         <input id="message-input" autocomplete="off" placeholder="พิมพ์ข้อความ..." class="form-control form-control-chat" style="width: 90%;" disabled>
-        <button class="form-control form-control-chat btn btn-primary" style="width: 8%;">ส่ง</button>
+        <button class="form-control form-control-chat btn btn-primary" style="width: 8%; display: flex; justify-content: center; align-items: center; padding: 0;">
+          ส่ง
+        </button>
       </form>
     </div>
 
@@ -33,87 +40,141 @@
 </div>
 
 <script>
-  const socket = io({ query: { username: "<%= user?.username || '' %>" } });
-  socket.emit("register", "<%= user.username %>");
+  document.addEventListener("DOMContentLoaded", () => {
+    const socket = io({ query: { username: "<%= user?.username || '' %>" } });
+    socket.emit("register", "<%= user.username %>");
+    console.log("✅ emitted register:", "<%= user.username %>");
 
-  const userList = document.getElementById('user-list');
-  const chatWithEl = document.getElementById('chat-with');
-  const messagesContainer = document.getElementById('messages-container');
-  const chatForm = document.getElementById('chat-form');
-  const messageInput = document.getElementById('message-input');
+    const userListSection = document.getElementById("user-list-section");
+    const chatSection = document.getElementById("chat-section");
+    const userList = document.getElementById('user-list');
+    const chatWithEl = document.getElementById('chat-with');
+    const messagesContainer = document.getElementById('messages-container');
+    const chatForm = document.getElementById('chat-form');
+    const messageInput = document.getElementById('message-input');
+    const backButton = document.getElementById('back-button');
 
-  let currentChatUser = null;
+    let currentChatUser = null;
 
-  // เลือกชื่อเพื่อแชท
-  userList.addEventListener('click', e => {
-    const li = e.target.closest('.user-item');
-    if (!li) return;
+    // ฟังก์ชันแสดง chat และ user list ตามขนาดหน้าจอ
+    function showChatSection() {
+      if (window.innerWidth < 576) { // จอเล็ก ซ่อนรายชื่อ
+        userListSection.style.display = "none";
+        chatSection.style.display = "flex";
+      } else { // จอใหญ่ รายชื่อแสดงพร้อมแชท
+        userListSection.style.display = "block";
+        chatSection.style.display = "flex";
+      }
+    }
 
-    const username = li.dataset.username;
-    if (username === currentChatUser) return;
+    function showUserListSection() {
+      if (window.innerWidth < 576) { // จอเล็ก แสดงรายชื่ออย่างเดียว
+        userListSection.style.display = "block";
+        chatSection.style.display = "none";
+      } else { // จอใหญ่ แสดงทั้งสองฝั่ง
+        userListSection.style.display = "block";
+        chatSection.style.display = "flex";
+      }
+    }
 
-    currentChatUser = username;
-    chatWithEl.textContent = username;
-    messagesContainer.innerHTML = '';
-    messageInput.disabled = false;
+    // เลือกชื่อเพื่อแชท
+    ["click", "touchstart"].forEach(eventName => {
+      userList.addEventListener(eventName, e => {
+        const li = e.target.closest('.user-item');
+        if (!li) return;
 
-    // โหลดข้อความจาก server
-    fetch(`/chat/messages/${username}`)
-      .then(res => res.json())
-      .then(data => {
-        data.messages.forEach(addMessage);
+        const name = li.dataset.name;
+        const username = li.dataset.username;
+        if (username === currentChatUser) return;
+
+        currentChatUser = username;
+        chatWithEl.textContent = name;
+        messagesContainer.innerHTML = '';
+        messageInput.disabled = false;
+
+        showChatSection();
+
+        fetch(`/chat/messages/${username}`)
+          .then(res => res.json())
+          .then(data => {
+            data.messages.forEach(addMessage);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          });
       });
+    });
+
+    // เพิ่มข้อความแชทลง container
+    function addMessage(msg) {
+      const div = document.createElement('div');
+      if (msg.sender === "<%= user.username %>") {
+        div.classList.add('chat-messages-sent', 'mb-2');
+      } else {
+        div.classList.add('chat-messages-recieived', 'mb-2');
+      }
+      div.textContent = msg.text;
+      messagesContainer.appendChild(div);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // ปุ่มย้อนกลับบนจอเล็ก
+    backButton.addEventListener('click', () => {
+      currentChatUser = null;
+      chatWithEl.textContent = "-";
+      messagesContainer.innerHTML = '';
+      messageInput.value = '';
+      messageInput.disabled = true;
+      showUserListSection();
+    });
+
+    // รับข้อความใหม่ผ่าน socket
+    socket.on("chat message", msg => {
+      if (!currentChatUser && msg.sender !== "<%= user.username %>") {
+        currentChatUser = msg.sender;
+        chatWithEl.textContent = msg.sender;
+        messageInput.disabled = false;
+        showChatSection();
+      }
+
+      if (
+        (msg.sender === "<%= user.username %>" && msg.receiver === currentChatUser) ||
+        (msg.sender === currentChatUser && msg.receiver === "<%= user.username %>")
+      ) {
+        addMessage(msg);
+      }
+    });
+
+    // ส่งข้อความ
+    chatForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!currentChatUser) return alert("กรุณาเลือกคนคุยก่อน");
+      const text = messageInput.value.trim();
+      if (!text) return;
+
+      const msg = {
+        sender: "<%= user.username %>",
+        receiver: currentChatUser,
+        text
+      };
+
+      messageInput.disabled = true;
+      addMessage({ sender: msg.sender, text });
+
+      socket.emit("chat message", msg);
+      messageInput.value = "";
+      messageInput.disabled = false;
+    });
+
+    // เริ่มต้นแสดงรายชื่อ
+    showUserListSection();
+    messageInput.disabled = true;
+
+    // เปลี่ยน layout อัตโนมัติเมื่อ resize
+    window.addEventListener('resize', () => {
+      if (!currentChatUser) {
+        showUserListSection();
+      } else {
+        showChatSection();
+      }
+    });
   });
-
-  // เพิ่มข้อความลงหน้าจอ
-  function addMessage(msg) {
-    const div = document.createElement('div');
-    if (msg.sender === "<%= user.username %>") {
-    div.classList.add('chat-messages-sent', 'mb-2');
-  } else {
-    div.classList.add('chat-messages-recieived', 'mb-2');
-  }
-  div.textContent = msg.text;
-  messagesContainer.appendChild(div);
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-  // รับข้อความใหม่
-  socket.on("chat message", msg => {
-  // ถ้าไม่ได้เลือก user แต่อีกฝั่งพิมพ์มา
-  if (!currentChatUser && msg.sender !== "<%= user.username %>") {
-    currentChatUser = msg.sender;
-    chatWithEl.textContent = msg.sender;
-    messageInput.disabled = false;
-  }
-
-  if (
-    (msg.sender === "<%= user.username %>" && msg.receiver === currentChatUser) ||
-    (msg.sender === currentChatUser && msg.receiver === "<%= user.username %>")
-  ) {
-    addMessage(msg);
-  }
-});
-
-  // ส่งข้อความ
-  chatForm.addEventListener("submit", (e) => {
-  e.preventDefault();
-  if (!currentChatUser) return alert("กรุณาเลือกคนคุยก่อน");
-  const text = messageInput.value.trim();
-  if (!text) return;
-
-  const msg = {
-    sender: "<%= user.username %>",
-    receiver: currentChatUser,
-    text
-  };
-
-  messageInput.disabled = true;
-  addMessage({ sender: msg.sender, text });
-
-  socket.emit("chat message", msg);
-  messageInput.value = "";
-  messageInput.disabled = false;
-});
 </script>
-

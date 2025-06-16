@@ -175,15 +175,15 @@ io.on("connection", (socket) => {
     console.log("📨 Received chat message:", msg);
     try {
       const message = new Message({
-        sender: msg.from,
-        receiver: msg.to,
+        sender: msg.sender,
+        receiver: msg.receiver,
         text: msg.text,
         timestamp: new Date()
       });
       await message.save();
 
       // ส่งไปยังทั้ง sender และ receiver ถ้ามีใน map
-      [msg.from, msg.to].forEach(user => {
+      [msg.sender, msg.receiver].forEach(user => {
         const socketId = userSockets.get(user);
         if (socketId && io.sockets.sockets.get(socketId)) {
           console.log(`📤 ส่งข้อความถึง: ${user} (socketId: ${socketId})`);
