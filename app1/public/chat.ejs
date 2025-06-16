@@ -24,7 +24,7 @@
         <!-- ข้อความแชท -->
       </div>
       <form id="chat-form" class="d-flex align-items-center mb-2" style="gap: 10px;">
-        <input id="message-input" autocomplete="off" placeholder="พิมพ์ข้อความ..." class="form-control form-control-chat" style="width: 90%;">
+        <input id="message-input" autocomplete="off" placeholder="พิมพ์ข้อความ..." class="form-control form-control-chat" style="width: 90%;" disabled>
         <button class="form-control form-control-chat btn btn-primary" style="width: 8%;">ส่ง</button>
       </form>
     </div>
@@ -103,16 +103,17 @@
   if (!text) return;
 
   const msg = {
-    from: "<%= user.username %>",
-    to: currentChatUser,
+    sender: "<%= user.username %>",
+    receiver: currentChatUser,
     text
   };
 
-  // แสดงข้อความตัวเองก่อนเลย
-  addMessage({ sender: msg.from, text });
+  messageInput.disabled = true;
+  addMessage({ sender: msg.sender, text });
 
   socket.emit("chat message", msg);
   messageInput.value = "";
+  messageInput.disabled = false;
 });
 </script>
 

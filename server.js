@@ -162,7 +162,7 @@ app.post("/login", async (req, res) => {
 
 // Socket.IO
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.username);
+  
 
   // รับข้อความใหม่
   socket.on("register", (username) => {
@@ -186,7 +186,10 @@ io.on("connection", (socket) => {
       [msg.from, msg.to].forEach(user => {
         const socketId = userSockets.get(user);
         if (socketId && io.sockets.sockets.get(socketId)) {
+          console.log(`📤 ส่งข้อความถึง: ${user} (socketId: ${socketId})`);
           io.to(socketId).emit("chat message", msg);
+        } else {
+          console.log(`⚠️ ไม่พบ socket สำหรับ ${user}`);
         }
       });
 
@@ -198,7 +201,7 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     if (socket.username) {
       userSockets.delete(socket.username);
-      console.log("🔌 Disconnected:", socket.username);
+      console.log(`🔌 Disconnected: ${socket.username} (socketId: ${socket.id})`);
     }
   });
 });
