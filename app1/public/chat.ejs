@@ -157,7 +157,6 @@
       };
 
       messageInput.disabled = true;
-      addMessage({ sender: msg.sender, text });
 
       socket.emit("chat message", msg);
       messageInput.value = "";
