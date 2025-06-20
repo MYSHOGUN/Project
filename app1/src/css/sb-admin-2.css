@@ -9801,10 +9801,28 @@ a:focus {
   background-color: #f8f9fc;
   width: 100%;
   overflow-x: hidden;
+  transition: all 0.3s ease;
 }
 
 #wrapper #content-wrapper #content {
   flex: 1 0 auto;
+}
+
+@media (min-width: 768px) {
+  #wrapper #content-wrapper {
+    margin-left: 14rem;
+  }
+  body.sidebar-toggled #wrapper #content-wrapper{
+    margin-left: 6.5rem;
+  }
+}
+@media (max-width: 767.98px) {
+  #wrapper #content-wrapper {
+    margin-left: 6.5rem;
+  }
+  body.sidebar-toggled #wrapper #content-wrapper{
+    margin-left: 0rem;
+  }
 }
 
 .container,
@@ -10324,6 +10342,7 @@ a:focus {
   width: 6.5rem;
   min-height: 100vh;
   transition: all 0.3s ease;
+  position: fixed;
 }
 
 .sidebar .nav-item {
