@@ -2,21 +2,22 @@
   <div class="row flex-column flex-sm-row" style="height: 100%;">
 
     <!-- รายชื่อ -->
-    <div id="user-list-section" class="col-sm-4 col-12" style="background-color: lightgrey; height: 100%;">
+    <div id="user-list-section" class="col-sm-4 col-12" style="background-color: lightgrey; height: 100%; width: 33.3333%;">
       <div class="mx-4 mt-4">
-        <h1>รายชื่อ</h1>
+        <h2>รายชื่อ</h2>
         <ul class="list-group" id="user-list">
+
           <% users.forEach(u => { %>
-            <li class="list-group-item user-item" data-username="<%= u.username %>" data-name="<%= u.name %>">
+            <li class="list-group-item user-item mb-2" data-username="<%= u.username %>" data-name="<%= u.name %>">
               <%= u.name %> (<%= u.username %>)
             </li>
           <% }) %>
         </ul>
       </div>
-    </div>
+    </div>                     
 
     <!-- ระบบแชท -->
-    <div id="chat-section" class="col-sm-8 col-12 d-flex flex-column" style="height: 100%; display: none;">
+    <div id="chat-section" class="col-sm-8 col-12 d-flex flex-column " style="height: 100%; display: none; width: 66.6666%;">
       <div class="mt-4 mx-4 d-flex align-items-center justify-content-between">
         <h2 style="margin: 0;">
           ระบบแชทกับ <span id="chat-with">-</span>
@@ -28,7 +29,7 @@
       <div style="flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;" id="messages-container">
         <!-- ข้อความแชท -->
       </div>
-      <form id="chat-form" class="d-flex align-items-center m-2" style="gap: 10px;">
+      <form id="chat-form" class="d-flex align-items-center my-2 mx-3" style="gap: 10px;">
         <input id="message-input" autocomplete="off" placeholder="พิมพ์ข้อความ..." class="form-control form-control-chat" disabled>
         <button id="message-sent" class="form-control form-control-chat btn btn-primary" style="display: flex; justify-content: center; align-items: center; padding: 0;">
           ส่ง
@@ -61,19 +62,37 @@
       if (window.innerWidth < 576) { // จอเล็ก ซ่อนรายชื่อ
         userListSection.style.display = "none";
         chatSection.style.display = "flex";
+        userListSection.style.width = "100%";
+        chatSection.style.width = "100%";
+      } else if(window.innerWidth >= 576 && window.innerWidth < 960){ // จอกลาง รายชื่อแสดงพร้อมแชทแต่ปรับขนาด
+        userListSection.style.display = "block";
+        chatSection.style.display = "flex";
+        userListSection.style.width = "50%";
+        chatSection.style.width = "50%";
       } else { // จอใหญ่ รายชื่อแสดงพร้อมแชท
         userListSection.style.display = "block";
         chatSection.style.display = "flex";
+        userListSection.style.width = "33.3333%";
+        chatSection.style.width = "66.6666%";
       }
     }
 
     function showUserListSection() {
       if (window.innerWidth < 576) { // จอเล็ก แสดงรายชื่ออย่างเดียว
         userListSection.style.display = "block";
+        userListSection.style.width = "100%";
         chatSection.style.display = "none";
-      } else { // จอใหญ่ แสดงทั้งสองฝั่ง
+        chatSection.style.width = "100%";
+      } else if(window.innerWidth >= 576 && window.innerWidth < 960){ // จอกลาง รายชื่อแสดงพร้อมแชทแต่ปรับขนาด
         userListSection.style.display = "block";
         chatSection.style.display = "flex";
+        userListSection.style.width = "50%";
+        chatSection.style.width = "50%";
+      } else { // จอใหญ่ แสดงทั้งสองฝั่ง
+        userListSection.style.display = "block";
+        userListSection.style.width = "33.3333%";
+        chatSection.style.display = "flex";
+        chatSection.style.width = "66.6666%";
       }
     }
 
