@@ -92,6 +92,9 @@ app.get("/flowchart", (req, res) => {
 app.get("/file", requireLogin, (req, res) => {
   renderWithLayout(res, "file", { title: "KMUTNB Project - File" }, req.path,req);
 });
+app.get("/group", requireLogin, (req, res) => {
+  renderWithLayout(res, "group", { title: "KMUTNB Project - Group" }, req.path,req);
+});
 
 app.get("/chat", requireLogin, async (req, res) => {
   try {

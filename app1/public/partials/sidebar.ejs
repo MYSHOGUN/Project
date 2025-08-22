@@ -1,6 +1,6 @@
-<aside class="sidebar">
+<aside class="sidebar toggled">
     <!-- Sidebar -->
-    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion toggled" id="accordionSidebar">
 
         <!-- Sidebar - Brand -->
         <a class="sidebar-brand d-flex align-items-center justify-content-center" href="/">
@@ -16,6 +16,15 @@
             <a class="nav-link" href="/chat">
                 <i class="fas fa-comments"></i>
                 <span>แชท</span></a>
+        </li>
+
+        <!-- Divider -->
+        <hr class="sidebar-divider my-0">
+
+        <li class="nav-item <%= currentPath === '/group' ? 'active' : '' %>">
+            <a class="nav-link" href="/group">
+                <i class="fas fa-users"></i>
+                <span>กลุ่มโปรเจค</span></a>
         </li>
 
         <!-- Divider -->
