@@ -1,6 +1,88 @@
 <div class="container-fluid mt-4" style="height: 85vh;">               
     <!-- Page Heading -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        
-    </div>
+    <% if (typeof user !== 'undefined' && user.group !== 'true') { %>
+        <div id="add-group" class="d-flex flex-column align-items-center">
+            <h2>คุณยังไม่มีกลุ่ม</h2>
+            <button type="button" id="showGroupBtn" class="btn btn-secondary" style="width: 50%;background-color: white; color: gray;">
+                <h3 class="mt-2"><i class="fas fa-plus"></i> เพิ่มกลุ่ม</h3>
+            </button>
+        </div>
+        <div id="grouping" class="d-none flex-column align-items-center">
+            <h2>กำหนดสมาชิกกลุ่ม</h2>
+            <h3>1.<%= user.name %> <%= user.lastname %></h3>
+            <div id="searchContainer">
+                <input type="text" id="searchUser" class="form-control mb-3" placeholder="ค้นหาสมาชิกคนที่ 2">
+                <ul id="searchResults" class="list-group mb-2"></ul>
+            </div>
+            <ul id="searchResults" class="list-group mb-2"></ul>
+            <div class="d-flex flex-row align-items-center" id="selectedContainer" style="display:none;">
+                <h3 id="selectedUser" style="margin-right: 20px;"></h3>
+                <button id="clearSelection" class="btn btn-danger" style="display: none;margin-bottom: 10px;">ยกเลิก</button>
+            </div>
+        </div>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script>
+        let chosenUser = null;
+
+        // Search live
+        $("#searchUser").on("keyup", function() {
+        const keyword = $(this).val();
+        if(keyword.length > 0){
+            $.get("/search-users?keyword=" + encodeURIComponent(keyword), function(data) {
+            $("#searchResults").empty();
+            if(data.length > 0){
+                data.forEach(user => {
+                const li = $(`<li class="list-group-item list-group-item-action" style="cursor:pointer;">
+                               ${user.name} ${user.lastname} (${user.username})
+                                </li>`);
+                li.on("click", function() {
+                    // เลือก user
+                    chosenUser = user.username;
+                    $("#selectedUser").text(`2.${user.name} ${user.lastname}`);
+                    // ซ่อน search box และผลลัพธ์
+                    $("#searchContainer").hide();
+                    // แสดง selected container
+                    $("#selectedContainer").show();
+                    // แสดง clearSelection
+                    $("#clearSelection").show();
+                });
+                $("#searchResults").append(li);
+                });
+            } else {
+                $("#searchResults").append(`<li class="list-group-item text-muted">ไม่พบผู้ใช้</li>`);
+            }
+            });
+        } else {
+            $("#searchResults").empty();
+        }
+        });
+
+        // ปุ่มยกเลิก selection
+        $("#clearSelection").on("click", function() {
+        chosenUser = null;
+        $("#selectedUser").text('');
+        $("#selectedContainer").hide();
+        $("#searchContainer").show();
+        $("#searchUser").val('');
+        $("#searchResults").empty();
+        $("#clearSelection").hide();
+        });
+        </script>
+        <script>
+            // ฟังก์ชันแสดง add-group และ group
+            function showGrouping() {
+                const grouping = document.getElementById("grouping");
+                const addGroup = document.getElementById("add-group");
+
+                grouping.classList.remove("d-none");   // เอา class d-none ออก
+                grouping.classList.add("d-flex");      // เพิ่ม flex
+                addGroup.classList.remove("d-flex");   // เอา class flex ออก
+                addGroup.classList.add("d-none");      // เพิ่ม d-none
+            }
+            document.getElementById("showGroupBtn").addEventListener("click", showGrouping);
+        </script>
+    <% } else { %>
+        <h2>กลุ่มของคุณ</h2>
+            
+    <% } %>
 </div>

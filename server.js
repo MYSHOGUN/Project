@@ -1,5 +1,7 @@
 const Message = require("./models/Message"); // ✅ import model
 
+const Group = require("./models/Group"); // ✅ import group model
+
 const userSockets = new Map();
 
 const express = require("express");
@@ -153,14 +155,46 @@ app.post("/login", async (req, res) => {
   const match = await bcrypt.compare(password, user.password);
   if (!match) return res.send("❌ รหัสผ่านไม่ถูกต้อง");
 
+  const group = await Group.findOne({ username });
+  if (group) {
+    req.session.user = {
+      group: "true"
+    };
+  }else{
+    req.session.user = {
+      group: "false"
+    };
+  }
   req.session.user = {
     username: user.username,
     name: user.name,
     lastname: user.lastname,
     role: user.role
-  };
 
+  };
   res.redirect("/");
+});
+
+// ค้นหาผู้ใช้ (ยกเว้นตัวเอง)
+app.get("/search-users", requireLogin, async (req, res) => {
+  const keyword = req.query.keyword || "";
+  try {
+    const users = await User.find({
+      $and: [
+        { username: { $ne: req.session.user.username } }, // ไม่เอาตัวเอง
+        {
+          $or: [
+            { username: { $regex: keyword, $options: "i" } },
+            { name: { $regex: keyword, $options: "i" } },
+            { lastname: { $regex: keyword, $options: "i" } }
+          ]
+        }
+      ]
+    });
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
 });
 
 // Socket.IO
