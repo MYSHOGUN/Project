@@ -155,22 +155,18 @@ app.post("/login", async (req, res) => {
   const match = await bcrypt.compare(password, user.password);
   if (!match) return res.send("❌ รหัสผ่านไม่ถูกต้อง");
 
-  const group = await Group.findOne({ username });
-  if (group) {
+  const group = await Group.findOne({
+    $or: [
+      { member1: user.username },
+      { member2: user.username }
+    ]
+  });
     req.session.user = {
-      group: "true"
-    };
-  }else{
-    req.session.user = {
-      group: "false"
-    };
-  }
-  req.session.user = {
     username: user.username,
     name: user.name,
     lastname: user.lastname,
-    role: user.role
-
+    role: user.role,
+    group: group ? "true" : "false"   // มี group -> true, ไม่มี -> false
   };
   res.redirect("/");
 });
@@ -194,6 +190,41 @@ app.get("/search-users", requireLogin, async (req, res) => {
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: "Database error" });
+  }
+});
+
+// ✅ บันทึกกลุ่มใหม่
+app.post("/groups", requireLogin, async (req, res) => {
+  try {
+    const { member1, member2, advisor } = req.body;
+
+    if (!member1 || !member2 || !advisor) {
+      return res.status(400).send("ข้อมูลไม่ครบ");
+    }
+
+    // ตรวจสอบว่ามีใครอยู่ในกลุ่มแล้วหรือยัง
+    const existingGroup = await Group.findOne({
+      $or: [
+        { member1 },
+        { member2 }
+      ]
+    });
+
+    if (existingGroup) {
+      return res.status(400).send("สมาชิกนี้มีกลุ่มอยู่แล้ว");
+    }
+
+    // บันทึกกลุ่มใหม่
+    const newGroup = new Group({ member1, member2, advisor });
+    await newGroup.save();
+
+    // อัปเดต session.user.group = "true"
+    req.session.user.group = "true";
+
+    res.status(201).send("บันทึกกลุ่มสำเร็จ");
+  } catch (err) {
+    console.error("❌ Error saving group:", err);
+    res.status(500).send("เกิดข้อผิดพลาดในการบันทึกกลุ่ม");
   }
 });
 
