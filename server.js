@@ -94,8 +94,17 @@ app.get("/flowchart", (req, res) => {
 app.get("/file", requireLogin, (req, res) => {
   renderWithLayout(res, "file", { title: "KMUTNB Project - File" }, req.path,req);
 });
-app.get("/group", requireLogin, (req, res) => {
-  renderWithLayout(res, "group", { title: "KMUTNB Project - Group" }, req.path,req);
+app.get("/group", requireLogin, async (req, res) => {
+  try{
+    const groups = await Group.find({});
+    renderWithLayout(res, "group", { 
+      title: "KMUTNB Project - Group", 
+      groups,
+      user: req.session.user
+    }, req.path,req);
+  }catch(err){
+    res.status(500).send("Error loading groups");
+  }
 });
 
 app.get("/chat", requireLogin, async (req, res) => {
@@ -111,23 +120,16 @@ app.get("/chat", requireLogin, async (req, res) => {
     res.status(500).send("Error loading users");
   }
 });
-app.get("/chat/messages/:username", requireLogin, async (req, res) => {
-  const fromUser = req.session.user.username;
-  const toUser = req.params.username;
-
+app.get("/group/messages/group/:groupId", requireLogin, async (req, res) => {
   try {
-    const messages = await Message.find({
-      $or: [
-        { sender: fromUser, receiver: toUser },
-        { sender: toUser, receiver: fromUser }
-      ]
-    }).sort({ timestamp: 1 });
-
+    const messages = await Message.find({ groupId: req.params.groupId })
+      .sort({ timestamp: 1 });
     res.json({ messages });
   } catch (err) {
-    res.status(500).json({ error: "Failed to load messages" });
+    res.status(500).json({ error: "Failed to load group messages" });
   }
 });
+
 app.get("/profile", requireLogin, (req, res) => {
   renderWithLayout(res, "profile", { title: "Profile" }, req.path,req);
 });
@@ -193,12 +195,13 @@ app.get("/search-users", requireLogin, async (req, res) => {
   }
 });
 
+
 // ✅ บันทึกกลุ่มใหม่
 app.post("/groups", requireLogin, async (req, res) => {
   try {
-    const { member1, member2, advisor } = req.body;
+    const {  projectName, member1, member2, advisor } = req.body;
 
-    if (!member1 || !member2 || !advisor) {
+    if (!projectName||!member1) {
       return res.status(400).send("ข้อมูลไม่ครบ");
     }
 
@@ -215,7 +218,7 @@ app.post("/groups", requireLogin, async (req, res) => {
     }
 
     // บันทึกกลุ่มใหม่
-    const newGroup = new Group({ member1, member2, advisor });
+    const newGroup = new Group({ projectName, member1, member2, advisor });
     await newGroup.save();
 
     // อัปเดต session.user.group = "true"
@@ -239,27 +242,25 @@ io.on("connection", (socket) => {
     console.log("🔗 Registered user:", username);
   });
 
-  socket.on("chat message", async (msg) => {
-    console.log("📨 Received chat message:", msg);
+  socket.on("join group", (groupId) => {
+    socket.join(groupId);
+    console.log(`👥 User ${socket.id} joined group ${groupId}`);
+  });
+
+  socket.on("group message", async (msg) => {
+    console.log("📨 Group message:", msg);
     try {
       const message = new Message({
-        sender: msg.sender,
-        receiver: msg.receiver,
+        senderUsername: msg.senderUsername,
+        senderName: msg.senderName,
+        groupId: msg.groupId,
         text: msg.text,
         timestamp: new Date()
       });
       await message.save();
 
-      // ส่งไปยังทั้ง sender และ receiver ถ้ามีใน map
-      [msg.sender, msg.receiver].forEach(user => {
-        const socketId = userSockets.get(user);
-        if (socketId && io.sockets.sockets.get(socketId)) {
-          console.log(`📤 ส่งข้อความถึง: ${user} (socketId: ${socketId})`);
-          io.to(socketId).emit("chat message", msg);
-        } else {
-          console.log(`⚠️ ไม่พบ socket สำหรับ ${user}`);
-        }
-      });
+      // broadcast ให้ทุกคนในห้อง groupId
+      io.to(msg.groupId).emit("group message", msg);
 
     } catch (err) {
       console.error("❌ Error saving message:", err);

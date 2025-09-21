@@ -10169,7 +10169,7 @@ form.user .form-control-user {
     max-width: 50%; /* จำกัดความกว้างของข้อความ */
 }
 
-.chat-messages-recieived{
+.chat-messages-received{
   align-self: start;
   display: inline-block;
   background-color: grey;
