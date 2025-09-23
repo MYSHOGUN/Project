@@ -243,21 +243,24 @@
               <%= g.projectName %>
             </li>
           <% }) %>
+          
         </ul>
+        <center><button id="leaveGroupBtn" class="btn btn-danger" style="margin-bottom: 20px; width: 50%;">ออกจากกลุ่ม</button></center>
       </div>
     </div>                     
 
     <!-- ระบบแชท -->
     <div id="chat-section" class="col-sm-8 col-12 d-flex flex-column " style="height: 100%; display: none; width: 66.6666%;">
       <div class="mt-4 mx-4 d-flex align-items-center justify-content-between">
-        <h2 style="margin: 0;">
+        <h2>
           แชทกลุ่ม: <span id="chat-with">-</span>
         </h2>
         <button id="back-button" class="btn btn-secondary d-sm-none">
           <i class="bi bi-arrow-bar-left"></i> ย้อนกลับ
         </button>
       </div>
-      <div style="flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;" id="messages-container">
+
+      <div style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column;" id="messages-container">
         <!-- ข้อความแชท -->
       </div>
       <form id="chat-form" class="d-flex align-items-center my-2 mx-3" style="gap: 10px;">
@@ -271,6 +274,7 @@
   <script>
 document.addEventListener("DOMContentLoaded", () => {
   const socket = io({ query: { username: "<%= user.username %>" } });
+  const groupListSection = document.getElementById("group-list-section");
   const groupList = document.getElementById('group-list');
   const chatSection = document.getElementById('chat-section');
   const chatWithEl = document.getElementById('chat-with');
@@ -279,7 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const chatForm = document.getElementById('chat-form');
   const backButton = document.getElementById('back-button');
 
-  let currentGroupId = null;
+  const currentGroupId = "<%= groups.length > 0 ? groups[0]._id : '' %>";
 
   // เลือกกลุ่มเพื่อแชท
   groupList.addEventListener("click", e => {
@@ -354,29 +358,67 @@ document.addEventListener("DOMContentLoaded", () => {
     messageInput.disabled = true;
     showUserListSection();
   });
+  // ปุ่มออกจากกลุ่ม
+  leaveGroupBtn.addEventListener('click', () => {
+    if(confirm("คุณแน่ใจหรือไม่ว่าต้องการออกจากกลุ่มนี้?")){
+      fetch(`/groups/leave/${currentGroupId}`, { method: 'POST' })
+        .then(res => {
+          if(res.ok){
+            alert("คุณได้ออกจากกลุ่มเรียบร้อยแล้ว");
+            window.location.reload();
+          } else {
+            res.text().then(text => alert("เกิดข้อผิดพลาด: " + text));
+          }
+        })
+        .catch(err => alert("เกิดข้อผิดพลาด: " + err.message));
+    }
+  });
 
   // Layout responsive
   function showChatSection(){
-    if(window.innerWidth < 576){
-      document.getElementById("group-list-section").style.display = "none";
-      chatSection.style.display = "flex";
-    } else {
-      document.getElementById("group-list-section").style.display = "block";
-      chatSection.style.display = "flex";
-    }
+    if (window.innerWidth < 576) { // จอเล็ก ซ่อนรายชื่อ
+        groupListSection.style.display = "none";
+        chatSection.style.display = "flex";
+        groupListSection.style.width = "100%";
+        chatSection.style.width = "100%";
+      } else if(window.innerWidth >= 576 && window.innerWidth < 960){ // จอกลาง รายชื่อแสดงพร้อมแชทแต่ปรับขนาด
+        groupListSection.style.display = "block";
+        chatSection.style.display = "flex";
+        groupListSection.style.width = "50%";
+        chatSection.style.width = "50%";
+      } else { // จอใหญ่ รายชื่อแสดงพร้อมแชท
+        groupListSection.style.display = "block";
+        chatSection.style.display = "flex";
+        groupListSection.style.width = "33.3333%";
+        chatSection.style.width = "66.6666%";
+      }
   }
 
-  function showUserListSection(){
-    document.getElementById("group-list-section").style.display = "block";
-    chatSection.style.display = "none";
+  function showGroupListSection(){
+    if (window.innerWidth < 576) { // จอเล็ก แสดงรายชื่ออย่างเดียว
+        groupListSection.style.display = "block";
+        groupListSection.style.width = "100%";
+        chatSection.style.display = "none";
+        chatSection.style.width = "100%";
+      } else if(window.innerWidth >= 576 && window.innerWidth < 960){ // จอกลาง รายชื่อแสดงพร้อมแชทแต่ปรับขนาด
+        groupListSection.style.display = "block";
+        chatSection.style.display = "flex";
+        groupListSection.style.width = "50%";
+        chatSection.style.width = "50%";
+      } else { // จอใหญ่ แสดงทั้งสองฝั่ง
+        groupListSection.style.display = "block";
+        groupListSection.style.width = "33.3333%";
+        chatSection.style.display = "flex";
+        chatSection.style.width = "66.6666%";
+      }
   }
 
-  showUserListSection();
+  showGroupListSection();
   messageInput.disabled = true;
 
   window.addEventListener('resize', () => {
     if(!currentGroupId){
-      showUserListSection();
+      showGroupListSection();
     } else {
       showChatSection();
     }

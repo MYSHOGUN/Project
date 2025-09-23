@@ -3,6 +3,7 @@ const Message = require("./models/Message"); // ✅ import model
 const Group = require("./models/Group"); // ✅ import group model
 
 const userSockets = new Map();
+const mongoose = require("mongoose");
 
 const express = require("express");
 const path = require("path");
@@ -96,7 +97,14 @@ app.get("/file", requireLogin, (req, res) => {
 });
 app.get("/group", requireLogin, async (req, res) => {
   try{
-    const groups = await Group.find({});
+    const username = req.session.user.username;
+    const groups = await Group.find({
+      $or: [
+        { member1: username },
+        { member2: username },
+        { advisor: username }
+      ]
+    });
     renderWithLayout(res, "group", { 
       title: "KMUTNB Project - Group", 
       groups,
@@ -228,6 +236,52 @@ app.post("/groups", requireLogin, async (req, res) => {
   } catch (err) {
     console.error("❌ Error saving group:", err);
     res.status(500).send("เกิดข้อผิดพลาดในการบันทึกกลุ่ม");
+  }
+});
+
+app.post("/groups/leave/:groupId", async (req, res) => {
+  try {
+    const groupId = req.params.groupId;
+
+     if (!groupId || groupId === "null" || groupId === "undefined") {
+      return res.status(400).send("Group ID ไม่ถูกต้อง");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(groupId)) {
+      return res.status(400).send("Group ID ไม่ถูกต้อง");
+    }
+
+    const username = req.session.user.username; // สมมติใน session มี username
+
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).send("ไม่พบกลุ่ม");
+
+    // ตรวจสอบว่า user อยู่ field ไหน
+    if (group.member1 === username) {
+      group.member1 = "ยังไม่ระบุ";
+    } else if (group.member2 === username) {
+      group.member2 = "ยังไม่ระบุ";
+    } else if (group.advisor === username) {
+      group.advisor = "ยังไม่ระบุ";
+    } else {
+      return res.status(400).send("คุณไม่ได้อยู่ในกลุ่มนี้");
+    }
+
+    await group.save();
+
+    // อัปเดต User ด้วย (ถ้า User มี field group)
+    await User.findOneAndUpdate(
+      { username },
+      { $unset: { group: "" } } // เอา group ออก
+    );
+
+    // อัปเดต session
+    req.session.user.group = null;
+
+    res.send("ออกจากกลุ่มสำเร็จ");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("เกิดข้อผิดพลาดที่ server");
   }
 });
 

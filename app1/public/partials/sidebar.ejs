@@ -12,8 +12,8 @@
 
         <hr class="sidebar-divider my-0">
 
-        <li class="nav-item <%= currentPath === '/chat' ? 'active' : '' %> d.none">
-            <a class="nav-link" href="/chat">
+        <li class="nav-item d-none <%= currentPath === '/chat' ? 'active' : '' %>">
+            <a class="nav-link" href="/chat" aria-disabled="true">
                 <i class="fas fa-comments"></i>
                 <span>แชท</span></a>
         </li>
