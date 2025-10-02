@@ -21,6 +21,21 @@ const session = require("express-session");
 const bcrypt = require("bcrypt");
 const User = require("./models/User"); // ✅ import model
 
+const multer = require("multer");
+const { GridFSBucket, ObjectId } = require("mongodb");
+const { userInfo } = require("os");
+
+// ใช้ memory storage ของ multer
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+let bucket;
+
+connectDB().then(() => {
+  bucket = new GridFSBucket(mongoose.connection.db, { bucketName: "fs" });
+  console.log("✅ GridFSBucket initialized");
+});
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({
@@ -30,7 +45,7 @@ app.use(session({
 }));
 
 // ✅ เชื่อม MongoDB ก่อนเริ่มเซิร์ฟเวอร์
-connectDB();
+//connectDB();
 
 // ตั้งค่า View Engine
 app.set("view engine", "ejs");
@@ -83,6 +98,91 @@ app.get("/", (req, res) => {
 app.get("/upload", requireLogin, (req, res) => {
   renderWithLayout(res, "upload", { title: "KMUTNB Project - Upload" }, req.path,req);
 });
+
+app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (req, res) => {
+  try {
+    const messages = [];
+
+    // ถ้ามีข้อความ
+    if(req.body.text && req.body.text.trim() !== ""){
+      const textMessage = new Message({
+        groupId: req.params.groupId,
+        senderUsername: req.session.user.username,
+        senderName: req.session.user.name,
+        type: "text",
+        text: req.body.text.trim(),
+        timestamp: new Date()
+      });
+      await textMessage.save();
+      messages.push(textMessage);
+
+      io.to(req.params.groupId).emit("group message", textMessage);
+    }
+
+    // ถ้ามีไฟล์
+    if(req.files && req.files.length > 0){
+      for (const file of req.files) {
+        const uploadStream = bucket.openUploadStream(file.originalname, { contentType: file.mimetype });
+
+        uploadStream.end(file.buffer);
+
+        await new Promise((resolve, reject) => {
+          uploadStream.on("finish", resolve);
+          uploadStream.on("error", reject);
+        });
+
+        const fileId = uploadStream.id;
+
+        const fileMessage = new Message({
+          groupId: req.params.groupId,
+          senderUsername: req.session.user.username,
+          senderName: req.session.user.name,
+          type: "file",
+          file: {
+            filename: file.originalname,
+            contentType: file.mimetype,
+            length: file.size,
+            uploadDate: new Date(),
+            fileId: fileId
+          },
+          timestamp: new Date()
+        });
+
+        await fileMessage.save();
+        messages.push(fileMessage);
+        io.to(req.params.groupId).emit("group message", fileMessage);
+      }
+    }
+
+    res.json(messages);
+    } catch(err){
+      console.error(err);
+      res.status(500).json({ error: "Upload error" });
+    }
+  });
+
+
+app.get("/file/download/:id", requireLogin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).send("Invalid file ID");
+    }
+
+    const fileId = new ObjectId(req.params.id);
+    const files = await bucket.find({ _id: fileId }).toArray();
+    if (!files || files.length === 0) return res.status(404).send("File not found");
+
+    res.set("Content-Type", files[0].contentType);
+    res.set("Content-Disposition", `attachment; filename="${files[0].filename}"`);
+
+    bucket.openDownloadStream(fileId).pipe(res);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error downloading file");
+  }
+});
+
 app.get("/status", requireLogin, (req, res) => {
   renderWithLayout(res, "status", { title: "KMUTNB Project - Status" }, req.path,req);
 });
@@ -97,6 +197,21 @@ app.get("/file", requireLogin, (req, res) => {
 });
 app.get("/group", requireLogin, async (req, res) => {
   try{
+    const group = await Group.findOne({
+      $or: [
+        { member1: req.session.user.username },
+        { member2: req.session.user.username }
+      ]
+    });
+
+    if(req.session.user && req.session.user.canAddMember !== 'true'){
+      req.session.user.group = group ? "true" : "false";
+      req.session.save();
+    }else if(req.session.user.canAddMember === "true"){
+      req.session.user.canAddMember = "false"; // อนุญาตเพิ่มสมาชิก
+      req.session.save();
+    }
+
     const username = req.session.user.username;
     const groups = await Group.find({
       $or: [
@@ -105,8 +220,15 @@ app.get("/group", requireLogin, async (req, res) => {
         { advisor: username }
       ]
     });
+
+    const mem1 = await User.findOne({username: groups[0].member1});
+    const mem2 = await User.findOne({username: groups[0].member2});
+    const adv = await User.findOne({username: groups[0].advisor});
+    const userInfo = [mem1, mem2, adv];
+
     renderWithLayout(res, "group", { 
-      title: "KMUTNB Project - Group", 
+      title: "KMUTNB Project - Group",
+      userInfo, 
       groups,
       user: req.session.user
     }, req.path,req);
@@ -131,8 +253,17 @@ app.get("/chat", requireLogin, async (req, res) => {
 app.get("/group/messages/group/:groupId", requireLogin, async (req, res) => {
   try {
     const messages = await Message.find({ groupId: req.params.groupId })
-      .sort({ timestamp: 1 });
-    res.json({ messages });
+      .sort({ timestamp: 1 })
+      .lean(); // แปลงเป็น object ปกติ ไม่ใช่ mongoose doc
+    
+    const formatted = messages.map(m => {
+      if (m.file && m.file.fileId) {
+        m.file.fileId = m.file.fileId.toString();
+      }
+      return m;
+    });
+
+    res.json({ messages: formatted });
   } catch (err) {
     res.status(500).json({ error: "Failed to load group messages" });
   }
@@ -165,18 +296,13 @@ app.post("/login", async (req, res) => {
   const match = await bcrypt.compare(password, user.password);
   if (!match) return res.send("❌ รหัสผ่านไม่ถูกต้อง");
 
-  const group = await Group.findOne({
-    $or: [
-      { member1: user.username },
-      { member2: user.username }
-    ]
-  });
+  
     req.session.user = {
     username: user.username,
     name: user.name,
     lastname: user.lastname,
     role: user.role,
-    group: group ? "true" : "false"   // มี group -> true, ไม่มี -> false
+    
   };
   res.redirect("/");
 });
@@ -207,7 +333,7 @@ app.get("/search-users", requireLogin, async (req, res) => {
 // ✅ บันทึกกลุ่มใหม่
 app.post("/groups", requireLogin, async (req, res) => {
   try {
-    const {  projectName, member1, member2, advisor } = req.body;
+    const {  projectName, member1, member2, advisor ,status} = req.body;
 
     if (!projectName||!member1) {
       return res.status(400).send("ข้อมูลไม่ครบ");
@@ -216,8 +342,8 @@ app.post("/groups", requireLogin, async (req, res) => {
     // ตรวจสอบว่ามีใครอยู่ในกลุ่มแล้วหรือยัง
     const existingGroup = await Group.findOne({
       $or: [
-        { member1 },
-        { member2 }
+        { member1: member1 },
+        { member2: member2 }
       ]
     });
 
@@ -226,7 +352,7 @@ app.post("/groups", requireLogin, async (req, res) => {
     }
 
     // บันทึกกลุ่มใหม่
-    const newGroup = new Group({ projectName, member1, member2, advisor });
+    const newGroup = new Group({ projectName, member1, member2, advisor ,status});
     await newGroup.save();
 
     // อัปเดต session.user.group = "true"
@@ -236,6 +362,51 @@ app.post("/groups", requireLogin, async (req, res) => {
   } catch (err) {
     console.error("❌ Error saving group:", err);
     res.status(500).send("เกิดข้อผิดพลาดในการบันทึกกลุ่ม");
+  }
+});
+
+app.post("/groups-update/:groupId", requireLogin, async (req, res) => {
+  try {
+    const {  member2, advisor } = req.body;
+
+    // ตรวจสอบว่ามีใครอยู่ในกลุ่มแล้วหรือยัง
+    const existingGroup = await Group.findOne({
+      member2: member2,
+      _id: { $ne: req.params.groupId } // ไม่รวมกลุ่มที่กำลังอัปเดต
+    });
+    if (existingGroup) {
+      return res.status(400).send("สมาชิกนี้มีกลุ่มอยู่แล้ว");
+    }
+
+    // แก้ไขกลุ่ม
+    const updatedGroup = await Group.findByIdAndUpdate(
+      req.params.groupId,
+      { member2, advisor },
+      { new: true } // คืนค่ากลุ่มที่อัปเดตกลับมา
+    );
+
+
+    res.status(201).send("บันทึกกลุ่มสำเร็จ");
+  } catch (err) {
+    console.error("❌ Error saving group:", err);
+    res.status(500).send("เกิดข้อผิดพลาดในการบันทึกกลุ่ม");
+  }
+});
+
+app.post("/groups/activate-add-member", requireLogin, async (req, res) => {
+  try {
+    req.session.user.group = "false"; // อัปเดตค่า session
+    req.session.user.canAddMember = "true"; // อนุญาตเพิ่มสมาชิก
+    req.session.save((err) => {
+      if (err) {
+        console.error("❌ Error saving session:", err);
+        return res.status(500).send("เกิดข้อผิดพลาดในการบันทึก session");
+      }
+      res.status(200).send("อัปเดต session สำเร็จ");
+    });
+  } catch (err) {
+    console.error("❌ Error:", err);
+    res.status(500).send("เกิดข้อผิดพลาดที่ server");
   }
 });
 
@@ -258,11 +429,12 @@ app.post("/groups/leave/:groupId", async (req, res) => {
 
     // ตรวจสอบว่า user อยู่ field ไหน
     if (group.member1 === username) {
-      group.member1 = "ยังไม่ระบุ";
+      group.member1 = group.member2; // เลื่อน member2 ขึ้นมาแทนที่
+      group.member2 = null; // ล้าง member2
     } else if (group.member2 === username) {
-      group.member2 = "ยังไม่ระบุ";
+      group.member2 = null;
     } else if (group.advisor === username) {
-      group.advisor = "ยังไม่ระบุ";
+      group.advisor = null;
     } else {
       return res.status(400).send("คุณไม่ได้อยู่ในกลุ่มนี้");
     }
@@ -276,7 +448,7 @@ app.post("/groups/leave/:groupId", async (req, res) => {
     );
 
     // อัปเดต session
-    req.session.user.group = null;
+    req.session.user.group = false;
 
     res.send("ออกจากกลุ่มสำเร็จ");
   } catch (err) {

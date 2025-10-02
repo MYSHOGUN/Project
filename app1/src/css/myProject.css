@@ -54,6 +54,23 @@ html {
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
 
+html, body {
+  height: 100% !important; 
+  margin: 0 !important;
+}
+
+body {
+  display: flex !important; 
+  flex-direction: column !important;
+}
+
+main {
+  flex: 1 0 auto !important; /* ส่วนเนื้อหา */
+}
+
+
+
+
 article, aside, figcaption, figure, footer, header, hgroup, main, nav, section {
   display: block;
 }
@@ -9013,6 +9030,7 @@ a:focus {
 
 #wrapper {
   display: flex;
+  height: 100%;
 }
 
 #wrapper #content-wrapper {
@@ -9020,10 +9038,16 @@ a:focus {
   width: 100%;
   overflow-x: hidden;
   transition: all 0.3s ease;
+  height: 100%;
 }
 
 #wrapper #content-wrapper #content {
   flex: 1 0 auto;
+  height: 100%;
+}
+
+#content{
+  height: 100%;
 }
 
 @media (min-width: 768px) {
@@ -10195,7 +10219,11 @@ form.user .btn-user {
 
 
 #message-input {
-  width: 90%;
+  width: 85%;
+}
+
+#file-input {
+  width: 5%;
 }
 
 #message-sent {
@@ -10204,7 +10232,10 @@ form.user .btn-user {
 
 @media (max-width: 960px) {
   #message-input {
-    width: 85%;
+    width: 80%;
+  }
+  #file-input {
+    width: 5%;
   }
   #message-sent {
     width: 12%;
@@ -10213,7 +10244,10 @@ form.user .btn-user {
 
 @media (max-width: 768px) {
   #message-input {
-    width: 80%;
+    width: 75%;
+  }
+  #file-input {
+    width: 5%;
   }
   #message-sent {
     width: 16%;
@@ -10593,11 +10627,8 @@ form.user .btn-user {
 }
 
 footer.sticky-footer {
-  position: fixed;
-  bottom: 0;
   padding: 2rem 0;
   flex-shrink: 0;
-  width: 100%;
 }
 
 footer.sticky-footer .copyright {
@@ -10608,4 +10639,3 @@ footer.sticky-footer .copyright {
 body.sidebar-toggled footer.sticky-footer {
   width: 100%;
 }
-

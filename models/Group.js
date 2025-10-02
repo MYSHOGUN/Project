@@ -3,8 +3,9 @@ const mongoose = require("mongoose");
 const groupSchema = new mongoose.Schema({
   projectName: { type: String, required: true },
   member1: { type: String, required: true },
-  member2: { type: String, default: "ยังไม่ระบุ" },
-  advisor: { type: String, default: "ยังไม่ระบุ" },
+  member2: { type: String, default: null },
+  advisor: { type: String, default: null },
+  status: { type: String, default: "รอนำเสนอหัวข้อ" }
 },{timestamps: true}
 );
 

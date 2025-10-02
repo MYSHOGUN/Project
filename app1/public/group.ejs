@@ -1,16 +1,18 @@
-<div class="container-fluid" style="padding: 0; margin: 0; height: 85vh;">
+<div class="container-fluid" style="padding: 0; margin: 0; height: 85vh; line-height: normal;">
     <!-- Page Heading -->
-    <% if (typeof user !== 'undefined' && user.group !== 'true') { %>
-        <div id="add-group" class="d-flex flex-column align-items-center mt-4">
+    <% if (typeof user !== 'undefined' && user.group !== 'true' && user.role !== 'teacher') { %>
+        <div id="server-data" data-groups='<%- JSON.stringify(groups || []) %>' hidden></div>
+        <div id="add-group" class="d-flex flex-column align-items-center justify-content-center mt-4">
             <h2>คุณยังไม่มีกลุ่ม</h2>
             <button type="button" id="showGroupBtn" class="btn btn-secondary" style="width: 50%;background-color: white; color: gray;">
                 <h3 class="mt-2"><i class="fas fa-plus"></i> เพิ่มกลุ่ม</h3>
             </button>
         </div>
 
-        <div id="grouping" class="d-none flex-column align-items-center mt-4">
+        <div id="grouping" class="d-none flex-column align-items-center justify-content-center mt-4">
+          <% if (groups.length === 0) { %>
             <h2>กำหนดชื่อปริญญานิพนธ์และสมาชิกกลุ่ม</h2>
-            <div class="d-flex flex-row" style="width: 30%;">
+            <div class="d-flex flex-row">
                 <h3 style="white-space: nowrap; margin-right: 10px;">ชื่อปริญญานิพนธ์:</h3>
                 <input type="text" id="projectName" class="form-control" placeholder="กรุณากรอกชื่อปริญญานิพนธ์">
             </div>
@@ -54,22 +56,95 @@
             <button type="submit" id="createGroupBtn" class="btn btn-success">
                 <h5 class="mt-2">สร้างกลุ่ม</h5>
             </button>
-        </div>
+          <% }else{ %>
+            <h2>เพิ่มสมาชิกกลุ่ม</h2>
+            <div class="d-flex flex-row">
+                <h3 style="white-space: nowrap; margin-right: 10px;">ชื่อปริญญานิพนธ์:</h3>
+                <h3><%= groups[0].projectName %></h3>
+            </div>
+            <h3><%= userInfo[0].name %> <%= userInfo[0].lastname %></h3>
+            <% if (userInfo[1]) { %>
+              <h3><%= userInfo[1].name %> <%= userInfo[1].lastname %></h3>
+            <% }else{ %>
+            <button type="button" id="addMemberBtn" class="btn btn-secondary" style="width: 50%;background-color: white; color: gray;">
+                <h5 class="mt-2"><i class="fas fa-plus"></i> เพิ่มสมาชิก</h5>
+            </button>
 
+            <div id="searchContainer" class="d-none">
+                <div class="d-flex flex-row mt-3">
+                    <h3 class="mt-1" style="margin-right: 10px;">2.</h3>
+                    <input type="text" id="searchUser" class="form-control mb-3" style="margin-right: 20px;" placeholder="ค้นหาสมาชิกคนที่ 2">
+                    <button id="clearAddMemberBtn" class="btn btn-danger" style="display: none;margin-bottom: 20px;">ยกเลิก</button>
+                </div>
+                <ul id="searchMemberResults" class="list-group"></ul>
+            </div>
+
+            <div class="d-flex flex-row align-items-center" id="selectedContainer" style="display:none;">
+                <h3 id="selectedUser" style="margin-right: 20px;"></h3>
+                <button id="clearSelection" class="btn btn-danger" style="display: none;margin-bottom: 10px;">ยกเลิก</button>
+            </div>
+            <% } %>
+            
+            <% if (userInfo[2]) { %>
+              <h3>Advisor: <%= userInfo[2].name %> <%= userInfo[2].lastname %></h3>
+            <% }else{ %>
+            <button type="button" id="addAdvisorBtn" class="btn btn-secondary" style="width: 50%;background-color: white; color: gray;">
+                <h5 class="mt-2"><i class="fas fa-plus"></i> เพิ่มอาจารย์ที่ปรึกษา</h5>
+            </button>
+
+            <div id="searchAdvisorContainer" class="d-none">
+                <div class="d-flex flex-row">
+                    <h3 class="mt-1" style="margin-right: 10px;">Advisor:</h3>
+                    <input type="text" id="searchAdvisor" class="form-control mb-3" style="margin-right: 20px;" placeholder="ค้นหาอาจารย์ที่ปรึกษา">
+                    <button id="clearAddAdvisorBtn" class="btn btn-danger" style="display: none;margin-bottom: 20px;">ยกเลิก</button>
+                </div>
+                <ul id="searchAdvisorResults" class="list-group"></ul>
+            </div>
+
+            <div class="d-flex flex-row align-items-center" id="selectedAdvisorContainer" style="display:none;">
+                <h3 id="selectedAdvisor" style="margin-right: 20px;"></h3>
+                <button id="clearAdvisorSelection" class="btn btn-danger" style="display: none;margin-bottom: 10px;">ยกเลิก</button>
+            </div>
+            <% } %>
+            <div class="justify-content-evenly">
+              <button type="submit" id="updateGroupBtn" class="btn btn-success" disabled>
+                  <h5 class="mt-2">อัปเดตข้อมูล</h5>
+              </button>
+              <button type="reset" id="cancelGroupBtn" class="btn btn-danger" onclick="window.location.reload();">
+                  <h5 class="mt-2">ยกเลิก</h5>
+              </button>
+            </div>
+          <% } %>
+        </div>
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script>
         $(function() {
             let chosenUser = null;
             let chosenAdvisor = null;
+            const $grouping = $("#grouping");
+            const $addGroup = $("#add-group");
+
+            
+            const serverData = document.getElementById('server-data');
+            if (!serverData) {
+              console.error('❌ server-data element not found in DOM');
+              return;
+            }
+
+            const groups = JSON.parse(serverData.dataset.groups || '[]');
+            console.log('📥 Groups from server:', groups);
+
 
             // ฟังก์ชันแสดง add-group และ group
             function showGrouping() {
-                const $grouping = $("#grouping");
-                const $addGroup = $("#add-group");
-
                 $grouping.removeClass("d-none").addClass("d-flex");
                 $addGroup.removeClass("d-flex").addClass("d-none");
             }
+
+            if (groups.length > 0) {
+                showGrouping();
+            }
+
             $("#showGroupBtn").on("click", showGrouping);
 
             // ฟังก์ชันแสดง add-member
@@ -113,6 +188,7 @@
                                     $("#selectedContainer").show();
                                     $("#clearSelection").show();
                                     $("#addMemberBtn").addClass("d-none");
+                                    updateButtonState();
                                     $results.empty();
                                 });
                                 $results.append($li);
@@ -133,6 +209,7 @@
                 $("#searchUser").val('');
                 $("#searchMemberResults").empty();
                 $("#clearSelection").hide();
+                updateButtonState();
             });
 
             // ฟังก์ชันแสดง add-advisor
@@ -176,6 +253,7 @@
                                     $("#selectedAdvisorContainer").show();
                                     $("#clearAdvisorSelection").show();
                                     $("#addAdvisorBtn").addClass("d-none");
+                                    updateButtonState();
                                     $results.empty();
                                 });
                                 $results.append($li);
@@ -196,6 +274,7 @@
                 $("#searchAdvisor").val('');
                 $("#searchAdvisorResults").empty();
                 $("#clearAdvisorSelection").hide();
+                updateButtonState();
             });
             
             $("#createGroupBtn").on("click", function() {
@@ -209,8 +288,9 @@
                 const groupData = {
                     projectName: projectName,
                     member1: "<%= user.username %>",   // คนแรกคือผู้ที่ล็อกอิน
-                    member2: chosenUser || "ยังไม่ระบุ",
-                    advisor: chosenAdvisor || "ยังไม่ระบุ"
+                    member2: chosenUser || null,
+                    advisor: chosenAdvisor || null,
+                    status: "รอนำเสนอหัวข้อ"
                 };
 
                 $.ajax({
@@ -220,6 +300,41 @@
                     data: JSON.stringify(groupData),
                     success: function(res) {
                         alert("สร้างกลุ่มสำเร็จ!");
+                        window.location.reload(); // โหลดหน้าใหม่เพื่ออัปเดต
+                    },
+                    error: function(err) {
+                        alert("เกิดข้อผิดพลาด: " + err.responseText);
+                    }
+                });
+            });
+
+            function updateButtonState() {
+                const hasMember = groups[0].member2 ? true : false;
+                const hasAdvisor = groups[0].advisor ? true : false;
+                if ((groups[0].member2 &&  groups[0].advisor) || (!chosenUser && !chosenAdvisor)) {
+                    $("#updateGroupBtn").prop("disabled", true);
+                    console.log(hasMember , hasAdvisor , !chosenUser , !chosenAdvisor,'✔️ No changes, disabling update button');
+                } else {
+                    $("#updateGroupBtn").prop("disabled", false);
+                    console.log(hasMember , hasAdvisor , !chosenUser , !chosenAdvisor,'🔄 Change detected, enabling update button');
+                }
+            }
+
+            $("#updateGroupBtn").on("click", function() {
+                const mem2 = groups[0].member2 || chosenUser || null;
+                const adv = groups[0].advisor || chosenAdvisor || null;
+                const groupData = {
+                    member2: mem2,
+                    advisor: adv,
+                };
+
+                $.ajax({
+                    url: "/groups-update/<%= groups[0]._id %>",
+                    method: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify(groupData),
+                    success: function(res) {
+                        alert("อัปเดตสำเร็จ!");
                         window.location.reload(); // โหลดหน้าใหม่เพื่ออัปเดต
                     },
                     error: function(err) {
@@ -240,12 +355,18 @@
 
           <% groups.forEach(g => { %>
             <li class="list-group-item group-item mb-2" data-groupname="<%= g.projectName %>" data-groupid="<%= g._id %>">
-              <%= g.projectName %>
+              <div class="d-flex flex-column">
+                <strong><%= g.projectName %></strong>
+                <span>Status: <%= g.status %></span>
+              </div>
             </li>
           <% }) %>
           
         </ul>
-        <center><button id="leaveGroupBtn" class="btn btn-danger" style="margin-bottom: 20px; width: 50%;">ออกจากกลุ่ม</button></center>
+        <div class="d-flex flex-row" style="margin-bottom: 20px; justify-content: space-evenly;">
+          <button id="addMemberBtn" class="btn btn-light" style="width: 45%;">เพิ่มสมาชิก</button>
+          <button id="leaveGroupBtn" class="btn btn-danger" style="width: 45%;">ออกจากกลุ่ม</button>
+        </div>
       </div>
     </div>                     
 
@@ -263,8 +384,19 @@
       <div style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column;" id="messages-container">
         <!-- ข้อความแชท -->
       </div>
-      <form id="chat-form" class="d-flex align-items-center my-2 mx-3" style="gap: 10px;">
-        <input id="message-input" autocomplete="off" placeholder="พิมพ์ข้อความ..." class="form-control form-control-chat" disabled>
+      <div id="file-preview-box" class="mx-4" style="display: flex; gap: 5px; flex-wrap: wrap;"></div>
+      <form id="chat-form" class="d-flex align-items-center my-2 mx-4" style="gap: 10px;">
+        <div class="input-group">
+          <input id="message-input" autocomplete="off" placeholder="พิมพ์ข้อความ..." class="form-control" style="border-top-left-radius: 10rem; border-bottom-left-radius: 10rem;">
+          <label 
+            id="file-input"
+            for="file-upload" 
+            class="form-control" 
+            style="cursor: pointer; display: flex; justify-content: center; align-items: center; padding: 0; margin-bottom: 0; border-top-right-radius: 10rem; border-bottom-right-radius: 10rem;">
+            <i class="fas fa-plus"></i>
+          </label>
+          <input id="file-upload" type="file" hidden multiple>
+        </div>
         <button id="message-sent" class="form-control form-control-chat btn btn-primary" style="display: flex; justify-content: center; align-items: center; padding: 0;">
           ส่ง
         </button>
@@ -283,7 +415,99 @@ document.addEventListener("DOMContentLoaded", () => {
   const chatForm = document.getElementById('chat-form');
   const backButton = document.getElementById('back-button');
 
-  const currentGroupId = "<%= groups.length > 0 ? groups[0]._id : '' %>";
+  const fileInput = document.getElementById('file-upload');
+  const filePreviewBox = document.getElementById('file-preview-box');
+
+  let currentGroupId = "<%= groups.length > 0 ? groups[0]._id : '' %>";
+  let currentGroupName = "<%= groups.length > 0 ? groups[0].projectName : '' %>";
+
+  let selectedFiles = [];
+
+  const addMemberBtn = document.getElementById('addMemberBtn');
+  const leaveGroupBtn = document.getElementById('leaveGroupBtn');
+
+  fileInput.addEventListener('change', () => {
+    const files = Array.from(fileInput.files);
+    selectedFiles = files; // เก็บไฟล์ทั้งหมด
+    filePreviewBox.innerHTML = ''; // เคลียร์ preview เดิม
+
+    selectedFiles.forEach((file, index) => {
+      // สร้าง pill
+      const pill = document.createElement('div');
+      pill.className = 'd-flex align-items-center px-2 py-1 bg-secondary text-white rounded-pill';
+      pill.style.fontSize = '0.9rem';
+      pill.style.gap = '5px';
+      
+      const text = document.createElement('span');
+      text.textContent = file.name;
+      pill.appendChild(text);
+
+      // ปุ่ม x ยกเลิก
+      const removeBtn = document.createElement('span');
+      removeBtn.textContent = '✕';
+      removeBtn.style.cursor = 'pointer';
+      removeBtn.onclick = () => {
+        selectedFiles.splice(index, 1); // ลบไฟล์ออกจาก array
+        updatePreview(); // อัปเดต preview ใหม่
+      };
+      pill.appendChild(removeBtn);
+
+      filePreviewBox.appendChild(pill);
+    });
+  });
+
+  function updatePreview() {
+    filePreviewBox.innerHTML = '';
+    selectedFiles.forEach((file, index) => {
+      const pill = document.createElement('div');
+      pill.className = 'd-flex align-items-center px-2 py-1 bg-secondary text-white rounded-pill';
+      pill.style.fontSize = '0.9rem';
+      pill.style.gap = '5px';
+
+      const text = document.createElement('span');
+      text.textContent = file.name;
+      pill.appendChild(text);
+
+      const removeBtn = document.createElement('span');
+      removeBtn.textContent = '✕';
+      removeBtn.style.cursor = 'pointer';
+      removeBtn.onclick = () => {
+        selectedFiles.splice(index, 1);
+        updatePreview();
+      };
+      pill.appendChild(removeBtn);
+
+      filePreviewBox.appendChild(pill);
+    });
+  }
+
+  function joinGroup(groupId, groupName) {
+    currentGroupId = groupId;
+    chatWithEl.textContent = groupName;
+    messagesContainer.innerHTML = '';
+    messageInput.disabled = false;
+
+    // join room
+    socket.emit("join group", groupId);
+
+    // โหลดข้อความเก่า
+    fetch(`/group/messages/group/${groupId}`)
+      .then(res => res.json())
+      .then(data => {
+        console.log("📥 messages from server:", data);
+
+        if (Array.isArray(data.messages)) {
+          data.messages.forEach(msg => {
+            console.log("👉 rendering msg:", msg); // ✅ log ตรงนี้
+            addMessage(msg);
+          });
+          
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+      });
+
+    showChatSection();
+  }
 
   // เลือกกลุ่มเพื่อแชท
   groupList.addEventListener("click", e => {
@@ -291,32 +515,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!li) return;
     const groupId = li.dataset.groupid;
     const groupName = li.dataset.groupname;
-
-    if(currentGroupId === groupId) return;
-
-    currentGroupId = groupId;
-    chatWithEl.textContent = groupName;
-    messagesContainer.innerHTML = '';
-    messageInput.disabled = false;
-
-    // เข้าร่วม group room
-    socket.emit("join group", groupId);
-
-    // ดึงข้อความเก่า
-    fetch(`/group/messages/group/${groupId}`)
-      .then(res => res.json())
-      .then(data => {
-        data.messages.forEach(msg => addMessage(msg));
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      });
-
-    showChatSection();
+    if (currentGroupId === groupId && window.innerWidth > 576) return;
+    joinGroup(groupId, groupName);
   });
 
   function addMessage(msg){
-    console.log("msg.senderUsername:", msg.senderUsername, "current user:", "<%= user.username %>");
+    console.log("🖊️ addMessage called with:", msg); // ✅
     const div = document.createElement('div');
-    div.textContent = `${msg.senderName}: ${msg.text}`;
+    if(msg.type === "file" && msg.file && msg.file.fileId){
+      div.innerHTML = `${msg.senderName}: <a href="/file/download/${msg.file.fileId}" download="${msg.file.filename}"> ${msg.file.filename}</a>`;
+    } else {
+      div.textContent = `${msg.senderName}: ${msg.text}`;
+    }
     
   const currentUser = "<%= user.username %>".trim();
   const sender = (msg.senderUsername || "").trim();
@@ -335,11 +545,31 @@ document.addEventListener("DOMContentLoaded", () => {
   chatForm.addEventListener("submit", e => {
     e.preventDefault();
     if(!currentGroupId) return alert("กรุณาเลือกกลุ่มก่อน");
+
     const text = messageInput.value.trim();
-    if(!text) return;
-    const msg = { groupId: currentGroupId, senderName: "<%= user.name %>", senderUsername: "<%= user.username %>", text };
-    socket.emit("group message", msg);
-    messageInput.value = "";
+    if(!text && selectedFiles.length === 0) return;
+
+    const formData = new FormData();
+    formData.append("text", text);
+    selectedFiles.forEach(file => formData.append("files", file));
+
+    fetch(`/upload-file/${currentGroupId}`, {
+      method: "POST",
+      body: formData
+    })
+    .then(res => {
+      if (!res.ok) return res.text().then(t => Promise.reject(new Error(t)));
+      return res.json();
+    })
+    .then(messages => {
+      // messages เป็น array ของไฟล์ที่อัปโหลด
+      
+      messageInput.value = '';
+      selectedFiles = [];
+      fileInput.value = '';
+      filePreviewBox.innerHTML = '';
+    })
+    .catch(err => alert("เกิดข้อผิดพลาด: " + err.message));
   });
 
   // รับข้อความใหม่
@@ -351,12 +581,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ปุ่มย้อนกลับ
   backButton.addEventListener('click', () => {
-    currentGroupId = null;
-    chatWithEl.textContent = "-";
-    messagesContainer.innerHTML = '';
-    messageInput.value = '';
-    messageInput.disabled = true;
-    showUserListSection();
+    showGroupListSection();
   });
   // ปุ่มออกจากกลุ่ม
   leaveGroupBtn.addEventListener('click', () => {
@@ -372,6 +597,17 @@ document.addEventListener("DOMContentLoaded", () => {
         })
         .catch(err => alert("เกิดข้อผิดพลาด: " + err.message));
     }
+  });
+  // ปุ่มเพิ่มสมาชิก
+  addMemberBtn.addEventListener('click', () => {
+    fetch(`/groups/activate-add-member`, { method: 'POST' })
+      .then(res => {
+        if(res.ok){
+          window.location.reload();
+        } else {
+          res.text().then(text => alert("เกิดข้อผิดพลาด: " + text));
+        }
+      })
   });
 
   // Layout responsive
@@ -413,8 +649,15 @@ document.addEventListener("DOMContentLoaded", () => {
       }
   }
 
-  showGroupListSection();
-  messageInput.disabled = true;
+  if (currentGroupId) {
+    // ถ้ามีกลุ่ม → join และแสดงแชทเลย
+    joinGroup(currentGroupId, currentGroupName);
+    showChatSection();
+  } else {
+    // ถ้าไม่มีกลุ่ม → แสดงรายชื่อกลุ่มหรือปุ่มสร้างกลุ่ม
+    showGroupListSection();
+    messageInput.disabled = true;
+  }
 
   window.addEventListener('resize', () => {
     if(!currentGroupId){
