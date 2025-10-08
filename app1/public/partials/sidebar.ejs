@@ -31,14 +31,14 @@
         <hr class="sidebar-divider my-0">
 
         <!-- Nav Item - Dashboard -->
-        <li class="nav-item <%= currentPath.startsWith('/upload') || currentPath === '/file' ? 'active' : '' %>">
+        <li class="d-none nav-item <%= currentPath.startsWith('/upload') || currentPath === '/file' ? 'active' : '' %>">
             <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseFile"
                 aria-expanded="true" aria-controls="collapseFile">
                 <i class="fas fa-regular fa-file"></i>
                 <span>ไฟล์</span>
             </a>
-            <div id="collapseFile" class="collapse" aria-labelledby="headingFile" data-parent="#accordionSidebar">
-                <div class="bg-white py-2 collapse-inner rounded">
+            <div id="collapseFile" class="collapse" aria-labelledby="headingFile" data-parent="#accordionSidebar" style="z-index: 1000;">
+                <div class="bg-white py-2 collapse-inner rounded"  style="z-index: 1000;">
                     <a class="collapse-item" href="/file">ไฟล์ที่เก็บไว้</a>
                     <a class="collapse-item" href="/upload">ไฟล์ที่ต้องการอัปโหลด</a>
                 </div>

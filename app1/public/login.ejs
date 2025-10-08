@@ -49,7 +49,7 @@
                                         <div class="form-group">
                                             <input type="username" name="username" class="form-control form-control-user"
                                                 id="exampleInputEmail" aria-describedby="emailHelp"
-                                                placeholder="Username">
+                                                placeholder="Username" value="<%= inputUsername %>">
                                         </div>
                                         <div class="form-group">
                                             <input type="password" name="password" class="form-control form-control-user"
@@ -100,6 +100,26 @@
 
     </div>
 
+    <div class="modal fade" id="loginFailModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content border-left-danger">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">เข้าสู่ระบบไม่สำเร็จ</h5>
+                        <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">×</span>
+                        </button>
+                    </div>
+                    <% if (failModal === "user") { %>
+                        <div class="modal-body">หาชื่อผู้ใช้ไม่พบหรือชื่อผู้ใช้ไม่ถูกต้อง</div>
+                    <% } else if (failModal === "password") { %>
+                        <div class="modal-body">รหัสผ่านไม่ถูกต้อง</div>
+                    <% }%>
+                </div>
+            </div>
+        </div>
+
+
     <!-- Bootstrap core JavaScript-->
     <script src="vendor/jquery/jquery.min.js"></script>
     <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
@@ -109,6 +129,16 @@
 
     <!-- Custom scripts for all pages-->
     <script src="js/sb-admin-2.min.js"></script>
+
+    <script>
+        const failModal = "<%= failModal %>";
+        if (failModal) {
+            console.log(failModal);
+            $(document).ready(function() {
+            $('#loginFailModal').modal('show');
+            });
+        }
+    </script>
 
 </body>
 

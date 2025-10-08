@@ -2,6 +2,8 @@ const Message = require("./models/Message"); // ✅ import model
 
 const Group = require("./models/Group"); // ✅ import group model
 
+const News = require('./models/News'); // ✅ import news model
+
 const userSockets = new Map();
 const mongoose = require("mongoose");
 
@@ -91,9 +93,27 @@ function requireRole(role) {
     next();
   };
 }
+
+// ✅ Middleware สำหรับจัดการ failModal
+function checkFailModal(req, res, next) {
+  res.locals.failModal = req.session.failModal || null; // ส่งค่าไป render
+  req.session.failModal = null; // ล้างค่าทันทีหลังใช้งาน
+  next();
+}
+
 // Routes
-app.get("/", (req, res) => {
-  renderWithLayout(res, "index", { title: "KMUTNB Project - Main" }, req.path,req);
+app.get("/", async (req, res) => {
+  try {
+    const newsList = await News.find().sort({ createdAt: -1 });
+    const newsData = newsList.map(item => ({
+            ...item.toObject(), 
+            imgId: item.img && item.img.id ? item.img.id.toString() : null 
+    }));
+    renderWithLayout(res, "index", { title: "KMUTNB Project - Main" ,news: newsData,user: req.session.user} , req.path,req);
+  }catch(err){
+    console.error("Error fetching news:", err);
+    res.status(500).send("Error loading news");
+  }
 });
 app.get("/upload", requireLogin, (req, res) => {
   renderWithLayout(res, "upload", { title: "KMUTNB Project - Upload" }, req.path,req);
@@ -186,8 +206,16 @@ app.get("/file/download/:id", requireLogin, async (req, res) => {
 app.get("/status", requireLogin, (req, res) => {
   renderWithLayout(res, "status", { title: "KMUTNB Project - Status" }, req.path,req);
 });
-app.get("/login", (req, res) => {
-  renderWithLayout(res, "login", { title: "KMUTNB Project - Login" }, req.path,req);
+app.get("/login", checkFailModal, (req, res) => {
+  console.log("Session failModal:", req.session.failModal);
+  const inputUsername = req.session.inputUsername || "";
+  req.session.inputUsername = null; // ล้างค่าหลังใช้งาน
+  renderWithLayout(res, "login", { 
+    title: "KMUTNB Project - Login", 
+    failModal: res.locals.failModal,
+    inputUsername  // ส่งค่าไป EJS
+  }, req.path, req);
+  
 });
 app.get("/flowchart", (req, res) => {
   renderWithLayout(res, "flowchart", { title: "KMUTNB Project - Flowchart" }, req.path,req);
@@ -286,15 +314,24 @@ app.get('/logout', (req, res) => {
   });
 });
 
-app.post("/login", async (req, res) => {
+app.post("/login" , async (req, res) => {
   const { username, password } = req.body;
   const user = await User.findOne({ username });
 
   //console.log("✅ User from DB:", user); // <-- ใส่ตรงนี้
-  if (!user) return res.send("❌ ไม่พบผู้ใช้");
+  if (!user) {
+    req.session.failModal = "user"; // ตั้งค่าเพื่อแสดง modal
+    console.log("Set failModal = user");
+    return req.session.save(() => res.redirect("/login"));
+  }
 
   const match = await bcrypt.compare(password, user.password);
-  if (!match) return res.send("❌ รหัสผ่านไม่ถูกต้อง");
+  if (!match) {
+    req.session.failModal = "password"; // ตั้งค่าเพื่อแสดง modal
+    req.session.inputUsername = username; // เก็บ username ไว้
+    console.log("Set failModal = password");
+    return req.session.save(() => res.redirect("/login"));
+  }
 
   
     req.session.user = {
@@ -304,6 +341,7 @@ app.post("/login", async (req, res) => {
     role: user.role,
     
   };
+
   res.redirect("/");
 });
 
@@ -455,6 +493,90 @@ app.post("/groups/leave/:groupId", async (req, res) => {
     console.error(err);
     res.status(500).send("เกิดข้อผิดพลาดที่ server");
   }
+});
+
+app.post("/api/news", requireLogin, upload.single("file"), async (req, res) => {
+    try {
+        const { newsTitle, newsData } = req.body;
+        let imgInfo = {}; // ใช้อ็อบเจกต์เพื่อเก็บข้อมูลรูปภาพ
+
+        // 1. ตรวจสอบว่ามีไฟล์รูปภาพหรือไม่
+        if (req.file) {
+            
+            // 2. สร้าง Upload Stream ไปยัง GridFS
+            // Note: ต้องใช้ req.file.filename (ที่ถูกกำหนดโดย multer) หรือ req.file.originalname 
+            const uploadStream = bucket.openUploadStream(req.file.originalname, { 
+                contentType: req.file.mimetype,
+                // สามารถเพิ่ม metadata อื่นๆ ได้ที่นี่
+            });
+            
+            // 3. กำหนดข้อมูลที่จะบันทึกลงใน Mongoose Schema
+            imgInfo = {
+                filename: req.file.originalname, // หรือใช้ req.file.filename ถ้า multer กำหนด
+                contentType: req.file.mimetype,
+                // Mongoose สามารถใช้ ID ที่ GridFS สร้างโดยอัตโนมัติมาอ้างอิงได้
+                id: uploadStream.id // GridFS File ID (ObjectId)
+            };
+
+            // 4. ส่งไฟล์เข้าสู่ Stream และรอให้การอัปโหลดเสร็จสมบูรณ์
+            // Note: การใช้ end() ไม่ใช่ async/await คุณควรใช้ Promise เพื่อรอ
+            await new Promise((resolve, reject) => {
+                uploadStream.once('finish', resolve);
+                uploadStream.once('error', reject);
+                uploadStream.end(req.file.buffer); 
+            });
+
+            console.log(`File uploaded to GridFS with ID: ${uploadStream.id}`);
+        }
+
+        // 5. สร้าง News Document ใหม่
+        const newNews = new News({
+            title: newsTitle,
+            data: newsData,
+            // บันทึกข้อมูลรูปภาพ (ถ้ามี)
+            img: req.file ? imgInfo : null 
+        });
+
+        // 6. บันทึก Document ลงใน MongoDB
+        await newNews.save();
+
+        // 7. ส่งการตอบกลับสำเร็จ
+        return res.status(201).json({ 
+            message: "News created successfully", 
+            newsId: newNews._id,
+            fileId: imgInfo.id
+        });
+
+    } catch (err) {
+        console.error("News creation error:", err);
+        // หากเกิดข้อผิดพลาดในการอัปโหลด/บันทึก ให้ส่งสถานะ 500
+        return res.status(500).json({ 
+            error: "Failed to create news or upload file" 
+        });
+    }
+});
+
+app.get("/news/image/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        // ใช้ mongoose.Types.ObjectId.isValid เพื่อตรวจสอบ ID
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).send("Invalid file ID");
+        }
+
+        const fileId = new mongoose.Types.ObjectId(id);
+        const files = await bucket.find({ _id: fileId }).toArray();
+        if (!files || files.length === 0) {
+            return res.status(404).send("Image not found");
+        }
+
+        // ตั้งค่า Content-Type เพื่อให้ Browser แสดงรูปภาพโดยตรง
+        res.set("Content-Type", files[0].contentType); 
+        bucket.openDownloadStream(fileId).pipe(res);
+    } catch (err) {
+        console.error("Error streaming news image:", err);
+        res.status(500).send("Error streaming image");
+    }
 });
 
 // Socket.IO

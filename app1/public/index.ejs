@@ -1,3 +1,212 @@
-<div class="container-fluid mt-4" style="height: 100%;">
-    
+<div class="container-fluid mt-4" style="min-height: 84vh; height: 100%;">               
+    <!-- Page Heading -->
+    <div id="news">
+        <div class="d-sm-flex align-items-center justify-content-between mb-4">
+            <h1>ข่าวสาร</h1>
+            <% if (typeof user !== 'undefined' && user.role === 'admin') { %>
+                <button type="button" id="addNewsBtn" class="btn btn-primary"><i class="fas fa-plus"></i> เพิ่มข่าว</button>
+            <% } %>
+        </div>
+        <div class="justify-content-center align-items-center">
+            <% news.forEach(n => { %>
+                <div class="card d-flex mb-4" style="width: 100%; border-radius: 40px;">
+                <img src="/news/image/<%= n.imgId %>" class="card-img-top" alt="Card image cap" style="height: 200px; object-fit: cover; border-top-right-radius: 40px; border-top-left-radius: 40px;">
+                <div class="card-body">
+                        <h5 class="card-title"><%= n.title %></h5>
+                        <p class="card-text"><%= n.data %></p>
+                        <a href="#" class="btn btn-primary">Go somewhere</a>
+                </div>
+            </div>
+            <% }) %>
+            <div class="card d-flex mb-4" style="width: 100%; border-radius: 40px;">
+                <img src="/img/1313026.jpg" class="card-img-top" alt="Card image cap" style="height: 200px; object-fit: cover; border-top-right-radius: 40px; border-top-left-radius: 40px;">
+                <div class="card-body">
+                        <h5 class="card-title">Card title</h5>
+                        <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+                        <a href="#" class="btn btn-primary">Go somewhere</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="addNews" class="d-none">
+        <div class="d-sm-flex align-items-center justify-content-between mb-4">
+            <h1>เพิ่มข่าว</h1>
+        </div>
+        <div class="row justify-content-center align-items-center w-100">
+            <div id="drop-area" class="mb-4 ml-2">
+                    <img id="imagePreview" src="#" alt="Image Preview" class="d-none" style="max-height: 300px; width: auto;">
+                    <p id="defaultDropText">ลากไฟล์มาวางที่นี่ หรือ คลิกเพื่อเลือกไฟล์</p>
+                <input type="file" id="file-input" style="display:none;">
+            </div>
+        </div>
+        <div id="textAddNews" class="mb-4">
+            <div class="d-flex align-items-center mb-3" style="gap: 15px;">
+                <input type="text" class="form-control" placeholder="ชื่อไฟล์รูปภาพ" id="picName" disabled> 
+                <input type="text" class="form-control" placeholder="หัวข้อข่าว" id="newsTitle" name="newsTitle">
+            </div>
+            <textarea class="form-control" name="newsData" id="newsData" placeholder="เนื้อหาข่าว" style="width: 100%;min-height: 200px;"></textarea>
+            <div style="justify-content: space-evenly;">
+                <button type="submit" class="btn btn-success mt-3" id="saveNews">บันทึก</button>
+                <button type="button" class="btn btn-danger mt-3" id="returnNews">ยกเลิก</button>
+            </div>
+        </div>
+    </div>  
 </div>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+
+    // 1. ประกาศตัวแปร Global
+    let selectedFile = null; 
+    
+    // อ้างอิง DOM Element
+    const dropArea = document.getElementById('drop-area');
+    const defaultDropText = document.getElementById('defaultDropText'); // ข้อความเริ่มต้น
+    const imagePreview = document.getElementById('imagePreview');     // แท็ก <img> สำหรับพรีวิว
+    const fileInput = document.getElementById('file-input');
+    const fileNameInput = document.getElementById('picName'); 
+
+    // MIME Types ของไฟล์รูปภาพที่ยอมรับ
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    
+    // ค่า Border เริ่มต้นของ Drop Area
+    const defaultDropAreaBorder = '2px dashed #ccc'; // นำค่านี้มาใช้ในการรีเซ็ต
+    dropArea.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        dropArea.classList.add('hover');
+    });
+
+    dropArea.addEventListener('dragleave', () => {
+        dropArea.classList.remove('hover');
+    });
+
+    dropArea.addEventListener('drop', (event) => {
+        event.preventDefault();
+        dropArea.classList.remove('hover');
+        const files = event.dataTransfer.files;
+        handleFiles(files);
+    });
+
+    dropArea.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', () => {
+        const files = fileInput.files;
+        handleFiles(files);
+    });
+
+    // -------------------------------------------------------------
+    // 2. ฟังก์ชันหลัก: จัดการไฟล์และตรวจสอบประเภท
+    // -------------------------------------------------------------
+    function handleFiles(files) {
+        const file = files[0];
+        
+        // 🚨 รีเซ็ตสถานะทั้งหมดให้กลับไปที่ค่าเริ่มต้นก่อน (คือแสดงข้อความเริ่มต้น)
+        selectedFile = null;
+        fileNameInput.value = 'ชื่อไฟล์รูปภาพ';
+        imagePreview.src = '#';
+        
+        // ใช้ d-none: ซ่อนรูปภาพ, แสดงข้อความเริ่มต้น
+        imagePreview.classList.add('d-none');
+        defaultDropText.classList.remove('d-none');
+        dropArea.style.border = defaultDropAreaBorder; // คืนค่า Border
+
+        if (file) {
+            if (allowedTypes.includes(file.type)) {
+                // ถ้าเป็นรูปภาพที่ยอมรับ
+                selectedFile = file; 
+                fileNameInput.value = file.name; 
+
+                // **ส่วนการพรีวิวรูปภาพ:**
+                const reader = new FileReader(); 
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;         
+                    
+                    // 🚨 สลับการแสดงผล
+                    imagePreview.classList.remove('d-none');  // แสดงรูปพรีวิว
+                    defaultDropText.classList.add('d-none'); // ซ่อนข้อความเริ่มต้น
+                    
+                    // ปิด Border/Style ของ Drop Area
+                    dropArea.style.border = 'none';
+                    dropArea.style.backgroundColor = 'transparent'; 
+                };
+                reader.readAsDataURL(file); // อ่านไฟล์เป็น Data URL
+                
+            } else {
+                // ถ้าไม่ใช่รูปภาพ: แจ้งเตือนและกลับไปแสดงข้อความเริ่มต้น
+                alert('ไฟล์ที่เลือกไม่ใช่รูปภาพที่ถูกต้อง (ยอมรับ: JPEG, PNG, GIF, WEBP) ประเภทที่เลือกคือ: ' + file.type);
+                fileInput.value = ''; 
+                
+                // สถานะจะถูกรีเซ็ตด้านบนอยู่แล้ว
+            }
+        }
+    }
+
+    // -------------------------------------------------------------
+    // 3. ส่วนจัดการปุ่ม (jQuery)
+    // -------------------------------------------------------------
+    // ปุ่มเพิ่มข่าว: สลับหน้า
+    $('#addNewsBtn').on('click', function() {
+        // 🚨 รีเซ็ต Drop Area เป็นสถานะเริ่มต้นเมื่อเข้าหน้าเพิ่มข่าว
+        imagePreview.src = '#'; 
+        imagePreview.classList.add('d-none'); 
+        defaultDropText.classList.remove('d-none'); 
+        dropArea.style.border = defaultDropAreaBorder; 
+        fileInput.value = '';
+        
+        document.getElementById('news').classList.add('d-none');
+        document.getElementById('addNews').classList.remove('d-none');
+    });
+
+    // ปุ่มบันทึก: ตรวจสอบและเตรียมส่งข้อมูล
+    $('#saveNews').on('click', function() {
+        const title = $('#newsTitle').val();
+        const content = $('#newsData').val();
+        
+        if (!selectedFile) {
+            alert('กรุณาเลือกรูปภาพสำหรับข่าวสาร');
+            return;
+        }
+
+        if (!title || !content) {
+            alert('กรุณากรอกหัวข้อและเนื้อหาข่าวให้ครบถ้วน');
+            return;
+        }
+
+        // พร้อมสำหรับส่งข้อมูลและไฟล์ไปยังเซิร์ฟเวอร์
+        const formData = new FormData();
+        formData.append('newsTitle', title);
+        formData.append('newsData', content);
+        formData.append('file', selectedFile); // นี่คือไฟล์รูปภาพที่ถูกเช็คแล้ว
+        
+        fetch('/api/news', {
+            method: 'POST',
+            body: formData
+        }).then(response => response.json())
+          .then(data => {
+            alert('บันทึกข่าวสารเรียบร้อยแล้ว');
+            // รีเซ็ตและกลับไปหน้ารายการข่าว
+            window.location.href = '/';
+          })
+    });
+
+    // ปุ่มยกเลิก: ล้างค่าและสลับหน้า
+    $('#returnNews').on('click', function() {
+        // ล้างค่าและตัวแปรไฟล์
+        document.getElementById('newsTitle').value = '';
+        document.getElementById('newsData').value = '';
+        selectedFile = null; 
+        fileNameInput.value = ''; 
+        fileInput.value = ''; 
+
+        // 🚨 รีเซ็ต Drop Area ให้แสดงข้อความเริ่มต้น
+        imagePreview.src = '#'; 
+        imagePreview.classList.add('d-none'); 
+        defaultDropText.classList.remove('d-none'); // 🚨 ทำให้แสดงข้อความเริ่มต้น
+        dropArea.style.border = defaultDropAreaBorder; 
+
+        // สลับหน้า
+        document.getElementById('news').classList.remove('d-none');
+        document.getElementById('addNews').classList.add('d-none');
+    });
+</script>

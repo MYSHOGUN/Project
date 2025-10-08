@@ -3721,7 +3721,6 @@ input[type="button"].btn-block {
 }
 
 .card {
-  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -9047,6 +9046,7 @@ a:focus {
 }
 
 #content{
+  flex: 1 0 auto;
   height: 100%;
 }
 
@@ -10626,6 +10626,12 @@ form.user .btn-user {
   animation: noise-anim-2 3s infinite linear alternate-reverse;
 }
 
+footer{
+  position: relative;
+  bottom: 0;
+  width: 100%;
+}
+
 footer.sticky-footer {
   padding: 2rem 0;
   flex-shrink: 0;
@@ -10639,3 +10645,4 @@ footer.sticky-footer .copyright {
 body.sidebar-toggled footer.sticky-footer {
   width: 100%;
 }
+
