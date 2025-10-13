@@ -1,2 +1,99 @@
-<h1>Profile Page</h1>
-<p>This is where your profile would go.</p>
+<style>
+    .content-profile {
+        width: 100%;
+        max-width: 600px;
+        text-align: left;
+        margin-left: auto;
+        margin-right: auto;
+        background-color: rgb(200, 200, 200);
+        padding: 20px;
+        border-radius: 10px;
+    }
+</style>
+<div class="container-fluid" style="min-height: 84vh; height: 100%;">
+    <div id="profile">
+        <div class="d-flex align-items-center justify-content-between mt-4">
+            <h1>โปรไฟล์</h1>
+            <button type="button" id="updateProfileBtn" class="btn btn-primary"><i class="fas fa-wrench"></i> แก้ไขโปรไฟล์</button>
+        </div>
+        <div class="align-items-center justify-content-center content-profile mt-4">
+            <h2>ชื่อ: <%= user.name %> <%= user.lastname %></h2><br>
+            <h2>อีเมล: <%= user.email || '-' %></h2><br>
+            <h2>รหัสนักศึกษา: <%= (user.username).slice(1) %></h2><br>
+            <h2>เบอร์โทรศัพท์: <%= user.phone || '-' %></h2><br>
+        </div>
+    </div>
+    <div id="updateProfile" class="d-none">
+        <div class="d-flex align-items-center justify-content-between mt-4">
+            <h1>แก้ไขโปรไฟล์</h1>
+        </div>
+        <div class="align-items-center justify-content-center content-profile mt-4">
+            <h2>ชื่อ: </h2>
+            <input class="form-control mb-3" id="updateName" value="<%= user.name %> <%= user.lastname %>" style="width: 100%; display: inline-block;" disabled>
+            <h2>อีเมล: </h2>
+            <input class="form-control mb-3" id="updateEmail" value="<%= user.email %>" style="width: 100%; display: inline-block;">
+            <h2>รหัสนักศึกษา: </h2>
+            <input class="form-control mb-3" id="updateId" value="<%= (user.username).slice(1) %>" style="width: 100%; display: inline-block;" disabled>
+            <h2>เบอร์โทรศัพท์: </h2>
+            <input class="form-control mb-4" id="updatePhone" value="<%= user.phone %>" style="width: 100%; display: inline-block;">
+            <div class="d-flex justify-content-center">
+                <button type="button" id="saveProfileBtn" class="btn btn-success"><i class="fas fa-save"></i> บันทึก</button>
+                <button type="button" id="cancelProfileBtn" class="btn btn-danger ml-2"><i class="fas fa-times"></i> ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    const profile = document.getElementById('profile');
+    const updateProfile = document.getElementById('updateProfile');
+
+    const updateName = document.getElementById('updateName');
+    const updateEmail = document.getElementById('updateEmail');
+    const updateId = document.getElementById('updateId');
+    const updatePhone = document.getElementById('updatePhone');
+
+    const updateProfileBtn = document.getElementById('updateProfileBtn');
+
+    const saveProfileBtn = document.getElementById('saveProfileBtn');
+    const cancelProfileBtn = document.getElementById('cancelProfileBtn');
+
+    $(updateProfileBtn).on('click', function() {
+        profile.classList.add('d-none');
+        updateProfile.classList.remove('d-none');
+    });
+
+    $(cancelProfileBtn).on('click', function() {
+        updateName.value = "<%= user.name %> <%= user.lastname %>";
+        updateEmail.value = "<%= user.email %>";
+        updateId.value = "<%= (user.username).slice(1) %>";
+        updatePhone.value = "<%= user.phone %>";
+        updateProfile.classList.add('d-none');
+        profile.classList.remove('d-none');
+    });
+
+    $(saveProfileBtn).on('click', function() {
+        const email = updateEmail.value;
+        const phone = updatePhone.value;
+
+        $.ajax({
+            url: '/profile/update',
+            type: 'POST',
+            data: {
+                email: email,
+                phone: phone
+            },
+            success: function(response) {
+                if (response.success) {
+                    alert('บันทึกข้อมูลโปรไฟล์สำเร็จ');
+                    location.reload();
+                } else {
+                    alert(response.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูลโปรไฟล์');
+                }
+            },
+            error: function() {
+                alert('เกิดข้อผิดพลาดในการบันทึกข้อมูลโปรไฟล์');
+            }
+        });
+    });
+</script>

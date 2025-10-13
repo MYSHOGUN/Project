@@ -13,19 +13,11 @@
                 <img src="/news/image/<%= n.imgId %>" class="card-img-top" alt="Card image cap" style="height: 200px; object-fit: cover; border-top-right-radius: 40px; border-top-left-radius: 40px;">
                 <div class="card-body">
                         <h5 class="card-title"><%= n.title %></h5>
-                        <p class="card-text"><%= n.data %></p>
-                        <a href="#" class="btn btn-primary">Go somewhere</a>
+                        <p class="card-text"><%= truncateText(n.data, 25) %></p>
+                        <a href="/news/details/<%= n._id %>" class="btn btn-primary">รายละเอียดเพิ่มเติม</a>
                 </div>
             </div>
             <% }) %>
-            <div class="card d-flex mb-4" style="width: 100%; border-radius: 40px;">
-                <img src="/img/1313026.jpg" class="card-img-top" alt="Card image cap" style="height: 200px; object-fit: cover; border-top-right-radius: 40px; border-top-left-radius: 40px;">
-                <div class="card-body">
-                        <h5 class="card-title">Card title</h5>
-                        <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
-                        <a href="#" class="btn btn-primary">Go somewhere</a>
-                </div>
-            </div>
         </div>
     </div>
     <div id="addNews" class="d-none">

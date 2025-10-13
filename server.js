@@ -101,6 +101,15 @@ function checkFailModal(req, res, next) {
   next();
 }
 
+function truncateText(text, maxWords) {
+    if (!text) return '';
+    const words = text.split(/\s+/);
+    if (words.length > maxWords) {
+        return words.slice(0, maxWords).join(' ') + '...';
+    }
+    return text;
+}
+
 // Routes
 app.get("/", async (req, res) => {
   try {
@@ -109,7 +118,7 @@ app.get("/", async (req, res) => {
             ...item.toObject(), 
             imgId: item.img && item.img.id ? item.img.id.toString() : null 
     }));
-    renderWithLayout(res, "index", { title: "KMUTNB Project - Main" ,news: newsData,user: req.session.user} , req.path,req);
+    renderWithLayout(res, "index", { title: "KMUTNB Project - Main" ,news: newsData,user: req.session.user,truncateText: truncateText} , req.path,req);
   }catch(err){
     console.error("Error fetching news:", err);
     res.status(500).send("Error loading news");
@@ -339,6 +348,8 @@ app.post("/login" , async (req, res) => {
     name: user.name,
     lastname: user.lastname,
     role: user.role,
+    email: user.email,
+    phone: user.phone,
     
   };
 
@@ -577,6 +588,174 @@ app.get("/news/image/:id", async (req, res) => {
         console.error("Error streaming news image:", err);
         res.status(500).send("Error streaming image");
     }
+});
+
+app.get("/news/details/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const news = await News.findOne({ _id: id });
+
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).send("Invalid news ID");
+        } 
+
+        renderWithLayout(res, "news", { title: "KMUTNB Project - News Details" ,newsDetails: news,user: req.session.user}, req.path,req);
+      }catch (err) {
+        console.error("Error fetching news details:", err);
+        return res.status(500).send("Error fetching news details");
+      }
+});
+
+app.post("/news-update/:newsId", requireLogin, upload.single("newImage"), async (req, res) => {
+    // ชื่อ field 'newImage' ต้องตรงกับชื่อที่ใช้ใน FormData ฝั่ง Client
+
+    const newsId = req.params.newsId;
+
+    if (!newsId || !mongoose.Types.ObjectId.isValid(newsId)) {
+        return res.status(400).json({ success: false, message: "Invalid News ID" });
+    }
+
+    try {
+        // 1. ดึงข้อมูล Text จาก req.body (แยกโดย Multer)
+        const { newsTitle, newsData } = req.body; 
+        
+        let updateData = { 
+            title: newsTitle,
+            data: newsData
+        };
+
+        // 2. ค้นหาข่าวเดิมเพื่อดึง ID รูปภาพเก่า
+        let oldNews = await News.findById(newsId);
+        if (!oldNews) {
+            return res.status(404).json({ success: false, message: "News not found" });
+        }
+
+        // 3. จัดการรูปภาพใหม่ (ถ้ามีไฟล์ใหม่ถูกส่งมา)
+        if (req.file) {
+            // A. ลบรูปภาพเก่าจาก GridFS (ถ้ามีรูปเก่าอยู่)
+            if (oldNews.img && oldNews.img.id) {
+                try {
+                    // ใช้ bucket.delete() กับ GridFS ID เก่า
+                    await bucket.delete(oldNews.img.id);
+                    console.log(`✅ Old file deleted from GridFS: ${oldNews.img.id}`);
+                } catch (deleteErr) {
+                    // หากลบไม่ได้ (เช่น ไฟล์ไม่มีอยู่) ให้แสดงคำเตือนและดำเนินการต่อ
+                    console.warn(`⚠️ Warning: Could not delete old file ID ${oldNews.img.id}. Error:`, deleteErr.message);
+                }
+            }
+
+            // B. บันทึกไฟล์ใหม่เข้า GridFS
+            const uploadStream = bucket.openUploadStream(req.file.originalname, { 
+                contentType: req.file.mimetype
+            });
+            
+            await new Promise((resolve, reject) => {
+                uploadStream.once('finish', resolve);
+                uploadStream.once('error', reject);
+                uploadStream.end(req.file.buffer); // ส่ง buffer ของไฟล์เข้า stream
+            });
+
+            console.log(`✅ New file uploaded to GridFS with ID: ${uploadStream.id}`);
+
+            // C. อัปเดตข้อมูล img ใน Document ด้วย ID ใหม่
+            updateData.img = {
+                filename: req.file.originalname,
+                contentType: req.file.mimetype,
+                id: uploadStream.id // ID ใหม่ที่สร้างโดย GridFS
+            };
+        } 
+        // 🚨 หมายเหตุ: ถ้าไม่มี req.file (ไม่ได้เปลี่ยนรูป), updateData จะมีแค่ title/data
+        // ทำให้ ID รูปภาพเก่าถูกเก็บไว้ตามที่คุณต้องการโดยอัตโนมัติ
+
+        // 4. อัปเดต News Document ใน MongoDB
+        const updatedNews = await News.findByIdAndUpdate(
+            newsId,
+            { $set: updateData }, // ใช้ $set เพื่ออัปเดตเฉพาะ field ที่เปลี่ยน
+            { new: true, runValidators: true } // คืนค่าเอกสารที่อัปเดตแล้ว
+        );
+
+        if (!updatedNews) {
+            return res.status(404).json({ success: false, message: "News not found during update." });
+        }
+
+        // 5. ส่งการตอบกลับสำเร็จ
+        res.status(200).json({ success: true, message: "บันทึกข่าวสำเร็จ", news: updatedNews });
+
+    } catch (err) {
+        console.error("❌ Error updating news:", err);
+        // สามารถใช้ err.message เพื่อส่งรายละเอียดกลับไปได้
+        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดที่ Server: การอัปเดตล้มเหลว" });
+    }
+});
+
+app.delete("/news-delete/:newsId", requireLogin, async (req, res) => {
+    // Note: ควรเพิ่ม requireRole('admin') เพื่อความปลอดภัยหากไม่ได้ใช้ requireLogin ที่มีการตรวจสอบ role ภายใน
+    // เช่น: app.delete("/news-delete/:newsId", requireRole('admin'), async (req, res) => { ...
+
+    const newsId = req.params.newsId;
+
+    if (!newsId || !mongoose.Types.ObjectId.isValid(newsId)) {
+        return res.status(400).json({ success: false, message: "Invalid News ID" });
+    }
+
+    try {
+        // 1. ค้นหาข่าวเพื่อดึง ID รูปภาพเก่า
+        const newsToDelete = await News.findById(newsId);
+        if (!newsToDelete) {
+            return res.status(404).json({ success: false, message: "ไม่พบข่าวสารที่ต้องการลบ" });
+        }
+
+        // 2. ลบรูปภาพที่เกี่ยวข้องออกจาก GridFS (ถ้ามี)
+        if (newsToDelete.img && newsToDelete.img.id) {
+            try {
+                // ใช้ bucket.delete() กับ GridFS ID
+                await bucket.delete(newsToDelete.img.id);
+                console.log(`✅ File deleted from GridFS: ${newsToDelete.img.id}`);
+            } catch (deleteErr) {
+                // โดยปกติ GridFS Bucket Delete จะโยน Error ถ้าไฟล์ไม่มีอยู่
+                console.warn(`⚠️ Warning: Could not delete file ID ${newsToDelete.img.id}. Error:`, deleteErr.message);
+                // เราจะดำเนินการลบ News Document ต่อไปแม้จะลบไฟล์ GridFS ไม่ได้
+            }
+        }
+
+        // 3. ลบ News Document ออกจาก MongoDB
+        const result = await News.deleteOne({ _id: newsId });
+
+        if (result.deletedCount === 0) {
+             return res.status(404).json({ success: false, message: "ไม่พบข่าวสารที่ต้องการลบ" });
+        }
+
+        // 4. ส่งการตอบกลับสำเร็จ
+        res.status(200).json({ success: true, message: "ลบข่าวสำเร็จ" });
+
+    } catch (err) {
+        console.error("❌ Error deleting news:", err);
+        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดที่ Server: การลบล้มเหลว" });
+    }
+});
+
+app.post("/profile/update", requireLogin, async (req, res) => {
+  try {
+    const {  email, phone } = req.body;
+    await User.findOneAndUpdate(
+      { username: req.session.user.username },
+      { email, phone }
+    );
+    // อัปเดต session ด้วย
+    req.session.user.email = email;
+    req.session.user.phone = phone; 
+    req.session.save((err) => {
+      if (err) {
+        console.error("❌ Error saving session:", err);
+        return res.status(500).send("เกิดข้อผิดพลาดในการบันทึก session");
+      }
+      res.status(200).json({ success: true, message: "อัปเดตโปรไฟล์สำเร็จ" });
+    });
+  } catch (err) {
+    console.error("❌ Error updating profile:", err);
+    res.status(500).send("เกิดข้อผิดพลาดในการอัปเดตโปรไฟล์");
+  }
 });
 
 // Socket.IO
