@@ -26,6 +26,7 @@ const User = require("./models/User"); // ✅ import model
 const multer = require("multer");
 const { GridFSBucket, ObjectId } = require("mongodb");
 const { userInfo } = require("os");
+const { group } = require("console");
 
 // ใช้ memory storage ของ multer
 const storage = multer.memoryStorage();
@@ -111,7 +112,8 @@ function truncateText(text, maxWords) {
 }
 
 // Routes
-app.get("/", async (req, res) => {
+app.get("/" ,requireLogin, async (req, res) => {
+  res.redirect("/group");
   try {
     const newsList = await News.find().sort({ createdAt: -1 });
     const newsData = newsList.map(item => ({
@@ -216,7 +218,7 @@ app.get("/status", requireLogin, (req, res) => {
   renderWithLayout(res, "status", { title: "KMUTNB Project - Status" }, req.path,req);
 });
 app.get("/login", checkFailModal, (req, res) => {
-  console.log("Session failModal:", req.session.failModal);
+  //console.log("Session failModal:", req.session.failModal);
   const inputUsername = req.session.inputUsername || "";
   req.session.inputUsername = null; // ล้างค่าหลังใช้งาน
   renderWithLayout(res, "login", { 
@@ -234,19 +236,9 @@ app.get("/file", requireLogin, (req, res) => {
 });
 app.get("/group", requireLogin, async (req, res) => {
   try{
-    const group = await Group.findOne({
-      $or: [
-        { member1: req.session.user.username },
-        { member2: req.session.user.username }
-      ]
-    });
 
-    if(req.session.user && req.session.user.canAddMember !== 'true'){
-      req.session.user.group = group ? "true" : "false";
-      req.session.save();
-    }else if(req.session.user.canAddMember === "true"){
-      req.session.user.canAddMember = "false"; // อนุญาตเพิ่มสมาชิก
-      req.session.save();
+    if(req.session.user && req.session.user.group === null){
+      return res.redirect("/addGroup");
     }
 
     const username = req.session.user.username;
@@ -258,10 +250,14 @@ app.get("/group", requireLogin, async (req, res) => {
       ]
     });
 
-    const mem1 = await User.findOne({username: groups[0].member1});
-    const mem2 = await User.findOne({username: groups[0].member2});
-    const adv = await User.findOne({username: groups[0].advisor});
-    const userInfo = [mem1, mem2, adv];
+    let userInfo = [];
+
+    if (groups.length > 0) {
+      const mem1 = await User.findOne({username: groups[0].member1});
+      const mem2 = await User.findOne({username: groups[0].member2});
+      const adv = await User.findOne({username: groups[0].advisor});
+      userInfo = [mem1, mem2, adv];
+    }
 
     renderWithLayout(res, "group", { 
       title: "KMUTNB Project - Group",
@@ -270,6 +266,7 @@ app.get("/group", requireLogin, async (req, res) => {
       user: req.session.user
     }, req.path,req);
   }catch(err){
+    console.error("❌ Error deleting news:", err);
     res.status(500).send("Error loading groups");
   }
 });
@@ -350,7 +347,7 @@ app.post("/login" , async (req, res) => {
     role: user.role,
     email: user.email,
     phone: user.phone,
-    
+    group: user.group
   };
 
   res.redirect("/");
@@ -404,8 +401,21 @@ app.post("/groups", requireLogin, async (req, res) => {
     const newGroup = new Group({ projectName, member1, member2, advisor ,status});
     await newGroup.save();
 
+    await User.findOneAndUpdate(
+      { username: member1 }, // หรือฟิลด์สำหรับค้นหาผู้ใช้ เช่น { username: member1 }
+      { $set: { group: projectName } }
+    );
+
+    // อัปเดต member2 (ถ้ามีค่า)
+    if (member2) {
+        await User.findOneAndUpdate(
+          { username: member2  }, // หรือฟิลด์สำหรับค้นหาผู้ใช้ เช่น { username: member2 }
+          { $set: { group: projectName } }
+        );
+    }
+
     // อัปเดต session.user.group = "true"
-    req.session.user.group = "true";
+    req.session.user.group = projectName;
 
     res.status(201).send("บันทึกกลุ่มสำเร็จ");
   } catch (err) {
@@ -442,7 +452,7 @@ app.post("/groups-update/:groupId", requireLogin, async (req, res) => {
   }
 });
 
-app.post("/groups/activate-add-member", requireLogin, async (req, res) => {
+/*app.post("/groups/activate-add-member", requireLogin, async (req, res) => {
   try {
     req.session.user.group = "false"; // อัปเดตค่า session
     req.session.user.canAddMember = "true"; // อนุญาตเพิ่มสมาชิก
@@ -457,7 +467,7 @@ app.post("/groups/activate-add-member", requireLogin, async (req, res) => {
     console.error("❌ Error:", err);
     res.status(500).send("เกิดข้อผิดพลาดที่ server");
   }
-});
+});*/
 
 app.post("/groups/leave/:groupId", async (req, res) => {
   try {
@@ -493,17 +503,80 @@ app.post("/groups/leave/:groupId", async (req, res) => {
     // อัปเดต User ด้วย (ถ้า User มี field group)
     await User.findOneAndUpdate(
       { username },
-      { $unset: { group: "" } } // เอา group ออก
+      { $set: { group: null } } // เอา group ออก
     );
 
     // อัปเดต session
-    req.session.user.group = false;
+    req.session.user.group = null;
 
     res.send("ออกจากกลุ่มสำเร็จ");
   } catch (err) {
     console.error(err);
     res.status(500).send("เกิดข้อผิดพลาดที่ server");
   }
+});
+
+app.get("/addGroup", requireLogin, async (req, res) => {
+  if(req.session.user && req.session.user.group !== null){
+    console.log("User already in group, redirecting to /group");
+      return res.redirect("/group");
+  }
+  try{
+    const group = await Group.findOne({
+      $or: [
+        { member1: req.session.user.username },
+        { member2: req.session.user.username }
+      ]
+    });
+
+    const username = req.session.user.username;
+    const groups = await Group.find({
+      $or: [
+        { member1: username },
+        { member2: username },
+        { advisor: username }
+      ]
+    });
+
+    let userInfo = [];
+
+    if (groups.length > 0) {
+      const mem1 = await User.findOne({username: groups[0].member1});
+      const mem2 = await User.findOne({username: groups[0].member2});
+      const adv = await User.findOne({username: groups[0].advisor});
+      userInfo = [mem1, mem2, adv];
+    }
+
+  renderWithLayout(res, "addGroup", { 
+      title: "KMUTNB Project - Group",
+      groups,
+      user: req.session.user
+    }, req.path,req);
+    }catch(err){
+    console.error("❌ Error deleting news:", err);
+    res.status(500).send("Error loading groups");
+  }
+});
+
+app.get("/updateGroup", requireLogin, async (req, res) => {
+  const username = req.session.user.username;
+  const groups = await Group.find({
+      $or: [
+        { member1: username },
+        { member2: username },
+        { advisor: username }
+      ]
+    });
+
+  let userInfo = [];
+
+    if (groups.length > 0) {
+      const mem1 = await User.findOne({username: groups[0].member1});
+      const mem2 = await User.findOne({username: groups[0].member2});
+      const adv = await User.findOne({username: groups[0].advisor});
+      userInfo = [mem1, mem2, adv];
+    }
+  renderWithLayout(res, "updateGroup", { title: "KMUTNB Project - Update Group" ,groups,userInfo}, req.path,req);
 });
 
 app.post("/api/news", requireLogin, upload.single("file"), async (req, res) => {
@@ -756,6 +829,10 @@ app.post("/profile/update", requireLogin, async (req, res) => {
     console.error("❌ Error updating profile:", err);
     res.status(500).send("เกิดข้อผิดพลาดในการอัปเดตโปรไฟล์");
   }
+});
+
+app.get("/addExcel",requireLogin,(req, res) => {
+  renderWithLayout(res, "addExcel", { title: "KMUTNB Project - Add Excel" }, req.path,req);
 });
 
 // Socket.IO

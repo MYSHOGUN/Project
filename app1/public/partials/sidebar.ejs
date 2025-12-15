@@ -17,16 +17,16 @@
                 <i class="fas fa-comments"></i>
                 <span>แชท</span></a>
         </li>
-
+        <% if (typeof user !== 'undefined') { %>
         <!-- Divider -->
-        <hr class="sidebar-divider my-0">
+            <hr class="sidebar-divider my-0">
 
-        <li class="nav-item <%= currentPath === '/group' ? 'active' : '' %>">
-            <a class="nav-link" href="/group">
-                <i class="fas fa-users"></i>
-                <span>กลุ่มโปรเจค</span></a>
-        </li>
-
+            <li class="nav-item <%= currentPath === '/group' || currentPath === '/addGroup' || currentPath === '/updateGroup' ? 'active' : '' %>">
+                <a class="nav-link" href="/group">
+                    <i class="fas fa-users"></i>
+                    <span>กลุ่มโปรเจค</span></a>
+            </li>
+        <% } %>
         <!-- Divider -->
         <hr class="sidebar-divider my-0">
 
@@ -62,6 +62,16 @@
                 <i class="fas fa-project-diagram"></i>
                 <span>ผังการดำเนินงาน</span></a>
         </li>
+        
+        <% if (typeof user !== 'undefined' && user.role == 'admin') { %>
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/addExcel' ? 'active' : '' %>">
+                <a class="nav-link" href="/addExcel">
+                    <i class="fas fa-users"></i>
+                    <span>เพิ่มข้อมูล Excel</span></a>
+            </li>
+        <% } %>
 
         <!-- Divider -->
         <hr class="sidebar-divider d-none d-md-block">
@@ -70,7 +80,6 @@
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
-
 
     </ul>
     <!-- End of Sidebar -->
