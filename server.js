@@ -32,6 +32,95 @@ const { group } = require("console");
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
+const fs = require('fs'); // ต้องใช้ในการลบไฟล์ แต่ในกรณีนี้เราจะใช้ Buffer แทน
+const xlsx = require('xlsx'); // ✅ นำเข้าไลบรารีสำหรับอ่าน Excel
+
+
+const processExcelFile = (buffer) => {
+    try {
+        // ใช้ XLSX.read() อ่าน Buffer โดยตรง
+        const workbook = xlsx.read(buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0]; // อ่านชีทแรก
+        const worksheet = workbook.Sheets[sheetName];
+
+        // แปลงข้อมูลชีทเป็น JSON Array
+        const data = xlsx.utils.sheet_to_json(worksheet); 
+        
+        if (data.length === 0) {
+            throw new Error("Excel file is empty or data format is incorrect.");
+        }
+        
+        return data;
+    } catch (error) {
+        console.error("Error processing Excel file:", error);
+        throw new Error("Failed to process Excel file: " + error.message);
+    }
+};
+
+// 3. ฟังก์ชันสำหรับบันทึกข้อมูล JSON ลง MongoDB
+async function saveUsersFromExcel(dataArray) {
+    if (dataArray.length === 0) {
+        return { insertedCount: 0 };
+    }
+
+    const bulkOps = [];
+    const saltRounds = 10;
+    
+    // 1. กำหนดค่า Placeholder ที่ไม่ซ้ำกันสำหรับ Field ที่จำเป็นแต่ยังไม่ได้ตั้งค่า
+    // ⚠️ ต้องใช้สตริงที่ไม่น่าจะซ้ำกับรหัสผ่านจริงเพื่อระบุว่าเป็นบัญชีที่รอการลงทะเบียน
+    const PENDING_PASS_STRING = 'PENDING_REGISTRATION_FOR_SIGNUP'; 
+    const PENDING_NAME = 'Pending';
+    const PENDING_LASTNAME = 'Registration';
+
+    // 2. Hash สตริง Placeholder นี้เพื่อใช้เป็นรหัสผ่านชั่วคราว
+    const pendingHashedPassword = await bcrypt.hash(PENDING_PASS_STRING, saltRounds); 
+
+    for (const row of dataArray) {
+        // 3. ดึงเฉพาะ username จาก Excel
+        const usernameFromExcel = row.username || row.Username; 
+        
+        if (!usernameFromExcel) {
+            console.warn(`Skipping row due to invalid or missing username:`, row);
+            continue;
+        }
+
+        const trimmedUsername = String(usernameFromExcel).trim();
+
+        // 4. จัดเตรียมข้อมูลผู้ใช้: ใช้ Hashed Placeholder Password และค่า Default อื่นๆ
+        const userData = {
+            username: trimmedUsername,
+            password: pendingHashedPassword, // ⬅️ Hashed Placeholder
+            name: PENDING_NAME,             // ⬅️ Placeholder
+            lastname: PENDING_LASTNAME,     // ⬅️ Placeholder
+            // ใช้ค่า Default สำหรับ non-required fields
+            role: 'user', 
+            phone: null, 
+            email: null,
+            group: row.group || null // สามารถนำเข้า group ได้ถ้ามีใน Excel
+        };
+        
+        // 5. ใช้ bulkWrite เพื่อเพิ่มผู้ใช้ใหม่ (ถ้า username ไม่ซ้ำ)
+        bulkOps.push({
+            updateOne: {
+                filter: { username: userData.username },
+                // $setOnInsert: ทำการ Insert เฉพาะเมื่อไม่พบ username ใน DB เท่านั้น
+                update: { $setOnInsert: userData }, 
+                upsert: true 
+            }
+        });
+    }
+
+    // ดำเนินการ bulk write
+    const result = await User.bulkWrite(bulkOps);
+
+    console.log(`✅ Bulk Write Complete: ${result.upsertedCount} items inserted, ${result.matchedCount} items matched (skipped).`);
+    
+    // คืนค่าจำนวนรายการที่ถูกเพิ่มใหม่
+    return { 
+        insertedCount: result.upsertedCount 
+    };
+}
+
 let bucket;
 
 connectDB().then(() => {
@@ -42,9 +131,14 @@ connectDB().then(() => {
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({
-  secret: "secret-key", // เปลี่ยนเป็น secret จริงใน production
+  secret: "your-very-strong-secret", // ควรใช้สตริงที่ยาวและเดายาก
   resave: false,
-  saveUninitialized: true
+  saveUninitialized: false, // เปลี่ยนเป็น false เพื่อไม่ให้สร้าง session ว่างๆ ถ้ายังไม่ login
+  cookie: {
+    httpOnly: true, // ✅ ป้องกัน JavaScript เข้าถึง cookie (กัน XSS)
+    secure: false,  // หากรันบน HTTPS (Production) ให้เปลี่ยนเป็น true
+    sameSite: 'lax' // ช่วยป้องกันการโจมตีแบบ CSRF
+  }
 }));
 
 // ✅ เชื่อม MongoDB ก่อนเริ่มเซิร์ฟเวอร์
@@ -315,8 +409,8 @@ app.get('/logout', (req, res) => {
       console.error(err);
       return res.status(500).send('Logout failed');
     }
-    res.clearCookie('connect.sid'); // ล้าง cookie session (ชื่ออาจต่างกันตาม config)
-    res.redirect('/'); // ไปหน้า main หลัง logout
+    res.clearCookie('connect.sid'); // 💡 ล้างไฟล์ Cookie ในเครื่อง User ออกไปด้วย
+    res.redirect('/login'); // 💡 ส่งกลับไปหน้า login
   });
 });
 
@@ -349,6 +443,15 @@ app.post("/login" , async (req, res) => {
     phone: user.phone,
     group: user.group
   };
+
+  if (rememberMe === "on") {
+    // ถ้าติ๊ก Remember Me ให้ Cookie อยู่ได้ 30 วัน
+    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    req.session.cookie.maxAge = thirtyDays;
+  } else {
+    // ถ้าไม่ติ๊ก ให้ Cookie ตายเมื่อปิด Browser
+    req.session.cookie.expires = false;
+  }
 
   res.redirect("/");
 });
@@ -833,6 +936,36 @@ app.post("/profile/update", requireLogin, async (req, res) => {
 
 app.get("/addExcel",requireLogin,(req, res) => {
   renderWithLayout(res, "addExcel", { title: "KMUTNB Project - Add Excel" }, req.path,req);
+});
+
+app.post('/api/excel-upload', requireLogin, upload.single('file'), async (req, res) => {
+    // 💡 เนื่องจากใช้ multer.memoryStorage() เราจะใช้ req.file.buffer
+    if (!req.file) {
+        return res.status(400).json({ error: 'No Excel file uploaded.' });
+    }
+
+    try {
+        // 1. ประมวลผลและอ่านข้อมูลจาก Buffer
+        const excelData = processExcelFile(req.file.buffer); 
+        
+        // 2. บันทึกข้อมูลลง MongoDB
+        const result = await saveUsersFromExcel(excelData);
+
+        // ❌ ไม่ต้องลบไฟล์ชั่วคราว เพราะถูกเก็บในหน่วยความจำ
+
+        res.status(200).json({ 
+            message: 'Excel data saved to MongoDB successfully.',
+            insertedCount: result.insertedCount
+        });
+
+    } catch (error) {
+        // 3. จัดการ Error
+        console.error("❌ Excel upload error:", error);
+        res.status(500).json({ 
+            error: 'Failed to process or save data to MongoDB.', 
+            details: error.message 
+        });
+    }
 });
 
 // Socket.IO

@@ -1,0 +1,155 @@
+<div class="container-fluid mt-4" style="min-height: 84vh; height: 100%;">
+    <div id="addExcel">
+        <div class="d-sm-flex align-items-center justify-content-between mb-4">
+            <h1>เพิ่มข้อมูลจาก Excel</h1>
+        </div>
+        <div class="row justify-content-center align-items-center w-100">
+            <div id="drop-area" class="mb-4 ml-2">
+                <p id="defaultDropText">ลากไฟล์ Excel มาวางที่นี่ หรือ คลิกเพื่อเลือกไฟล์</p>
+                <input type="file" id="file-input" style="display:none;">
+            </div>
+        </div>
+        <div id="addExcelBtn" class="mb-4 align-items-center d-flex text-center" style="justify-content: center;">
+            <button type="submit" class="btn btn-success mt-3 mr-2" id="saveExcel">บันทึก</button>
+            <button type="button" class="btn btn-danger mt-3" id="returnExcel">ยกเลิก</button>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+
+    // 1. ประกาศตัวแปร Global
+    let selectedFile = null; 
+    
+    // อ้างอิง DOM Element
+    const dropArea = document.getElementById('drop-area');
+    const defaultDropText = document.getElementById('defaultDropText'); // ข้อความเริ่มต้น
+    const fileInput = document.getElementById('file-input');
+
+    // MIME Types ของไฟล์ Excel ที่ยอมรับ
+    const allowedTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+        'application/vnd.ms-excel', // .xls
+        'application/vnd.ms-office' 
+    ];
+    
+    // ค่า Border เริ่มต้นของ Drop Area
+    const defaultDropAreaBorder = '2px dashed #ccc'; 
+    
+    // Event Listeners (Drag/Drop/Click)
+    dropArea.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        dropArea.style.border = '2px dashed green'; 
+    });
+
+    dropArea.addEventListener('dragleave', () => {
+        // คืนค่า border เมื่อลากไฟล์ออก
+        if (!selectedFile) {
+            dropArea.style.border = defaultDropAreaBorder; 
+        }
+    });
+
+    dropArea.addEventListener('drop', (event) => {
+        event.preventDefault();
+        const files = event.dataTransfer.files;
+        handleFiles(files);
+    });
+
+    dropArea.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', () => {
+        const files = fileInput.files;
+        handleFiles(files);
+    });
+
+    // -------------------------------------------------------------
+    // 2. ฟังก์ชันหลัก: จัดการไฟล์และตรวจสอบประเภท (แก้ไขให้แสดงชื่อไฟล์)
+    // -------------------------------------------------------------
+    function handleFiles(files) {
+        const file = files[0];
+        
+        // 🚨 รีเซ็ตสถานะทั้งหมดให้กลับไปที่ค่าเริ่มต้นก่อน
+        selectedFile = null;
+        
+        // รีเซ็ตการแสดงผล
+        defaultDropText.innerHTML = 'ลากไฟล์ Excel มาวางที่นี่ หรือ คลิกเพื่อเลือกไฟล์';
+        dropArea.style.border = defaultDropAreaBorder; 
+        dropArea.style.backgroundColor = 'transparent'; 
+
+        if (file) {
+            // ตรวจสอบประเภทไฟล์
+            const isAllowedType = allowedTypes.includes(file.type) || file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+
+            if (isAllowedType) {
+                // ถ้าเป็นไฟล์ Excel ที่ยอมรับ
+                selectedFile = file; 
+                
+                // 💡 ส่วนที่แก้ไข: แสดงชื่อไฟล์ใน Drop Area
+                defaultDropText.innerHTML = `
+                    ✅ **เลือกไฟล์สำเร็จ:**<br>
+                    <span style="font-weight: bold; color: #155724;">${file.name}</span>
+                `;
+                dropArea.style.border = '2px solid green';
+                dropArea.style.backgroundColor = '#e6ffe6';
+                
+            } else {
+                // ถ้าไม่ใช่ไฟล์ Excel: แจ้งเตือน
+                alert('ไฟล์ที่เลือกไม่ใช่ไฟล์ Excel ที่ถูกต้อง (ยอมรับ: .xlsx, .xls) ประเภทที่เลือกคือ: ' + file.type);
+                fileInput.value = ''; // ล้างค่าใน input
+            }
+        } else {
+            fileInput.value = ''; 
+        }
+    }
+
+    // -------------------------------------------------------------
+    // 3. ส่วนจัดการปุ่ม (jQuery)
+    // -------------------------------------------------------------
+
+    // ปุ่มบันทึก: ตรวจสอบและเตรียมส่งข้อมูล
+    $('#saveExcel').on('click', function() {
+        
+        if (!selectedFile) {
+            alert('กรุณาเลือกไฟล์ Excel ที่ต้องการอัปโหลดก่อน');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', selectedFile); 
+        
+        // แสดงการโหลด
+        $('#saveExcel').prop('disabled', true).text('กำลังบันทึก...');
+        
+        fetch('/api/excel-upload', {
+            method: 'POST',
+            body: formData
+        }).then(response => {
+            // 💡 จัดการ Error Response จาก Server
+            if (!response.ok) {
+                return response.json().then(errorData => {
+                    throw new Error(errorData.details || errorData.error || `Server returned status ${response.status}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            alert(`นำเข้าข้อมูล Excel สำเร็จ: ${data.insertedCount} รายการ`);
+            // Redirect ไปหน้า group
+            window.location.href = '/group'; 
+        })
+        .catch(error => {
+             console.error("Fetch Error:", error);
+             alert('เกิดข้อผิดพลาดในการอัปโหลด: ' + error.message);
+             // คืนปุ่มกลับสู่สถานะเดิม
+             $('#saveExcel').prop('disabled', false).text('บันทึก'); 
+        });
+    });
+
+    // ปุ่มยกเลิก
+    $('#returnExcel').on('click', function() {
+        // Redirect ไปหน้า group
+        window.location.reload();
+    });
+</script>
