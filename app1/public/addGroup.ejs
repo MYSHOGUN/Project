@@ -1,11 +1,13 @@
 <div class="container-fluid" style="padding: 0; margin: 0; height: 85vh; line-height: normal;">
     <!-- Page Heading -->
         <div id="server-data" data-groups='<%- JSON.stringify(groups || []) %>' hidden></div>
-        <div id="add-group" class="d-flex flex-column align-items-center justify-content-center mt-4">
+        <div id="add-group" class="d-flex flex-column align-items-center justify-content-center" style="margin-top: 15%;">
             <h2>คุณยังไม่มีกลุ่ม</h2>
+            <% if (user.role !== 'teacher') { %>
             <button type="button" id="showGroupBtn" class="btn btn-secondary" style="width: 50%;background-color: white; color: gray;">
                 <h3 class="mt-2"><i class="fas fa-plus"></i> เพิ่มกลุ่ม</h3>
             </button>
+            <% } %>
         </div>
 
         <div id="grouping" class="d-none flex-column align-items-center justify-content-center mt-4">

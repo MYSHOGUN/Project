@@ -93,10 +93,10 @@ async function saveUsersFromExcel(dataArray) {
             name: PENDING_NAME,             // ⬅️ Placeholder
             lastname: PENDING_LASTNAME,     // ⬅️ Placeholder
             // ใช้ค่า Default สำหรับ non-required fields
-            role: 'user', 
+            role: row.role || 'user', 
             phone: null, 
             email: null,
-            group: row.group || null // สามารถนำเข้า group ได้ถ้ามีใน Excel
+            group: null // สามารถนำเข้า group ได้ถ้ามีใน Excel
         };
         
         // 5. ใช้ bulkWrite เพื่อเพิ่มผู้ใช้ใหม่ (ถ้า username ไม่ซ้ำ)
@@ -163,7 +163,7 @@ function renderWithLayout(res, view, data = {}, reqPath = "",req) {
     (err, str) => {
       if (err) {
         res.status(500).send(err.message);
-      } else if (view === "login") {
+      } else if (view === "login" || view === "register") {
         return res.render(view, extendedData);
       } else {
         res.render("layout", { ...extendedData, body: str});
@@ -193,6 +193,12 @@ function requireRole(role) {
 function checkFailModal(req, res, next) {
   res.locals.failModal = req.session.failModal || null; // ส่งค่าไป render
   req.session.failModal = null; // ล้างค่าทันทีหลังใช้งาน
+  next();
+}
+
+function checkSuccessModal(req, res, next) {
+  res.locals.successModal = req.session.successModal || null; // ส่งค่าไป render
+  req.session.successModal = null; // ล้างค่าทันทีหลังใช้งาน
   next();
 }
 
@@ -311,13 +317,14 @@ app.get("/file/download/:id", requireLogin, async (req, res) => {
 app.get("/status", requireLogin, (req, res) => {
   renderWithLayout(res, "status", { title: "KMUTNB Project - Status" }, req.path,req);
 });
-app.get("/login", checkFailModal, (req, res) => {
+app.get("/login", checkFailModal, checkSuccessModal, (req, res) => {
   //console.log("Session failModal:", req.session.failModal);
   const inputUsername = req.session.inputUsername || "";
   req.session.inputUsername = null; // ล้างค่าหลังใช้งาน
   renderWithLayout(res, "login", { 
     title: "KMUTNB Project - Login", 
     failModal: res.locals.failModal,
+    successModal: res.locals.successModal,
     inputUsername  // ส่งค่าไป EJS
   }, req.path, req);
   
@@ -415,7 +422,7 @@ app.get('/logout', (req, res) => {
 });
 
 app.post("/login" , async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password ,rememberMe} = req.body;
   const user = await User.findOne({ username });
 
   //console.log("✅ User from DB:", user); // <-- ใส่ตรงนี้
@@ -935,6 +942,9 @@ app.post("/profile/update", requireLogin, async (req, res) => {
 });
 
 app.get("/addExcel",requireLogin,(req, res) => {
+  if(req.session.user.role !== "admin"){
+    return res.redirect("/");
+  }
   renderWithLayout(res, "addExcel", { title: "KMUTNB Project - Add Excel" }, req.path,req);
 });
 
@@ -966,6 +976,34 @@ app.post('/api/excel-upload', requireLogin, upload.single('file'), async (req, r
             details: error.message 
         });
     }
+});
+
+app.get("/register", checkFailModal ,async (req, res) => {
+  renderWithLayout(res, "register", { title: "KMUTNB Project - Register" ,failModal: res.locals.failModal}, req.path,req);
+});
+
+app.post("/register", async (req, res) => {
+  const { username, password, name, lastname, email, phone ,passwordConfirm} = req.body;
+  if (password !== passwordConfirm) {
+    req.session.failModal = "mismatch";
+    return req.session.save(() => res.redirect("/register"));
+  }
+  const existingUser = await User.findOne({ username : username });
+  if (existingUser && existingUser.email === null && existingUser.phone === null && existingUser.name === "Pending" && existingUser.lastname === "Registration") {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await User.findOneAndUpdate(
+      { username: username },
+      { password: hashedPassword, name, lastname, email, phone }
+    );
+    req.session.successModal = "success";
+    return req.session.save(() => res.redirect("/login"));
+  }else if (!existingUser) {
+    req.session.failModal = "exists"; // ตั้งค่าเพื่อแสดง modal
+    return req.session.save(() => res.redirect("/register"));
+  }else{
+    req.session.failModal = "complete"; // ตั้งค่าเพื่อแสดง modal
+    return req.session.save(() => res.redirect("/register"));
+  }
 });
 
 // Socket.IO

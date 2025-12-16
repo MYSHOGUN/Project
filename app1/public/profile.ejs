@@ -19,7 +19,7 @@
         <div class="align-items-center justify-content-center content-profile mt-4">
             <h2>ชื่อ: <%= user.name %> <%= user.lastname %></h2><br>
             <h2>อีเมล: <%= user.email || '-' %></h2><br>
-            <h2>รหัสนักศึกษา: <%= (user.username).slice(1) %></h2><br>
+            <h2>รหัสนักศึกษา: <%= (user.username) %></h2><br>
             <h2>เบอร์โทรศัพท์: <%= user.phone || '-' %></h2><br>
         </div>
     </div>

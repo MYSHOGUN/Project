@@ -34,6 +34,7 @@
 
             <div class="col-xl-10 col-lg-12 col-md-9" style="width: 90%;">
 
+                <div class="card o-hidden border-0 shadow-lg my-5">
                     <div class="card-header">
                         <div class="row-12">
                             <i class="fas fa-sign-in-alt"></i>
@@ -48,7 +49,7 @@
                                         <div class="form-group">
                                             <input type="username" name="username" class="form-control form-control-user"
                                                 id="exampleInputEmail" aria-describedby="emailHelp"
-                                                placeholder="Username" value="<%= inputUsername %>">
+                                                placeholder="Username">
                                         </div>
                                         <div class="form-group">
                                             <input type="password" name="password" class="form-control form-control-user"
@@ -56,8 +57,8 @@
                                         </div>
                                         <div class="form-group">
                                             <div class="custom-control custom-checkbox small">
-                                                <input type="checkbox" class="custom-control-input" id="customCheck">
-                                                <label class="custom-control-label" for="customCheck" name="rememberMe">Remember
+                                                <input type="checkbox" class="custom-control-input" id="customCheck" name="rememberMe">
+                                                <label class="custom-control-label" for="customCheck">Remember
                                                     Me</label>
                                             </div>
                                         </div>
@@ -75,7 +76,7 @@
                                     <hr>
 
                                     <div class="text-center text-success">
-                                        <a class="small" href="https://account.kmutnb.ac.th/web/student/activation">เปิดบัญชี ICIT ACCOUNT</a>
+                                        <a class="small" href="/register">สมัครสมาชิก</a>
                                     </div>
                                     <div class="text-center">
                                         <a class="small" href="https://account.kmutnb.ac.th/web/recovery/index">ลืมรหัสผ่าน ICIT ACCOUNT</a>
@@ -118,6 +119,23 @@
             </div>
         </div>
 
+        <div class="modal fade" id="registerModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content border-left-success">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">ลงทะเบียนสำเร็จ</h5>
+                        <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">×</span>
+                        </button>
+                    </div>
+                    <% if (successModal === "success") { %>
+                        <div class="modal-body">ลงทะเบียนสำเร็จ</div>
+                    <% }%>
+                </div>
+            </div>
+        </div>
+
 
     <!-- Bootstrap core JavaScript-->
     <script src="vendor/jquery/jquery.min.js"></script>
@@ -135,6 +153,14 @@
             console.log(failModal);
             $(document).ready(function() {
             $('#loginFailModal').modal('show');
+            });
+        }
+
+        const success = "<%= successModal %>";
+        if (success) {
+            console.log(success);
+            $(document).ready(function() {
+            $('#registerModal').modal('show');
             });
         }
     </script>
