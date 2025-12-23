@@ -448,7 +448,8 @@ app.post("/login" , async (req, res) => {
     role: user.role,
     email: user.email,
     phone: user.phone,
-    group: user.group
+    group: user.group,
+    picture: user.picture.id || null
   };
 
   if (rememberMe === "on") {
@@ -750,7 +751,7 @@ app.post("/api/news", requireLogin, upload.single("file"), async (req, res) => {
     }
 });
 
-app.get("/news/image/:id", async (req, res) => {
+app.get("/image/:id", async (req, res) => {
     try {
         const { id } = req.params;
         // ใช้ mongoose.Types.ObjectId.isValid เพื่อตรวจสอบ ID
@@ -982,27 +983,65 @@ app.get("/register", checkFailModal ,async (req, res) => {
   renderWithLayout(res, "register", { title: "KMUTNB Project - Register" ,failModal: res.locals.failModal}, req.path,req);
 });
 
-app.post("/register", async (req, res) => {
-  const { username, password, name, lastname, email, phone ,passwordConfirm} = req.body;
-  if (password !== passwordConfirm) {
-    req.session.failModal = "mismatch";
-    return req.session.save(() => res.redirect("/register"));
-  }
-  const existingUser = await User.findOne({ username : username });
-  if (existingUser && existingUser.email === null && existingUser.phone === null && existingUser.name === "Pending" && existingUser.lastname === "Registration") {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await User.findOneAndUpdate(
-      { username: username },
-      { password: hashedPassword, name, lastname, email, phone }
-    );
-    req.session.successModal = "success";
-    return req.session.save(() => res.redirect("/login"));
-  }else if (!existingUser) {
-    req.session.failModal = "exists"; // ตั้งค่าเพื่อแสดง modal
-    return req.session.save(() => res.redirect("/register"));
-  }else{
-    req.session.failModal = "complete"; // ตั้งค่าเพื่อแสดง modal
-    return req.session.save(() => res.redirect("/register"));
+app.post("/register", upload.single("profileImage"), async (req, res) => {
+  console.log("Body data:", req.body); // ต้องมีข้อมูลชื่อ นามสกุล ฯลฯ
+  console.log("File data:", req.file);
+  try {
+    const { username, password, name, lastname, email, phone ,passwordConfirm} = req.body;
+
+    if (username === "" || password === "" || name === "" || lastname === "" || email === "" || phone === "") {
+      req.session.failModal = "incomplete";
+      return req.session.save(() => res.redirect("/register"));
+    }
+
+    if (password !== passwordConfirm) {
+      req.session.failModal = "mismatch";
+      return req.session.save(() => res.redirect("/register"));
+    }
+
+
+    const existingUser = await User.findOne({ username : username });
+
+    let img = {};
+
+    if (req.file) {
+      const uploadStream = bucket.openUploadStream(req.file.originalname, { 
+        contentType: req.file.mimetype,
+      });
+
+      img = {
+        filename: req.file.originalname,
+        contentType: req.file.mimetype,
+        id: uploadStream.id
+      };
+      
+      await new Promise((resolve, reject) => {
+        uploadStream.once('finish', resolve);
+        uploadStream.once('error', reject);
+        uploadStream.end(req.file.buffer); 
+      });
+
+    }
+
+    
+    if (existingUser && existingUser.email === null && existingUser.phone === null && existingUser.name === "Pending" && existingUser.lastname === "Registration") {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await User.findOneAndUpdate(
+        { username: username },
+        { password: hashedPassword, name, lastname, email, phone ,picture: req.file ? img : null}
+      );
+      req.session.successModal = "success";
+      return req.session.save(() => res.redirect("/login"));
+    }else if (!existingUser) {
+      req.session.failModal = "exists"; // ตั้งค่าเพื่อแสดง modal
+      return req.session.save(() => res.redirect("/register"));
+    }else{
+      req.session.failModal = "complete"; // ตั้งค่าเพื่อแสดง modal
+      return req.session.save(() => res.redirect("/register"));
+    }
+  } catch (err) {
+    console.error("❌ Registration error:", err);
+    res.status(500).send("เกิดข้อผิดพลาดในการลงทะเบียน");
   }
 });
 

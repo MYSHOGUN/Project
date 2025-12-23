@@ -10,13 +10,14 @@
             <div class="sidebar-brand-text mx-3">KMUTNB Project</div>
         </a>
 
-        <hr class="sidebar-divider my-0">
+        <!--<hr class="sidebar-divider my-0">
 
-        <li class="nav-item d-none <%= currentPath === '/chat' ? 'active' : '' %>">
+        <li class="nav-item <%= currentPath === '/chat' ? 'active' : '' %>">
             <a class="nav-link" href="/chat" aria-disabled="true">
                 <i class="fas fa-comments"></i>
                 <span>แชท</span></a>
-        </li>
+        </li>-->
+        
         <% if (typeof user !== 'undefined') { %>
         <!-- Divider -->
             <hr class="sidebar-divider my-0">
@@ -27,11 +28,21 @@
                     <span>กลุ่มโปรเจค</span></a>
             </li>
         <% } %>
-        <!-- Divider -->
-        <hr class="sidebar-divider my-0">
 
-        <!-- Nav Item - Dashboard -->
-        <li class="d-none nav-item <%= currentPath.startsWith('/upload') || currentPath === '/file' ? 'active' : '' %>">
+        <% if (typeof user !== 'undefined' && user.role == 'admin') { %>
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/addExcel' ? 'active' : '' %>">
+                <a class="nav-link" href="/addExcel">
+                    <i class="fas fa-users"></i>
+                    <span>เพิ่มข้อมูล Excel</span></a>
+            </li>
+        <% } %>
+        
+        <!-- Divider -->
+        <!--<hr class="sidebar-divider my-0">
+
+        <li class="nav-item <%= currentPath.startsWith('/upload') || currentPath === '/file' ? 'active' : '' %>">
             <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseFile"
                 aria-expanded="true" aria-controls="collapseFile">
                 <i class="fas fa-regular fa-file"></i>
@@ -43,7 +54,7 @@
                     <a class="collapse-item" href="/upload">ไฟล์ที่ต้องการอัปโหลด</a>
                 </div>
             </div>
-        </li>
+        </li>-->
 
         <!-- Divider -->
         <hr class="sidebar-divider my-0">
@@ -62,16 +73,6 @@
                 <i class="fas fa-project-diagram"></i>
                 <span>ผังการดำเนินงาน</span></a>
         </li>
-        
-        <% if (typeof user !== 'undefined' && user.role == 'admin') { %>
-            <hr class="sidebar-divider my-0">
-
-            <li class="nav-item <%= currentPath === '/addExcel' ? 'active' : '' %>">
-                <a class="nav-link" href="/addExcel">
-                    <i class="fas fa-users"></i>
-                    <span>เพิ่มข้อมูล Excel</span></a>
-            </li>
-        <% } %>
 
         <!-- Divider -->
         <hr class="sidebar-divider d-none d-md-block">

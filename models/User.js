@@ -8,7 +8,12 @@ const userSchema = new mongoose.Schema({
   role: { type: String, default: "user" },
   phone: { type: String, default: null },
   email:{ type: String, default: null },
-  group: { type: String, default: null }
+  group: { type: String, default: null },
+  picture: {
+          filename: String,
+          contentType: String,
+          id: mongoose.Schema.Types.ObjectId
+      }
 });
 
 module.exports = mongoose.model("User", userSchema);
