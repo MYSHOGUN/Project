@@ -1,4 +1,7 @@
 <!-- Topbar -->
+ <% if (typeof user !== "undefined" && user) { %>
+    <div id="socket-bridge" data-username="<%= user.username %>" style="display: none;"></div>
+<% } %>
 <nav class="navbar navbar-expand navbar-light bg-white topbar static-top shadow">
 
     <!-- Sidebar Toggle (Topbar) -->
@@ -103,63 +106,17 @@
             <a class="nav-link dropdown-toggle" href="#" id="messagesDropdown" role="button"
                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                 <i class="fas fa-envelope fa-fw"></i>
-                <!-- Counter - Messages -->
-                <span class="badge badge-danger badge-counter">7</span>
+                <span id="noti-badge" class="badge badge-danger badge-counter" style="display: none;">0</span>
             </a>
-            <!-- Dropdown - Messages -->
             <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in"
                 aria-labelledby="messagesDropdown">
                 <h6 class="dropdown-header">
                     Message Center
                 </h6>
-                <a class="dropdown-item d-flex align-items-center" href="#">
-                    <div class="dropdown-list-image mr-3">
-                        <img class="rounded-circle" src="/img/undraw_profile_1.svg"
-                            alt="...">
-                        <div class="status-indicator bg-success"></div>
+                
+                <div id="noti-container">
                     </div>
-                    <div class="font-weight-bold">
-                        <div class="text-truncate">Hi there! I am wondering if you can help me with a
-                            problem I've been having.</div>
-                        <div class="small text-gray-500">Emily Fowler · 58m</div>
-                    </div>
-                </a>
-                <a class="dropdown-item d-flex align-items-center" href="#">
-                    <div class="dropdown-list-image mr-3">
-                        <img class="rounded-circle" src="/img/undraw_profile_2.svg"
-                            alt="...">
-                        <div class="status-indicator"></div>
-                    </div>
-                    <div>
-                        <div class="text-truncate">I have the photos that you ordered last month, how
-                            would you like them sent to you?</div>
-                        <div class="small text-gray-500">Jae Chun · 1d</div>
-                    </div>
-                </a>
-                <a class="dropdown-item d-flex align-items-center" href="#">
-                    <div class="dropdown-list-image mr-3">
-                        <img class="rounded-circle" src="/img/undraw_profile_3.svg"
-                            alt="...">
-                        <div class="status-indicator bg-warning"></div>
-                    </div>
-                    <div>
-                        <div class="text-truncate">Last month's report looks great, I am very happy with
-                            the progress so far, keep up the good work!</div>
-                        <div class="small text-gray-500">Morgan Alvarez · 2d</div>
-                    </div>
-                </a>
-                <a class="dropdown-item d-flex align-items-center" href="#">
-                    <div class="dropdown-list-image mr-3">
-                        <img class="rounded-circle" src="/img/undraw_profile.svg"
-                            alt="...">
-                        <div class="status-indicator bg-success"></div>
-                    </div>
-                    <div>
-                        <div class="text-truncate">Am I a good boy? The reason I ask is because someone
-                            told me that people say this to all dogs, even if they aren't good...</div>
-                        <div class="small text-gray-500">Chicken the Dog · 2w</div>
-                    </div>
-                </a>
+
                 <a class="dropdown-item text-center small text-gray-500" href="#">Read More Messages</a>
             </div>
         </li>
@@ -215,6 +172,63 @@
         </li>
 
     </ul>
-
 </nav>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // 1. ไปหาตัวเก็บค่าที่เราฝากไว้ใน HTML
+        const bridge = document.getElementById('socket-bridge');
+        
+        // ถ้าไม่มีตัวเก็บค่า (แปลว่าไม่ได้ Login) ก็ไม่ต้องรันโค้ดข้างล่าง
+        if (!bridge) return;
+
+        // 2. ดึง username ออกมา
+        const currentUsername = bridge.getAttribute('data-username');
+        
+        // 3. เริ่มรันระบบ Socket
+        const socket = io({ query: { username: currentUsername } });
+        const notiBadge = document.getElementById('noti-badge');
+        const notiContainer = document.getElementById('noti-container');
+
+        function getNotiItemHTML(data) {
+            const content = data.messageText || data.text;
+            const sender = data.senderName;
+            const link = `/chat?groupId=${data.groupId}`;
+
+            return `
+                <a class="dropdown-item d-flex align-items-center" href="${link}">
+                    <div class="dropdown-list-image mr-3">
+                        <img class="rounded-circle" src="/img/undraw_profile.svg" alt="...">
+                        <div class="status-indicator bg-success"></div>
+                    </div>
+                    <div class="font-weight-bold">
+                        <div class="text-truncate">${content}</div>
+                        <div class="small text-gray-500">${sender} · เมื่อสักครู่</div>
+                    </div>
+                </a>`;
+        }
+
+        // --- โหลดข้อมูลเก่าจาก DB ---
+        fetch('/api/notifications/unread')
+            .then(res => res.json())
+            .then(notifications => {
+                if (notifications && notifications.length > 0) {
+                    notiBadge.textContent = notifications.length;
+                    notiBadge.style.display = 'block';
+                    notifications.forEach(noti => {
+                        notiContainer.insertAdjacentHTML('beforeend', getNotiItemHTML(noti));
+                    });
+                }
+            })
+            .catch(err => console.log("ยังไม่มีข้อมูลแจ้งเตือนใหม่"));
+
+        // --- รับข้อมูลสดๆ ---
+        socket.on("new_notification", function(data) {
+            let currentCount = parseInt(notiBadge.textContent) || 0;
+            notiBadge.textContent = currentCount + 1;
+            notiBadge.style.display = 'block';
+            notiContainer.insertAdjacentHTML('afterbegin', getNotiItemHTML(data));
+        });
+    });
+</script>
 <!-- End of Topbar -->

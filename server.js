@@ -4,6 +4,8 @@ const Group = require("./models/Group"); // ✅ import group model
 
 const News = require('./models/News'); // ✅ import news model
 
+const Notification = require("./models/Notification");
+
 const userSockets = new Map();
 const mongoose = require("mongoose");
 
@@ -234,6 +236,8 @@ app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (re
   try {
     const messages = [];
 
+    const groupId = req.params.groupId;
+
     // ถ้ามีข้อความ
     if(req.body.text && req.body.text.trim() !== ""){
       const textMessage = new Message({
@@ -248,6 +252,7 @@ app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (re
       messages.push(textMessage);
 
       io.to(req.params.groupId).emit("group message", textMessage);
+      await sendGroupNotification(groupId, req.session.user.username, req.session.user.name, req.body.text.trim());
     }
 
     // ถ้ามีไฟล์
@@ -282,6 +287,7 @@ app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (re
         await fileMessage.save();
         messages.push(fileMessage);
         io.to(req.params.groupId).emit("group message", fileMessage);
+        await sendGroupNotification(groupId, req.session.user.username, req.session.user.name, `ส่งไฟล์: ${file.originalname}`);
       }
     }
 
@@ -291,6 +297,44 @@ app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (re
       res.status(500).json({ error: "Upload error" });
     }
   });
+
+  async function sendGroupNotification(groupId, senderUsername, sender, messageText) {
+    try {
+        const groupData = await Group.findById(groupId);
+        if (!groupData) return;
+
+        const members = [groupData.member1, groupData.member2, groupData.advisor];
+        const notificationsToSave = [];
+
+        members.forEach((memberUsername) => {
+            if (memberUsername && memberUsername !== senderUsername) {
+                // 1. ส่ง Socket Real-time
+                io.to(memberUsername).emit("new_notification", {
+                    senderName: sender,
+                    text: messageText,
+                    groupId: groupId
+                });
+
+                // 2. เตรียมข้อมูลบันทึกลง DB (ให้ตรงกับ Schema ล่าสุด)
+                notificationsToSave.push({
+                    recipient: memberUsername,  // ✅ ตรงกับ Schema
+                    senderUsername: senderUsername, 
+                    senderName: sender,         // ✅ ตรงกับ Schema
+                    type: 'new_message',        // ✅ ตรงกับ Enum ใน Schema
+                    group: groupId,             // ✅ ตรงกับ Schema
+                    text: messageText,          // ✅ ตรงกับ Schema
+                    isRead: false
+                });
+            }
+        });
+
+        if (notificationsToSave.length > 0) {
+            await Notification.insertMany(notificationsToSave);
+        }
+    } catch (err) {
+        console.error("❌ Notification Error:", err);
+    }
+}
 
 
 app.get("/file/download/:id", requireLogin, async (req, res) => {
@@ -1045,40 +1089,109 @@ app.post("/register", upload.single("profileImage"), async (req, res) => {
   }
 });
 
+app.get("/api/notifications/unread", requireLogin, async (req, res) => {
+    try {
+        const notifications = await Notification.find({
+            recipient: req.session.user.username, // ✅ เปลี่ยนเป็น recipient
+            isRead: false
+        }).sort({ createdAt: -1 }).limit(5);
+        
+        res.json(notifications);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to load notifications" });
+    }
+});
+
+app.post("/api/notifications/mark-read/:groupId", requireLogin, async (req, res) => {
+    try {
+        await Notification.updateMany(
+            { 
+                recipient: req.session.user.username, // ✅ เปลี่ยนเป็น recipient
+                group: req.params.groupId,            // ✅ เปลี่ยนเป็น group
+                isRead: false 
+            },
+            { $set: { isRead: true } }
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to update status" });
+    }
+});
+
 // Socket.IO
 io.on("connection", (socket) => {
+  const username = socket.handshake.query.username;
+
+  if (username) {
+      socket.username = username;
+      socket.join(username); // เข้าห้องส่วนตัวเพื่อรับ Notification
+      console.log(`🔗 User ${username} connected and joined private room.`);
+  }
   
-
   // รับข้อความใหม่
-  socket.on("register", (username) => {
-    socket.username = username;
-    userSockets.set(username, socket.id);
-    console.log("🔗 Registered user:", username);
-  });
-
   socket.on("join group", (groupId) => {
-    socket.join(groupId);
-    console.log(`👥 User ${socket.id} joined group ${groupId}`);
+      socket.join(groupId);
+      console.log(`👥 User ${socket.username} joined group: ${groupId}`);
   });
 
   socket.on("group message", async (msg) => {
-    console.log("📨 Group message:", msg);
-    try {
-      const message = new Message({
-        senderUsername: msg.senderUsername,
-        senderName: msg.senderName,
-        groupId: msg.groupId,
-        text: msg.text,
-        timestamp: new Date()
-      });
-      await message.save();
+    console.log("Check msg data:", msg);
+        try {
+            // ก. บันทึก Message ลง DB
+            const message = new Message({
+                senderUsername: msg.senderUsername,
+                senderName: msg.senderName,
+                groupId: msg.groupId,
+                text: msg.text,
+                timestamp: new Date()
+            });
+            await message.save();
 
-      // broadcast ให้ทุกคนในห้อง groupId
-      io.to(msg.groupId).emit("group message", msg);
+            // ข. ส่งข้อความให้คนที่อยู่ใน "หน้าแชทกลุ่ม" นั้น (Real-time Chat)
+            io.to(msg.groupId).emit("group message", msg);
 
-    } catch (err) {
-      console.error("❌ Error saving message:", err);
-    }
+            // ค. จัดการ Notification (สำหรับสมาชิกคนอื่นในกลุ่ม)
+            const group = await Group.findById(msg.groupId);
+            if (group) {
+                // ดึงรายชื่อจากฟิลด์ที่คุณมีจริงใน Model
+                const members = [group.member1, group.member2, group.advisor];
+                const notificationsToSave = [];
+
+                members.forEach((memberUsername) => {
+                    // ส่งหาทุกคน ยกเว้นคนส่ง และต้องมีชื่อ username นั้นจริงๆ
+                    if (memberUsername && memberUsername !== msg.senderUsername) {
+                        
+                        // ส่ง Socket Real-time เข้าห้องส่วนตัว (Private Room) ของสมาชิก
+                        io.to(memberUsername).emit("new_notification", {
+                            senderName: msg.senderName,
+                            text: msg.text,
+                            groupId: msg.groupId
+                        });
+
+                        // เตรียมข้อมูลบันทึกลง DB (กรณีสร้าง Model Notification ไว้แล้ว)
+                        
+                        notificationsToSave.push({
+                            receiverUsername: memberUsername,
+                            senderName: msg.senderName,
+                            messageText: msg.text,
+                            groupId: msg.groupId,
+                            isRead: false
+                        });
+                        
+                    }
+                });
+
+                // บันทึกประวัติแจ้งเตือนทั้งหมดลง DB ในครั้งเดียว
+                
+                if (notificationsToSave.length > 0) {
+                    await Notification.insertMany(notificationsToSave);
+                }
+                
+            }
+
+        } catch (err) {
+            console.error("❌ Error processing message:", err);
+        }
   });
 
   socket.on("disconnect", () => {

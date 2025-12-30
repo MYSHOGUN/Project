@@ -1,44 +1,47 @@
-<style>
-    .content-profile {
-        width: 100%;
-        max-width: 600px;
-        text-align: left;
-        margin-left: auto;
-        margin-right: auto;
-        background-color: rgb(200, 200, 200);
-        padding: 20px;
-        border-radius: 10px;
-    }
-</style>
+
 <div class="container-fluid" style="min-height: 84vh; height: 100%;">
     <div id="profile">
         <div class="d-flex align-items-center justify-content-between mt-4">
             <h1>โปรไฟล์</h1>
             <button type="button" id="updateProfileBtn" class="btn btn-primary"><i class="fas fa-wrench"></i> แก้ไขโปรไฟล์</button>
         </div>
-        <div class="align-items-center justify-content-center content-profile mt-4">
-            <h2>ชื่อ: <%= user.name %> <%= user.lastname %></h2><br>
-            <h2>อีเมล: <%= user.email || '-' %></h2><br>
-            <h2>รหัสนักศึกษา: <%= (user.username) %></h2><br>
-            <h2>เบอร์โทรศัพท์: <%= user.phone || '-' %></h2><br>
+        <div class="d-flex align-items-center justify-content-center  mt-4">
+            <div class="card" style="width: 600px;">
+                <div class="card-header" style="background-color: white;font-weight: bold;">
+                    ข้อมูลโปรไฟล์
+                </div>
+                <div class="card-body" style="font-size: large;">
+                    <p>ชื่อ: <%= user.name %> <%= user.lastname %></p>
+                    <p>อีเมล: <%= user.email || '-' %></p>
+                    <p>รหัสนักศึกษา: <%= (user.username) %></p>
+                    <p>เบอร์โทรศัพท์: <%= user.phone || '-' %></p>
+                </div>
+            </div>
         </div>
     </div>
     <div id="updateProfile" class="d-none">
         <div class="d-flex align-items-center justify-content-between mt-4">
             <h1>แก้ไขโปรไฟล์</h1>
         </div>
-        <div class="align-items-center justify-content-center content-profile mt-4">
-            <h2>ชื่อ: </h2>
-            <input class="form-control mb-3" id="updateName" value="<%= user.name %> <%= user.lastname %>" style="width: 100%; display: inline-block;" disabled>
-            <h2>อีเมล: </h2>
-            <input class="form-control mb-3" id="updateEmail" value="<%= user.email %>" style="width: 100%; display: inline-block;">
-            <h2>รหัสนักศึกษา: </h2>
-            <input class="form-control mb-3" id="updateId" value="<%= (user.username).slice(1) %>" style="width: 100%; display: inline-block;" disabled>
-            <h2>เบอร์โทรศัพท์: </h2>
-            <input class="form-control mb-4" id="updatePhone" value="<%= user.phone %>" style="width: 100%; display: inline-block;">
-            <div class="d-flex justify-content-center">
-                <button type="button" id="saveProfileBtn" class="btn btn-success"><i class="fas fa-save"></i> บันทึก</button>
-                <button type="button" id="cancelProfileBtn" class="btn btn-danger ml-2"><i class="fas fa-times"></i> ยกเลิก</button>
+        <div class="d-flex align-items-center justify-content-center  mt-4">
+            <div class="card" style="width: 600px;">
+                <div class="card-header" style="background-color: white;font-weight: bold;">
+                    แก้ไขโปรไฟล์
+                </div>
+                <div class="card-body" style="font-size: large;">
+                    <p>ชื่อ: </p>
+                    <input class="form-control mb-3" id="updateName" value="<%= user.name %> <%= user.lastname %>" style="width: 100%; display: inline-block;" disabled>
+                    <p>อีเมล: </p>
+                    <input class="form-control mb-3" id="updateEmail" value="<%= user.email %>" style="width: 100%; display: inline-block;">
+                    <p>รหัสนักศึกษา: </p>
+                    <input class="form-control mb-3" id="updateId" value="<%= user.username %>" style="width: 100%; display: inline-block;" disabled>
+                    <p>เบอร์โทรศัพท์: </p>
+                    <input class="form-control mb-4" id="updatePhone" value="<%= user.phone %>" style="width: 100%; display: inline-block;">
+                    <div class="d-flex justify-content-center">
+                        <button type="button" id="saveProfileBtn" class="btn btn-success"><i class="fas fa-save"></i> บันทึก</button>
+                        <button type="button" id="cancelProfileBtn" class="btn btn-danger ml-2"><i class="fas fa-times"></i> ยกเลิก</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
