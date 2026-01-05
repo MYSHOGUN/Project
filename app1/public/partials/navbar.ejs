@@ -176,59 +176,118 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // 1. ไปหาตัวเก็บค่าที่เราฝากไว้ใน HTML
         const bridge = document.getElementById('socket-bridge');
-        
-        // ถ้าไม่มีตัวเก็บค่า (แปลว่าไม่ได้ Login) ก็ไม่ต้องรันโค้ดข้างล่าง
         if (!bridge) return;
 
-        // 2. ดึง username ออกมา
         const currentUsername = bridge.getAttribute('data-username');
-        
-        // 3. เริ่มรันระบบ Socket
         const socket = io({ query: { username: currentUsername } });
         const notiBadge = document.getElementById('noti-badge');
         const notiContainer = document.getElementById('noti-container');
 
+        // 1. ฟังก์ชันสร้าง HTML (เขียนแค่ครั้งเดียว)
         function getNotiItemHTML(data) {
-            const content = data.messageText || data.text;
-            const sender = data.senderName;
-            const link = `/chat?groupId=${data.groupId}`;
+            const content = data.text || data.messageText;
+            const sender = data.senderName || "ระบบ";
+            const isRead = data.isRead;
+            
+            // ตรวจสอบรูปภาพ
+            const profileImg = data.senderPic ? `/image/${data.senderPic}` : '/img/undraw_profile.svg';
+            const unreadClass = isRead ? "" : "font-weight-bold bg-light";
+            // รองรับทั้ง group (จาก populate) และ groupId (จาก socket)
+            const gId = (data.group && data.group._id) ? data.group._id : (data.group || data.groupId);
+            const link = `/group?open=${gId}`;
 
             return `
-                <a class="dropdown-item d-flex align-items-center" href="${link}">
+                <a class="dropdown-item d-flex align-items-center ${unreadClass}" 
+                   href="${link}" 
+                   onclick="handleNotiClick(event, '${data._id}', ${isRead})">
                     <div class="dropdown-list-image mr-3">
-                        <img class="rounded-circle" src="/img/undraw_profile.svg" alt="...">
-                        <div class="status-indicator bg-success"></div>
+                        <img class="rounded-circle" src="${profileImg}" alt="profile" 
+                             style="width:40px; height:40px; object-fit:cover;">
+                        ${!isRead ? '<div class="status-indicator bg-primary"></div>' : ''}
                     </div>
-                    <div class="font-weight-bold">
+                    <div>
                         <div class="text-truncate">${content}</div>
                         <div class="small text-gray-500">${sender} · เมื่อสักครู่</div>
                     </div>
                 </a>`;
         }
 
-        // --- โหลดข้อมูลเก่าจาก DB ---
-        fetch('/api/notifications/unread')
-            .then(res => res.json())
-            .then(notifications => {
-                if (notifications && notifications.length > 0) {
-                    notiBadge.textContent = notifications.length;
-                    notiBadge.style.display = 'block';
-                    notifications.forEach(noti => {
-                        notiContainer.insertAdjacentHTML('beforeend', getNotiItemHTML(noti));
-                    });
-                }
-            })
-            .catch(err => console.log("ยังไม่มีข้อมูลแจ้งเตือนใหม่"));
+        // 2. ฟังก์ชันโหลดข้อมูลจาก Database (ส่วนที่ขาดหายไป)
+        function loadNotifications() {
+            fetch('/api/notifications/unread')
+                .then(res => res.json())
+                .then(notifications => {
+                    // กรองประเภทที่ต้องการแสดง
+                    const filtered = notifications.filter(n => n.type === 'new_message' || n.type === 'group_alert');
+                    
+                    // นับจำนวนที่ยังไม่อ่าน
+                    const unreadCount = filtered.filter(n => !n.isRead).length;
+                    if (unreadCount > 0) {
+                        notiBadge.textContent = unreadCount;
+                        notiBadge.style.display = 'block';
+                    } else {
+                        notiBadge.style.display = 'none';
+                    }
 
-        // --- รับข้อมูลสดๆ ---
+                    // แสดงรายการใน Container
+                    if (filtered.length > 0) {
+                        notiContainer.innerHTML = ''; 
+                        filtered.forEach(noti => {
+                            notiContainer.insertAdjacentHTML('beforeend', getNotiItemHTML(noti));
+                        });
+                    } else {
+                        notiContainer.innerHTML = '<div class="dropdown-item text-center small text-gray-500">ไม่มีการแจ้งเตือน</div>';
+                    }
+                })
+                .catch(err => console.error("Error loading notifications:", err));
+        }
+
+        // เรียกใช้งานทันทีที่โหลดหน้าจอ
+        loadNotifications();
+
+        // 3. รับข้อมูลสดๆ จาก Socket
         socket.on("new_notification", function(data) {
             let currentCount = parseInt(notiBadge.textContent) || 0;
             notiBadge.textContent = currentCount + 1;
             notiBadge.style.display = 'block';
+            
+            data.isRead = false; // ของใหม่ยังไม่ได้อ่าน
+            // ถ้า Container ว่างให้ลบข้อความ "ไม่มีการแจ้งเตือน" ออกก่อน
+            if (notiContainer.innerHTML.includes("ไม่มีการแจ้งเตือน")) notiContainer.innerHTML = '';
+            
             notiContainer.insertAdjacentHTML('afterbegin', getNotiItemHTML(data));
         });
     });
+
+    // 4. ฟังก์ชันจัดการเมื่อคลิก (ไว้นอก DOMContentLoaded เพื่อให้ href เรียกใช้ได้)
+    async function handleNotiClick(event, notiId, isRead) {
+    // 1. ป้องกันไม่ให้เปลี่ยนหน้าทันที
+    event.preventDefault();
+    const targetUrl = event.currentTarget.getAttribute('href');
+
+    if (!isRead) {
+        // 2. ลดตัวเลขบน Badge ทันที (Optimistic UI)
+        const notiBadge = document.getElementById('noti-badge');
+        let currentCount = parseInt(notiBadge.textContent) || 0;
+        
+        if (currentCount > 1) {
+            notiBadge.textContent = currentCount - 1;
+        } else {
+            notiBadge.style.display = 'none';
+            notiBadge.textContent = 0;
+        }
+
+        // 3. แจ้ง Server ว่าอ่านแล้ว
+        try {
+            await fetch(`/api/notifications/mark-read/${notiId}`, { method: 'POST' });
+        } catch (err) {
+            console.error("❌ Error marking as read:", err);
+        }
+    }
+
+    // 4. เปลี่ยนหน้าไปยัง URL เป้าหมายหลังจากจัดการสถานะเสร็จ
+    window.location.href = targetUrl;
+}
 </script>
 <!-- End of Topbar -->

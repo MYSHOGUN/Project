@@ -1,3 +1,23 @@
+<style>
+  .group-item {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-left: 5px solid transparent; /* เตรียมที่ไว้สำหรับแถบสี */
+  }
+
+  /* สไตล์เมื่อเอาเมาส์ไปวาง */
+  .group-item:hover {
+      background-color: #f1f3f5;
+  }
+
+  /* สไตล์สำหรับกลุ่มที่กำลังแชทอยู่ (Active) */
+  .group-item.active-group {
+      background-color: #e8f0fe !important; /* สีฟ้าอ่อน */
+      border-left: 5px solid #00b91f;      /* เพิ่มแถบสีน้ำเงินด้านซ้าย */
+      font-weight: bold;
+  }
+</style>
+
 <div class="container-fluid" style="padding: 0; margin: 0; height: 85vh; line-height: normal;">
     <!-- Page Heading -->
         <div class="row flex-column flex-sm-row" style="height: 100%;">
@@ -18,10 +38,12 @@
           <% }) %>
           
         </ul>
-        <div class="d-flex flex-row" style="margin-bottom: 20px; justify-content: space-evenly;">
+        
+        <div class="<% if(user.role === 'teacher'){ %> d-none <% }else{ %> d-flex <% } %>flex-row" style="margin-bottom: 20px; justify-content: space-evenly;">
           <button id="addMemberBtn" class="btn btn-light" style="width: 45%;">เพิ่มสมาชิก</button>
           <button id="leaveGroupBtn" class="btn btn-danger" style="width: 45%;">ออกจากกลุ่ม</button>
         </div>
+
       </div>
     </div>                     
 
@@ -136,33 +158,42 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function joinGroup(groupId, groupName) {
+  function joinGroup(groupId, groupName, isForce = false) {
+    // ถ้าไม่ใช่การ Force และเป็นกลุ่มเดิม ให้หยุดทำงาน
+    if (!isForce && currentGroupId === groupId && window.innerWidth > 576) return;
+
+    console.log("🚀 กำลังเข้ากลุ่ม:", groupId, "Force:", isForce);
+    
     currentGroupId = groupId;
     chatWithEl.textContent = groupName;
-    messagesContainer.innerHTML = '';
+    messagesContainer.innerHTML = '📂 กำลังโหลดข้อความ...'; // ใส่ Loading ไว้ดูว่าทำงานไหม
     messageInput.disabled = false;
 
-    // join room
+    // ไฮไลท์สีกลุ่ม
+    document.querySelectorAll('.group-item').forEach(item => {
+        item.classList.remove('active-group');
+    });
+    const selectedItem = document.querySelector(`.group-item[data-groupid="${groupId}"]`);
+    if (selectedItem) selectedItem.classList.add('active-group');
+
     socket.emit("join group", groupId);
 
-    // โหลดข้อความเก่า
     fetch(`/group/messages/group/${groupId}`)
       .then(res => res.json())
       .then(data => {
-        console.log("📥 messages from server:", data);
-
+        messagesContainer.innerHTML = ''; // ล้างคำว่ากำลังโหลด
         if (Array.isArray(data.messages)) {
-          data.messages.forEach(msg => {
-            console.log("👉 rendering msg:", msg); // ✅ log ตรงนี้
-            addMessage(msg);
-          });
-          
+          data.messages.forEach(msg => addMessage(msg));
           messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
+      })
+      .catch(err => {
+          console.error("❌ Fetch Error:", err);
+          messagesContainer.innerHTML = 'เกิดข้อผิดพลาดในการโหลดข้อความ';
       });
 
     showChatSection();
-  }
+}
 
   // เลือกกลุ่มเพื่อแชท
   groupList.addEventListener("click", e => {
@@ -232,6 +263,19 @@ document.addEventListener("DOMContentLoaded", () => {
     if(msg.groupId === currentGroupId){
       addMessage(msg);
     }
+
+    const groupItem = document.querySelector(`li[data-groupid="${msg.groupId}"]`);
+    if (groupItem) {
+      // นำกลุ่มนี้ไปต่อท้ายข้างบนสุดของรายการ id="group-list"
+      groupList.prepend(groupItem);
+
+      // เพิ่ม Effect ไฮไลท์สีชั่วคราวเพื่อให้รู้ว่ามีแชทใหม่เข้ากลุ่มนี้
+      groupItem.style.transition = "background-color 0.5s";
+      groupItem.style.backgroundColor = "#e8f0fe"; 
+      setTimeout(() => {
+        groupItem.style.backgroundColor = ""; 
+      }, 2000);
+    }
   });
 
   // ปุ่มย้อนกลับ
@@ -297,15 +341,47 @@ document.addEventListener("DOMContentLoaded", () => {
       }
   }
 
-  if (currentGroupId) {
-    // ถ้ามีกลุ่ม → join และแสดงแชทเลย
-    joinGroup(currentGroupId, currentGroupName);
-    showChatSection();
-  } else {
-    // ถ้าไม่มีกลุ่ม → แสดงรายชื่อกลุ่มหรือปุ่มสร้างกลุ่ม
-    showGroupListSection();
-    messageInput.disabled = true;
-  }
+  function initializeChat() {
+    const params = new URLSearchParams(window.location.search);
+    const openId = params.get('open');
+
+    if (openId) {
+        // กรณี 1: มาจาก Notification
+        const targetItem = document.querySelector(`.group-item[data-groupid="${openId}"]`);
+        if (targetItem) {
+            console.log("✅ เปิดจาก Notification ID:", openId);
+            joinGroup(openId, targetItem.dataset.groupname, true);
+            targetItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            console.warn("⚠️ ไม่พบกลุ่ม ID นี้ในลิสต์ (อาจจะยังโหลดไม่เสร็จ หรือไม่มีสิทธิ์เข้า)");
+            // ถ้าไม่เจอกลุ่มจาก openId ให้ถอยไปเปิดกลุ่มแรกแทน
+            openDefaultGroup();
+        }
+    } else {
+        // กรณี 2: เข้าปกติ
+        openDefaultGroup();
+    }
+}
+
+function openDefaultGroup() {
+    if (currentGroupId) {
+        console.log("✅ เปิดกลุ่มเริ่มต้น:", currentGroupId);
+        joinGroup(currentGroupId, currentGroupName, true);
+    } else {
+        showGroupListSection();
+        messageInput.disabled = true;
+    }
+}
+
+// *** จุดสำคัญ ***
+// รอให้ Socket พร้อมก่อน แล้วค่อยเริ่มทำงาน
+socket.on('connect', () => {
+    console.log("🌐 Socket connected! Initializing chat...");
+    initializeChat();
+});
+
+// กรณี Socket เชื่อมต่อช้าเกินไป ให้รัน initializeChat เผื่อไว้ตอนโหลดเสร็จ 1 วินาที
+setTimeout(initializeChat, 1000);
 
   window.addEventListener('resize', () => {
     if(!currentGroupId){

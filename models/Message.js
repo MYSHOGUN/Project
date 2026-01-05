@@ -18,6 +18,12 @@ const messageSchema = new mongoose.Schema({
     uploadDate: Date,
     fileId: mongoose.Schema.Types.ObjectId // id ของไฟล์ใน GridFS
   },
+
+  senderPic: {
+            filename: String,
+            contentType: String,
+            id: mongoose.Schema.Types.ObjectId
+        },
   timestamp: { type: Date, default: Date.now },
 });
 
