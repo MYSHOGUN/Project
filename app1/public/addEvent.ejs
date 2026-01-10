@@ -1,0 +1,252 @@
+<style>
+        .date-picker-group {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-top: 20px;
+        width: fit-content;
+        }
+        .date-select {
+            padding: 12px 16px;
+            border: 1px solid #2196f3;
+            border-radius: 5px;
+            background-color: white;
+            font-family: 'Sarabun', sans-serif;
+            cursor: pointer;
+            min-width: 100px;
+        }
+        .date-select:focus {
+            outline: none;
+            box-shadow: 0 0 5px rgba(33, 150, 243, 0.5);
+        }   
+        .dropdownSelector { background-color: #2196f3; color: white; border: none; border-radius: 5px; cursor: pointer; width: 500px; padding: 1rem;}
+        .dropdownSelector:hover { background-color: #1976d2; color: white;}
+        .dropdownSelector-menu { width: 500px; }
+        .dropdownSelector-menu.show {
+            position: relative !important; /* เปลี่ยนจากลอยทับเป็นวางบน Layer ปกติ */
+            transform: none !important;    /* ปิดการคำนวณพิกัดลอยของ Bootstrap */
+            float: none;
+            top: 0 !important;             /* รีเซ็ตค่าตำแหน่ง */
+            display: block;                /* มั่นใจว่าแสดงผลในแนวระดับ (Block) */
+        }
+        .dropdownSelector.dropdown-toggle::after {
+            display: none !important;
+        }
+        #eventDescription {
+            width: 500px;
+            height: 300px;
+        }
+</style>
+<div class="container-fluid mt-4" style="height: 100%;">               
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1>จัดตารางกิจกรรม</h1>
+    </div>
+    <div class="d-flex flex-column justify-content-center align-items-center">
+        <div class="dropdown">
+            <button class="btn btn-lg dropdown-toggle dropdownSelector" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                เลือกกิจกรรม
+            </button>
+            <div class="dropdown-menu dropdownSelector-menu" aria-labelledby="dropdownMenuButton">
+                <a class="dropdown-item" href="#" onclick="selectActivity(this)">วันส่งเอกสาร</a>
+                <a class="dropdown-item" href="#" onclick="selectActivity(this)">วันสอบ</a>
+                <a class="dropdown-item" href="#" onclick="selectActivity(this)">อื่นๆ</a>
+            </div>
+        </div>
+        <div class="date-picker-group mt-4">
+            <select id="selectYear" class="date-select" onchange="populateDays('selectDay', 'selectMonth', 'selectYear'); updateSelectedDate();">
+                <option value="">ปี (พ.ศ.)</option>
+            </select>
+            <select id="selectMonth" class="date-select" onchange="populateDays('selectDay', 'selectMonth', 'selectYear'); updateSelectedDate();">
+                <option value="">เดือน</option>
+            </select>
+            <select id="selectDay" class="date-select" onchange="updateSelectedDate()">
+                <option value="">วัน</option>
+            </select>
+        </div>
+
+        <div id="toDate" style="display: none;">
+            <p class="text-center mt-3"> ถึง </p>    
+            <div class="date-picker-group mt-4">
+                <select id="selectYear2" class="date-select" onchange="populateDays('selectDay2', 'selectMonth2', 'selectYear2'); updateSelectedDate();">
+                    <option value="">ปี (พ.ศ.)</option>
+                </select>
+                <select id="selectMonth2" class="date-select" onchange="populateDays('selectDay2', 'selectMonth2', 'selectYear2'); updateSelectedDate();">
+                    <option value="">เดือน</option>
+                </select>
+                <select id="selectDay2" class="date-select" onchange="updateSelectedDate()">
+                    <option value="">วัน</option>
+                </select>
+            </div>  
+        </div>
+        <textarea class="form-control mt-4" id="eventDescription" rows="4" cols="50" placeholder="รายละเอียดกิจกรรม"></textarea>
+        <div>
+            <button class="btn btn-success btn-lg mt-4" id="saveEventBtn">บันทึกกิจกรรม</button>
+            <button class="btn btn-danger btn-lg mt-4" id="cancelEventBtn" onclick="resetForm()">ยกเลิก</button>
+        </div>
+    </div>
+</div>
+<script>
+    let toDate = document.getElementById("toDate");
+    let selectedValue = "";
+
+    const saveEventBtn = document.getElementById("saveEventBtn");
+    const cancelEventBtn = document.getElementById("cancelEventBtn");
+
+    const monthTh = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+
+    function initDatePicker() {
+        // รายชื่อ ID ของทั้ง 2 ชุด
+        const pickerSets = [
+            { year: "selectYear", month: "selectMonth", day: "selectDay" },
+            { year: "selectYear2", month: "selectMonth2", day: "selectDay2" }
+        ];
+
+        const currentYear = new Date().getFullYear();
+
+        pickerSets.forEach(set => {
+            const sMonth = document.getElementById(set.month);
+            const sYear = document.getElementById(set.year);
+            
+            if (!sMonth || !sYear) return;
+
+            // 1. ใส่ชื่อเดือน
+            monthTh.forEach((m, index) => {
+                sMonth.add(new Option(m, index + 1));
+            });
+
+            // 2. ใส่ปี (พ.ศ.)
+            for (let i = currentYear + 5; i >= currentYear - 10; i--) {
+                sYear.add(new Option(i + 543, i));
+            }
+
+            // สั่งสร้างวันที่เบื้องต้น
+            populateDays(set.day, set.month, set.year);
+        });
+    }
+
+    // ปรับให้รับ ID เพื่อความยืดหยุ่น
+    function populateDays(dayId, monthId, yearId) {
+        const sDay = document.getElementById(dayId);
+        const sMonthValue = document.getElementById(monthId).value;
+        const sYearValue = document.getElementById(yearId).value;
+        
+        const previousSelectedDay = sDay.value;
+        sDay.innerHTML = '<option value="">วัน</option>';
+
+        if (sMonthValue && sYearValue) {
+            const daysInMonth = new Date(sYearValue, sMonthValue, 0).getDate();
+            for (let d = 1; d <= daysInMonth; d++) {
+                sDay.add(new Option(d, d));
+            }
+            if (previousSelectedDay <= daysInMonth) {
+                sDay.value = previousSelectedDay;
+            }
+        }
+    }
+
+    function selectActivity(element) {
+        selectedValue = element.innerText;
+        document.getElementById("dropdownMenuButton").innerText = selectedValue;
+
+        if(selectedValue === "วันสอบ") {
+            toDate.style.display = "block";
+        } else {
+            toDate.style.display = "none";
+        }
+        updateSelectedDate();
+    }
+
+    function updateSelectedDate() {
+        // คุณสามารถเพิ่ม Logic การรวมวันที่เริ่มต้น-สิ้นสุดเพื่อแสดงผลที่นี่ได้
+        const d = document.getElementById("selectDay").value;
+        const m = document.getElementById("selectMonth").value;
+        const y = document.getElementById("selectYear").value;
+
+        if (d && m && y) {
+            if (typeof currentDate !== 'undefined') {
+                currentDate = new Date(y, m - 1, d);
+                if (typeof renderCalendar === 'function') {
+                    renderCalendar();
+                }
+            }
+        }
+    }
+
+    function resetForm() {
+        // รีเซ็ตค่าทั้งหมดในฟอร์ม
+        document.getElementById("dropdownMenuButton").innerText = "เลือกกิจกรรม";
+        selectedValue = "";
+        toDate.style.display = "none";
+
+        // รีเซ็ตตัวเลือกวันที่
+        ['selectDay', 'selectMonth', 'selectYear', 'selectDay2', 'selectMonth2', 'selectYear2'].forEach(id => {
+            const selectElement = document.getElementById(id);
+            if (selectElement) {
+                selectElement.selectedIndex = 0;
+            }
+        });
+
+        // รีเซ็ตรายละเอียดกิจกรรม
+        document.getElementById("eventDescription").value = "";
+    }
+
+    saveEventBtn.addEventListener("click", () => {
+        const eventType = selectedValue;
+        const day = document.getElementById("selectDay").value;
+        const month = document.getElementById("selectMonth").value;
+        const year = document.getElementById("selectYear").value;
+        const description = document.getElementById("eventDescription").value;
+        
+        if (!eventType || eventType === "เลือกกิจกรรม" || !day || !month || !year || !description) {
+            alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+            return;
+        }
+
+        // แก้ไขตรงนี้: ส่งเป็น String ISO แทน Object Date เพื่อความชัวร์
+        let eventData = {
+            title: eventType,
+            description: description,
+            date: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}` // ฟอร์แมต YYYY-MM-DD
+        };
+
+        if(toDate.style.display === "block") {
+            const toDay = document.getElementById("selectDay2").value;
+            const toMonth = document.getElementById("selectMonth2").value;
+            const toYear = document.getElementById("selectYear2").value;
+            
+            if (toDay && toMonth && toYear) {
+                eventData.toDate = `${toYear}-${toMonth.padStart(2, '0')}-${toDay.padStart(2, '0')}`;
+            } else {
+                alert("กรุณาระบุวันที่สิ้นสุดการสอบ");
+                return;
+            }
+        }
+
+        console.log("Sending Data:", eventData); // ดูค่าใน Console (F12) ว่าออกมาถูกต้องไหม
+
+        fetch('/api/addEvent', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(eventData)
+        })
+        .then(async response => {
+            const result = await response.json(); // อ่าน Error Message จาก Server
+            if (response.ok) {
+                alert("บันทึกกิจกรรมสำเร็จ");
+                resetForm();
+            } else {
+                alert("Error: " + (result.message || "เกิดข้อผิดพลาดจาก Server"));
+            }
+        })
+        .catch(error => {
+            console.error('Fetch Error:', error); // จะเห็นสาเหตุจริงๆ ในหน้า Console
+            alert("ไม่สามารถเชื่อมต่อกับ Server ได้ (Network Error)");
+        });
+    });
+
+    // เรียกใช้ตอนโหลด
+    document.addEventListener("DOMContentLoaded", initDatePicker);
+</script>

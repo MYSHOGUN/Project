@@ -1,6 +1,6 @@
-<aside class="sidebar toggled">
+<aside class="sidebar">
     <!-- Sidebar -->
-    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion toggled" id="accordionSidebar" style="height: 85vh;">
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar" style="height: 85vh;">
 
         <!-- Sidebar - Brand -->
         <a class="sidebar-brand d-flex align-items-center justify-content-center" href="/">
@@ -34,7 +34,7 @@
 
             <li class="nav-item <%= currentPath === '/addExcel' ? 'active' : '' %>">
                 <a class="nav-link" href="/addExcel">
-                    <i class="fas fa-users"></i>
+                    <i class="fas fa-file-excel"></i>
                     <span>เพิ่มข้อมูล Excel</span></a>
             </li>
         <% } %>
@@ -55,6 +55,15 @@
                 </div>
             </div>
         </li>-->
+
+        <!-- Divider -->
+         <hr class="sidebar-divider my-0">
+
+        <li class="nav-item <%= currentPath === '/event' || currentPath === '/addEvent' ? 'active' : '' %>">
+            <a class="nav-link" href="/event">
+                <i class="fas fa-calendar"></i>
+                <span>จัดตารางกิจกรรม</span></a>
+        </li>
 
         <!-- Divider -->
         <hr class="sidebar-divider my-0">

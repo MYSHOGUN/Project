@@ -48,10 +48,27 @@
                 border-color: #00aaff;
             }
         </style>
-    
+        <style>
+            @media (max-width: 480px) {
+                body.sidebar-toggled .sidebar {
+                    width: 0rem !important; /* ปรับค่าตาม Template ของคุณ (SB Admin 2 มักใช้ 6.5rem หรือ 0) */
+                }
+                body.sidebar-toggled .sidebar .collapse {
+                    display: none !important; /* ปิดเมนูย่อยทันที */
+                }
+            }
+        </style>
     </head>
-    <body id="page-top" class="sidebar-toggled">
-        
+    <body id="page-top" class="">
+        <script>
+            (function() {
+                var width = window.innerWidth || document.documentElement.clientWidth;
+                if (width < 480) {
+                    // ใส่ Class ที่ <html> หรือ <body> ทันที
+                    document.body.classList.add('sidebar-toggled');
+                }
+            })();
+        </script>
         <div id="wrapper">
             <!-- Sidebar ซ้าย -->
             <%- include("partials/sidebar") %>
@@ -66,8 +83,8 @@
                 </div>
                 <!-- Footer -->
                 <footer class="sticky-footer bg-white">
-                    <div class="container my-auto">
-                        <div class="copyright text-center my-auto">
+                    <div id="reMarginFooter" class="container my-auto">
+                        <div class="copyright">
                             <span>Copyright &copy; Your Website 2025</span>
                         </div>
                     </div>
@@ -127,6 +144,14 @@
                 .catch(error => console.error("Error:", error));
         </script>
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-        
+        <script>
+            $(document).ready(function() {
+                if ($("body").hasClass("sidebar-toggled")) {
+                    $(".sidebar").addClass("toggled");
+                    // ลบกฎ !important ของการซ่อนเมนูออกเพื่อให้ระบบ Bootstrap กลับมาคุมเองได้
+                    $(".sidebar .collapse").collapse('hide');
+                }
+            });
+        </script>
     </body>
 </html>

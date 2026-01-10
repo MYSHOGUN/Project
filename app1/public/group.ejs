@@ -18,7 +18,7 @@
   }
 </style>
 
-<div class="container-fluid" style="padding: 0; margin: 0; height: 85vh; line-height: normal;">
+<div class="container-fluid" style="padding: 0; margin: 0; line-height: normal; height: calc(100vh - 150px);">
     <!-- Page Heading -->
         <div class="row flex-column flex-sm-row" style="height: 100%;">
 
@@ -312,8 +312,8 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if(window.innerWidth >= 576 && window.innerWidth < 960){ // จอกลาง รายชื่อแสดงพร้อมแชทแต่ปรับขนาด
         groupListSection.style.display = "block";
         chatSection.style.display = "flex";
-        groupListSection.style.width = "50%";
-        chatSection.style.width = "50%";
+        groupListSection.style.width = "40%";
+        chatSection.style.width = "60%";
       } else { // จอใหญ่ รายชื่อแสดงพร้อมแชท
         groupListSection.style.display = "block";
         chatSection.style.display = "flex";

@@ -1,0 +1,89 @@
+<div class="container-fluid mt-4" style="min-height: 100vh;">               
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">ตารางกิจกรรม</h1>
+        <button class="btn btn-primary btn-icon-split shadow-sm" onclick="location.href='/addEvent'">
+            <span class="icon text-white-50"><i class="fas fa-plus"></i></span>
+            <span class="text">เพิ่มกิจกรรม</span>
+        </button>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-xl-8 col-lg-10">
+            <div id="eventListContainer">
+                <div class="text-center mt-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2">กำลังโหลดข้อมูลกิจกรรม...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    async function loadEvents() {
+        try {
+            const response = await fetch('/api/getEvents');
+            const events = await response.json();
+            const container = document.getElementById('eventListContainer');
+
+            if (events.length === 0) {
+                container.innerHTML = `
+                    <div class="card shadow mb-4">
+                        <div class="card-body text-center py-5">
+                            <i class="fas fa-calendar-times fa-3x text-gray-300 mb-3"></i>
+                            <p class="mb-0">ยังไม่มีกิจกรรมที่ประกาศไว้</p>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = ''; // ล้าง spinner ออก
+
+            // วน Loop สร้างรายการ
+            events.forEach(ev => {
+                const startDate = new Date(ev.date).toLocaleDateString('th-TH', {
+                    day: '2-digit', month: 'long', year: 'numeric'
+                });
+
+                let dateRange = startDate;
+                // ถ้ามีวันสิ้นสุด (toDate) ให้แสดงเป็นช่วง
+                if (ev.toDate) {
+                    const endDate = new Date(ev.toDate).toLocaleDateString('th-TH', {
+                        day: '2-digit', month: 'long', year: 'numeric'
+                    });
+                    dateRange = `${startDate} - ${endDate}`;
+                }
+
+                // เลือกสีตามประเภทกิจกรรม (Title)
+                let colorClass = "primary";
+                if (ev.title === "วันสอบ") colorClass = "danger";
+                if (ev.title === "วันส่งเอกสาร") colorClass = "warning";
+
+                const eventHtml = `
+                    <div class="card border-left-${colorClass} shadow mb-3">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-${colorClass} text-uppercase mb-1">
+                                        ${ev.title}
+                                    </div>
+                                    <div class="h5 mb-1 font-weight-bold text-gray-800">${dateRange}</div>
+                                    <div class="text-gray-600">${ev.description}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', eventHtml);
+            });
+        } catch (err) {
+            console.error("Error:", err);
+            document.getElementById('eventListContainer').innerHTML = '<p class="text-danger text-center">โหลดข้อมูลล้มเหลว</p>';
+        }
+    }
+
+    // เรียกทำงานเมื่อหน้าจอพร้อม
+    document.addEventListener("DOMContentLoaded", loadEvents);
+</script>

@@ -9063,6 +9063,12 @@ a:focus {
   body.sidebar-toggled #sticky-footer {
     margin-left: 6.5rem;
   }
+  .copyright {
+    margin-right: 14rem;
+  }
+  body.sidebar-toggled .copyright {
+    margin-right: 6.5rem;
+  }
 }
 @media (max-width: 767.98px) {
   #wrapper #content-wrapper {
@@ -9076,6 +9082,12 @@ a:focus {
   }
   body.sidebar-toggled #sticky-footer {
     margin-left: 0rem;
+  }
+  .copyright {
+    margin-right: 6.5rem;
+  }
+  body.sidebar-toggled .copyright {
+    margin-right: 0rem;
   }
 }
 
@@ -9136,7 +9148,7 @@ a:focus {
   }
 }
 
-.animated--grow-in, .sidebar .nav-item .collapse {
+.animated--grow-in, .sidebar .nav-item .collapse #sticky-footer {
   -webkit-animation-name: growIn;
   animation-name: growIn;
   -webkit-animation-duration: 200ms;
@@ -10230,6 +10242,10 @@ form.user .btn-user {
   width: 8%;
 }
 
+#reMarginFooter {
+  text-align: center;
+}
+
 @media (max-width: 960px) {
   #message-input {
     width: 80%;
@@ -10627,7 +10643,7 @@ form.user .btn-user {
 }
 
 footer{
-  position: relative;
+  position: fixed;
   bottom: 0;
   width: 100%;
 }
@@ -10635,6 +10651,11 @@ footer{
 footer.sticky-footer {
   padding: 2rem 0;
   flex-shrink: 0;
+}
+
+.copyright {
+  margin-right: 14rem;
+  transition: transform 0.5s ease-in-out;
 }
 
 footer.sticky-footer .copyright {
@@ -10645,4 +10666,6 @@ footer.sticky-footer .copyright {
 body.sidebar-toggled footer.sticky-footer {
   width: 100%;
 }
+
+
 

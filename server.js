@@ -4,6 +4,8 @@ const Group = require("./models/Group"); // ✅ import group model
 
 const News = require('./models/News'); // ✅ import news model
 
+const Event = require('./models/Event'); // ✅ import event model
+
 const Notification = require("./models/Notification");
 
 const NotificationRead = require("./models/NotificationRead");
@@ -396,9 +398,6 @@ app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (re
           }
         } 
 
-        if (notificationsToSave.length > 0) {
-          await Notification.insertMany(notificationsToSave);
-        }
     } catch (err) {
         console.error("❌ Notification Error:", err);
     }
@@ -1160,30 +1159,41 @@ app.post("/register", upload.single("profileImage"), async (req, res) => {
 app.get("/api/notifications/unread", requireLogin, async (req, res) => {
     try {
         const username = req.session.user.username;
+        
+        // รับค่าหน้าปัจจุบันจาก query string (ถ้าไม่มีให้เป็นหน้า 1)
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 5; // โหลดทีละ 5 ตามที่เราตั้งใน JS
+        const skip = (page - 1) * limit;
 
-        // 1. ดึงแจ้งเตือนที่มีชื่อเราอยู่ใน recipients หรือส่งถึง 'ALL'
+        // 1. ดึงแจ้งเตือนที่มีชื่อเรา หรือส่งถึง 'ALL' พร้อมทำ Pagination
         const notifications = await Notification.find({
             $or: [
                 { recipient: username }, 
                 { recipient: 'ALL' }
             ]
-        }).sort({ createdAt: -1 }).limit(20).lean();
+        })
+        .sort({ createdAt: -1 })
+        .skip(skip)   // ข้ามรายการที่โหลดไปแล้ว
+        .limit(limit) // ดึงมาแค่ตามจำนวนที่กำหนด
+        .lean();
 
-        // 2. ดึงรายการ ID ที่คนนี้ "เคยอ่านแล้ว" จากตารางแยก
+        // 2. ดึงรายการ ID ที่คนนี้ "เคยอ่านแล้ว"
         const readRecords = await NotificationRead.find({ userId: username })
             .distinct('notificationId');
 
         // 3. รวมร่างข้อมูล: เช็คสถานะการอ่านรายบุคคล
         const finalNotifications = notifications.map(noti => {
+            // เช็คว่า ID ของแจ้งเตือนนี้ อยู่ในรายการที่อ่านแล้วหรือไม่
             const hasRead = readRecords.some(rId => rId.toString() === noti._id.toString());
             return {
                 ...noti,
-                isRead: hasRead || noti.isRead // ถ้ามีใน NotificationRead แปลว่าอ่านแล้ว
+                isRead: hasRead
             };
         });
 
         res.json(finalNotifications);
     } catch (err) {
+        console.error("❌ Error loading notifications:", err);
         res.status(500).json({ error: "Failed to load notifications" });
     }
 });
@@ -1192,27 +1202,84 @@ app.post("/api/notifications/mark-read/:id", requireLogin, async (req, res) => {
     try {
         const notiId = req.params.id;
         const username = req.session.user.username;
-        const noti = await Notification.findById(notiId);
 
-        if (!noti) return res.status(404).json({ error: "Not found" });
+        // ไม่ว่าจะเป็นกลุ่ม หรือ 1:1 ให้บันทึกลง NotificationRead ทั้งหมด
+        // เพื่อให้ระบบเสถียรและเช็ค hasRead ได้จากที่เดียว
+        await NotificationRead.updateOne(
+            { notificationId: notiId, userId: username },
+            { $setOnInsert: { readAt: new Date() } },
+            { upsert: true }
+        );
 
-        // ตรวจสอบว่าเป็นแจ้งเตือนกลุ่ม (Array) หรือประกาศ ALL
-        // แก้ชื่อฟิลด์เป็น recipient ให้ตรงกับ Schema ของคุณ
-        if ((noti.recipient && noti.recipient.length > 1) || noti.recipient.includes('ALL')) {
-            await NotificationRead.updateOne(
-                { notificationId: notiId, userId: username },
-                { $setOnInsert: { readAt: new Date() } },
-                { upsert: true }
-            );
-            console.log(`✅ User ${username} read group notification ${notiId}`);
-        } else {
-            // แจ้งเตือนส่วนตัว 1:1
-            noti.isRead = true;
-            await noti.save();
-        }
         res.json({ success: true });
     } catch (err) {
+        console.error("❌ Mark read error:", err);
         res.status(500).json({ error: "Failed to mark as read" });
+    }
+});
+
+app.get("/api/notifications/count", requireLogin, async (req, res) => {
+    try {
+        const username = req.session.user.username;
+
+        // 1. หา ID ทั้งหมดที่เรา "อ่านแล้ว"
+        const readIds = await NotificationRead.find({ userId: username }).distinct("notificationId");
+
+        // 2. นับแจ้งเตือนที่ "ส่งถึงเรา" แต่ "ไม่มี ID อยู่ในรายการที่อ่านแล้ว"
+        const count = await Notification.countDocuments({
+            $or: [{ recipient: username }, { recipient: 'ALL' }],
+            _id: { $nin: readIds }
+        });
+
+        res.json({ count });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get("/event", requireLogin, (req, res) => {
+  renderWithLayout(res, "event", { title: "KMUTNB Project - Event" }, req.path,req);
+});
+
+app.get("/addEvent", requireLogin, (req, res) => {
+  renderWithLayout(res, "addEvent", { title: "KMUTNB Project - Add Event" }, req.path,req);
+});
+
+app.post("/api/addEvent", requireLogin, async (req, res) => {
+    try {
+        const { title, date, toDate, description } = req.body;
+        
+        // ตรวจสอบว่าส่งค่ามาจริงไหม
+        if (!title || !date) {
+            return res.status(400).json({ error: "ข้อมูลไม่ครบถ้วน" });
+        }
+
+        const newEvent = new Event({
+            title,
+            description,
+            date: new Date(date), // มั่นใจว่าเป็น Date Object
+            toDate: toDate ? new Date(toDate) : null
+        });
+
+        await newEvent.save();
+        
+        // 🔔 เรียกแจ้งเตือน (เช็คให้ชัวร์ว่าลบบั๊กในฟังก์ชันนี้แล้ว)
+        await sendGroupNotification('alert', null, req.session.user.username, req.session.user.name, `มีกิจกรรมใหม่: ${title}`, req.session.user.picture || null);
+
+        res.status(201).json({ message: "บันทึกสำเร็จ" });
+    } catch (err) {
+        console.error("❌ Server Error:", err); // ดู Error จริงๆ ใน Terminal ของคุณ
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get("/api/getEvents", requireLogin, async (req, res) => {
+    try {
+        // .sort({ date: 1 }) คือเรียงจากวันที่น้อยไปมาก (เก่าไปใหม่)
+        const events = await Event.find().sort({ date: 1 });
+        res.json(events);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch events" });
     }
 });
 
