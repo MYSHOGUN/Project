@@ -254,10 +254,21 @@
         async function updateBadgeUI() {
             const res = await fetch('/api/notifications/count');
             const data = await res.json();
-            // หมายเหตุ: API count ควรส่งแยกประเภทมาให้ ถ้าไม่แยกให้นับจาก element ใน DOM
-            // ตัวอย่างแบบง่าย:
-            if (data.count > 0) {
-                // อัปเดตตามความเหมาะสมของระบบคุณ
+            
+            // จัดการ Alert Badge (ระฆัง)
+            if (data.alertUnread > 0) {
+                alertBadge.textContent = data.alertUnread;
+                alertBadge.style.display = 'block';
+            } else {
+                alertBadge.style.display = 'none';
+            }
+
+            // จัดการ Message Badge (ซองจดหมาย)
+            if (data.messageUnread > 0) {
+                notiBadge.textContent = data.messageUnread;
+                notiBadge.style.display = 'block';
+            } else {
+                notiBadge.style.display = 'none';
             }
         }
 
@@ -281,12 +292,13 @@
         // 4. รับข้อมูลสดๆ จาก Socket
         socket.on("new_notification", function(data) {
             data.isRead = false;
-            if (data.recipient.includes('ALL') || data.type === 'new_alert') {
+            // ปรับเงื่อนไขให้ตรงกับ Backend: group_alert หรือ new_alert
+            if (data.recipient.includes('ALL') || data.type === 'new_alert' || data.type === 'group_alert') {
                 alertBadge.style.display = 'block';
                 alertBadge.textContent = (parseInt(alertBadge.textContent) || 0) + 1;
                 if (alertContainer.innerHTML.includes("ไม่มีประกาศ")) alertContainer.innerHTML = '';
                 alertContainer.insertAdjacentHTML('afterbegin', getAlertItemHTML(data));
-            } else {
+            } else if (data.type === 'new_message') {
                 notiBadge.style.display = 'block';
                 notiBadge.textContent = (parseInt(notiBadge.textContent) || 0) + 1;
                 if (notiContainer.innerHTML.includes("ไม่มีข้อความ")) notiContainer.innerHTML = '';

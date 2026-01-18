@@ -15,6 +15,13 @@
                     <p>อีเมล: <%= user.email || '-' %></p>
                     <p>รหัสนักศึกษา: <%= (user.username) %></p>
                     <p>เบอร์โทรศัพท์: <%= user.phone || '-' %></p>
+                    <div class="text-center mt-4">
+                        <% if (user.picture && user.picture !== "null" && user.picture !== "") { %>
+                            <img src="/image/<%= user.picture %>" alt="Profile Picture" style="max-width: 200px; max-height: 200px; border-radius: 50%; border: 2px solid #ccc;">
+                        <% } else { %>
+                            <img src="/img/undraw_profile.svg" alt="Profile Picture" style="max-width: 200px; max-height: 200px; border-radius: 50%; border: 2px solid #ccc;">
+                        <% } %>
+                    </div>
                 </div>
             </div>
         </div>
@@ -37,6 +44,13 @@
                     <input class="form-control mb-3" id="updateId" value="<%= user.username %>" style="width: 100%; display: inline-block;" disabled>
                     <p>เบอร์โทรศัพท์: </p>
                     <input class="form-control mb-4" id="updatePhone" value="<%= user.phone %>" style="width: 100%; display: inline-block;">
+                    <div class="justify-content-center align-items-center text-center mb-4 d-flex">
+                        <div id="drop-area" class="" >
+                            <p id="defaultDropText">ลากไฟล์รูปภาพมาวางที่นี่ หรือ คลิกเพื่อเลือกไฟล์</p>
+                            <input type="file" name="profileImage" id="pic-input" style="display:none;" accept="image/*">
+                            <img id="image-preview" src="" alt="">
+                        </div>
+                    </div>
                     <div class="d-flex justify-content-center">
                         <button type="button" id="saveProfileBtn" class="btn btn-success"><i class="fas fa-save"></i> บันทึก</button>
                         <button type="button" id="cancelProfileBtn" class="btn btn-danger ml-2"><i class="fas fa-times"></i> ยกเลิก</button>
@@ -48,55 +62,120 @@
 </div>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+    // ส่วนประกาศตัวแปร
     const profile = document.getElementById('profile');
     const updateProfile = document.getElementById('updateProfile');
-
-    const updateName = document.getElementById('updateName');
     const updateEmail = document.getElementById('updateEmail');
-    const updateId = document.getElementById('updateId');
     const updatePhone = document.getElementById('updatePhone');
-
-    const updateProfileBtn = document.getElementById('updateProfileBtn');
+    
+    const dropArea = document.getElementById('drop-area');
+    const picText = document.getElementById('defaultDropText');
+    const picInput = document.getElementById('pic-input'); // ใช้ ID pic-input ตาม HTML
+    const imagePreview = document.getElementById('image-preview');
 
     const saveProfileBtn = document.getElementById('saveProfileBtn');
-    const cancelProfileBtn = document.getElementById('cancelProfileBtn');
+    const updateProfileBtn = document.getElementById('updateProfileBtn');
+    
+    let selectedFile = null; // เพิ่มการประกาศตัวแปรเก็บไฟล์
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const defaultDropAreaBorder = '2px dashed #ccc';
 
-    $(updateProfileBtn).on('click', function() {
+    // จัดการแสดงผลรูปเดิมถ้ามี
+    const initialPic = "<%= user.picture %>";
+    if(initialPic && initialPic !== "null" && initialPic !== "") {
+        dropArea.style.border = 'none';
+        imagePreview.src = "/image/" + initialPic;
+        picText.style.display = "none";
+        imagePreview.style.display = "block";
+        imagePreview.style.border = "2px solid #ccc";
+        imagePreview.style.maxWidth = "200px";
+        imagePreview.style.maxHeight = "200px";
+        imagePreview.style.borderRadius = "50%";
+    }
+
+    // --- Drag & Drop Logic ---
+    dropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropArea.style.border = '2px dashed green'; 
+    });
+
+    dropArea.addEventListener('dragleave', () => {
+        if (!selectedFile) dropArea.style.border = defaultDropAreaBorder;
+    });
+
+    dropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        handleFiles(e.dataTransfer.files);
+    });
+
+    dropArea.addEventListener('click', () => picInput.click());
+
+    picInput.addEventListener('change', () => handleFiles(picInput.files));
+
+    function handleFiles(files) {
+        const file = files[0];
+        if (file) {
+            if (allowedTypes.includes(file.type)) {
+                selectedFile = file;
+                
+                // จำลองไฟล์ใส่ลงใน input เพื่อให้ส่งไปพร้อม Form (ถ้าต้องการ)
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                picInput.files = dataTransfer.files;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block'; 
+                    imagePreview.style.border = '2px solid #ccc';
+                    imagePreview.style.maxWidth = "200px";
+                    imagePreview.style.borderRadius = "50%";
+                    picText.style.display = 'none'; 
+                }
+                reader.readAsDataURL(file);
+                dropArea.style.border = 'none';
+            } else {
+                alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
+            }
+        }
+    }
+
+    // --- Action Buttons ---
+    $(updateProfileBtn).on('click', () => {
         profile.classList.add('d-none');
         updateProfile.classList.remove('d-none');
     });
 
-    $(cancelProfileBtn).on('click', function() {
-        updateName.value = "<%= user.name %> <%= user.lastname %>";
-        updateEmail.value = "<%= user.email %>";
-        updateId.value = "<%= (user.username).slice(1) %>";
-        updatePhone.value = "<%= user.phone %>";
-        updateProfile.classList.add('d-none');
-        profile.classList.remove('d-none');
-    });
-
     $(saveProfileBtn).on('click', function() {
-        const email = updateEmail.value;
-        const phone = updatePhone.value;
+        // ใช้ FormData เพื่อให้ส่งไฟล์ได้
+        const formData = new FormData();
+        formData.append('email', updateEmail.value);
+        formData.append('phone', updatePhone.value);
+        
+        // ถ้ามีการเลือกไฟล์ใหม่ ให้เพิ่มเข้าไปใน formData
+        if (picInput.files[0]) {
+            formData.append('profileImage', picInput.files[0]);
+        }
 
         $.ajax({
             url: '/profile/update',
             type: 'POST',
-            data: {
-                email: email,
-                phone: phone
-            },
+            data: formData,
+            processData: false, // สำคัญมาก: ห้าม jQuery แปลงข้อมูล
+            contentType: false, // สำคัญมาก: ให้ Browser ตั้งค่า boundary เอง
             success: function(response) {
                 if (response.success) {
-                    alert('บันทึกข้อมูลโปรไฟล์สำเร็จ');
+                    alert('บันทึกข้อมูลสำเร็จ');
                     location.reload();
                 } else {
-                    alert(response.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูลโปรไฟล์');
+                    alert(response.message || 'เกิดข้อผิดพลาด');
                 }
             },
             error: function() {
-                alert('เกิดข้อผิดพลาดในการบันทึกข้อมูลโปรไฟล์');
+                alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
             }
         });
     });
+
+    $('#cancelProfileBtn').on('click', () => location.reload());
 </script>

@@ -236,7 +236,7 @@
             const result = await response.json(); // อ่าน Error Message จาก Server
             if (response.ok) {
                 alert("บันทึกกิจกรรมสำเร็จ");
-                resetForm();
+                window.location.href = "/event";
             } else {
                 alert("Error: " + (result.message || "เกิดข้อผิดพลาดจาก Server"));
             }

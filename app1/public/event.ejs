@@ -1,10 +1,12 @@
 <div class="container-fluid mt-4" style="min-height: 100vh;">               
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">ตารางกิจกรรม</h1>
-        <button class="btn btn-primary btn-icon-split shadow-sm" onclick="location.href='/addEvent'">
-            <span class="icon text-white-50"><i class="fas fa-plus"></i></span>
-            <span class="text">เพิ่มกิจกรรม</span>
-        </button>
+        <% if (user && user.role === 'admin') { %>
+            <button class="btn btn-primary btn-icon-split shadow-sm" onclick="location.href='/addEvent'">
+                <span class="icon text-white-50"><i class="fas fa-plus"></i></span>
+                <span class="text">เพิ่มกิจกรรม</span>
+            </button>
+        <% } %>
     </div>
 
     <div class="row justify-content-center">

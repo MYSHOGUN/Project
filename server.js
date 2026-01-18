@@ -102,7 +102,7 @@ async function saveUsersFromExcel(dataArray) {
 
     for (const row of dataArray) {
         // 3. ดึงเฉพาะ username จาก Excel
-        const usernameFromExcel = row.username || row.Username; 
+        const usernameFromExcel = row.username || row.Username || row.USERNAME; 
         
         if (!usernameFromExcel) {
             console.warn(`Skipping row due to invalid or missing username:`, row);
@@ -110,10 +110,12 @@ async function saveUsersFromExcel(dataArray) {
         }
 
         const trimmedUsername = String(usernameFromExcel).trim();
+        const emailExel = "s"+trimmedUsername+"@kmutnb.ac.th";
 
         // 4. จัดเตรียมข้อมูลผู้ใช้: ใช้ Hashed Placeholder Password และค่า Default อื่นๆ
         const userData = {
             username: trimmedUsername,
+            email: emailExel,
             password: pendingHashedPassword, // ⬅️ Hashed Placeholder
             name: PENDING_NAME,             // ⬅️ Placeholder
             lastname: PENDING_LASTNAME,     // ⬅️ Placeholder
@@ -560,7 +562,7 @@ app.post("/login" , async (req, res) => {
     email: user.email,
     phone: user.phone,
     group: user.group,
-    picture: user.picture.id || null
+    picture: user.picture && user.picture.id ? user.picture.id.toString() : null
   };
 
   if (rememberMe === "on") {
@@ -1030,27 +1032,72 @@ app.delete("/news-delete/:newsId", requireLogin, async (req, res) => {
     }
 });
 
-app.post("/profile/update", requireLogin, async (req, res) => {
-  try {
-    const {  email, phone } = req.body;
-    await User.findOneAndUpdate(
-      { username: req.session.user.username },
-      { email, phone }
-    );
-    // อัปเดต session ด้วย
-    req.session.user.email = email;
-    req.session.user.phone = phone; 
-    req.session.save((err) => {
-      if (err) {
-        console.error("❌ Error saving session:", err);
-        return res.status(500).send("เกิดข้อผิดพลาดในการบันทึก session");
-      }
-      res.status(200).json({ success: true, message: "อัปเดตโปรไฟล์สำเร็จ" });
-    });
-  } catch (err) {
-    console.error("❌ Error updating profile:", err);
-    res.status(500).send("เกิดข้อผิดพลาดในการอัปเดตโปรไฟล์");
-  }
+app.post("/profile/update", requireLogin, upload.single("profileImage"), async (req, res) => {
+    try {
+        const { email, phone } = req.body;
+        const username = req.session.user.username;
+
+        // 1. ดึงข้อมูล User ปัจจุบันมาเพื่อตรวจสอบไฟล์เดิม
+        const user = await User.findOne({ username });
+        if (!user) return res.status(404).json({ success: false, message: "ไม่พบผู้ใช้งาน" });
+
+        // 2. เตรียมข้อมูลพื้นฐานที่จะอัปเดต (Email, Phone)
+        let updateFields = { email, phone };
+
+        // 3. ตรวจสอบว่ามีการอัปโหลด "ไฟล์ใหม่" มาหรือไม่
+        if (req.file) {
+            // --- กรณีมีการเลือกรูปใหม่ ---
+            
+            // A. ลบรูปเก่าออกจาก GridFS (ถ้ามี) เพื่อไม่ให้รกเซิร์ฟเวอร์
+            if (user.picture && user.picture.id) {
+                try {
+                    await bucket.delete(new mongoose.Types.ObjectId(user.picture.id));
+                } catch (err) {
+                    console.warn("⚠️ ไม่สามารถลบไฟล์เก่าได้ (อาจไม่มีไฟล์จริง):", err.message);
+                }
+            }
+
+            // B. บันทึกรูปใหม่ลง GridFS
+            const uploadStream = bucket.openUploadStream(req.file.originalname, {
+                contentType: req.file.mimetype,
+            });
+
+            await new Promise((resolve, reject) => {
+                uploadStream.once('finish', resolve);
+                uploadStream.once('error', reject);
+                uploadStream.end(req.file.buffer);
+            });
+
+            // C. เพิ่มข้อมูลรูปใหม่เข้าไปในรายการที่จะอัปเดต
+            updateFields.picture = {
+                filename: req.file.originalname,
+                contentType: req.file.mimetype,
+                id: uploadStream.id
+            };
+
+            // อัปเดต ID รูปใน Session สำหรับแสดงผล
+            req.session.user.picture = uploadStream.id.toString();
+        } 
+        // --- ถ้าไม่มี req.file (ไม่ได้เลือกรูปใหม่) ---
+        // เราจะไม่ใส่ฟิลด์ picture ลงใน updateFields 
+        // ทำให้ MongoDB ไม่ไปเขียนทับข้อมูลรูปภาพเดิมใน Database
+
+        // 4. บันทึกการเปลี่ยนแปลง
+        await User.findOneAndUpdate({ username }, { $set: updateFields });
+
+        // อัปเดต Session ข้อมูลอื่นๆ
+        req.session.user.email = email;
+        req.session.user.phone = phone;
+
+        req.session.save((err) => {
+            if (err) throw err;
+            res.status(200).json({ success: true, message: "อัปเดตโปรไฟล์สำเร็จ" });
+        });
+
+    } catch (err) {
+        console.error("❌ Profile Update Error:", err);
+        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดในการอัปเดต" });
+    }
 });
 
 app.get("/addExcel",requireLogin,(req, res) => {
@@ -1098,9 +1145,9 @@ app.post("/register", upload.single("profileImage"), async (req, res) => {
   console.log("Body data:", req.body); // ต้องมีข้อมูลชื่อ นามสกุล ฯลฯ
   console.log("File data:", req.file);
   try {
-    const { username, password, name, lastname, email, phone ,passwordConfirm} = req.body;
+    const { username, password, name, lastname, phone ,passwordConfirm} = req.body;
 
-    if (username === "" || password === "" || name === "" || lastname === "" || email === "" || phone === "") {
+    if (username === "" || password === "" || name === "" || lastname === "" || phone === "") {
       req.session.failModal = "incomplete";
       return req.session.save(() => res.redirect("/register"));
     }
@@ -1135,11 +1182,11 @@ app.post("/register", upload.single("profileImage"), async (req, res) => {
     }
 
     
-    if (existingUser && existingUser.email === null && existingUser.phone === null && existingUser.name === "Pending" && existingUser.lastname === "Registration") {
+    if (existingUser && existingUser.email && existingUser.phone === null && existingUser.name === "Pending" && existingUser.lastname === "Registration") {
       const hashedPassword = await bcrypt.hash(password, 10);
       await User.findOneAndUpdate(
         { username: username },
-        { password: hashedPassword, name, lastname, email, phone ,picture: req.file ? img : null}
+        { password: hashedPassword, name, lastname, phone ,picture: req.file ? img : null}
       );
       req.session.successModal = "success";
       return req.session.save(() => res.redirect("/login"));
@@ -1222,16 +1269,24 @@ app.get("/api/notifications/count", requireLogin, async (req, res) => {
     try {
         const username = req.session.user.username;
 
-        // 1. หา ID ทั้งหมดที่เรา "อ่านแล้ว"
+        // 1. หา ID ทั้งหมดที่เราอ่านแล้ว
         const readIds = await NotificationRead.find({ userId: username }).distinct("notificationId");
 
-        // 2. นับแจ้งเตือนที่ "ส่งถึงเรา" แต่ "ไม่มี ID อยู่ในรายการที่อ่านแล้ว"
-        const count = await Notification.countDocuments({
-            $or: [{ recipient: username }, { recipient: 'ALL' }],
+        // 2. นับแยกประเภท
+        // Alert (ประกาศทั่วไป/กิจกรรม)
+        const alertUnread = await Notification.countDocuments({
+            recipient: 'ALL',
             _id: { $nin: readIds }
         });
 
-        res.json({ count });
+        // Message (ข้อความในกลุ่ม)
+        const messageUnread = await Notification.countDocuments({
+            recipient: username,
+            type: 'new_message',
+            _id: { $nin: readIds }
+        });
+
+        res.json({ alertUnread, messageUnread });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1242,6 +1297,9 @@ app.get("/event", requireLogin, (req, res) => {
 });
 
 app.get("/addEvent", requireLogin, (req, res) => {
+  if(req.session.user.role !== "admin"){
+    return res.redirect("/event");
+  }
   renderWithLayout(res, "addEvent", { title: "KMUTNB Project - Add Event" }, req.path,req);
 });
 
