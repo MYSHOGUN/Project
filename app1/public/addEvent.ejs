@@ -35,6 +35,7 @@
         #eventDescription {
             width: 500px;
             height: 300px;
+            display: none;
         }
 </style>
 <div class="container-fluid mt-4" style="height: 100%;">               
@@ -54,28 +55,28 @@
             </div>
         </div>
         <div class="date-picker-group mt-4">
-            <select id="selectYear" class="date-select" onchange="populateDays('selectDay', 'selectMonth', 'selectYear'); updateSelectedDate();">
-                <option value="">ปี (พ.ศ.)</option>
+            <select id="selectYear" class="date-select" onchange="populateDays('selectDay', 'selectMonth', 'selectYear'); updateToDateOptions(); updateSelectedDate();">
+                <option value="" disabled selected hidden>ปี (พ.ศ.)</option>
             </select>
-            <select id="selectMonth" class="date-select" onchange="populateDays('selectDay', 'selectMonth', 'selectYear'); updateSelectedDate();">
-                <option value="">เดือน</option>
+            <select id="selectMonth" class="date-select" onchange="populateDays('selectDay', 'selectMonth', 'selectYear'); updateToDateOptions(); updateSelectedDate();">
+                <option value="" disabled selected hidden>เดือน</option>
             </select>
-            <select id="selectDay" class="date-select" onchange="updateSelectedDate()">
-                <option value="">วัน</option>
+            <select id="selectDay" class="date-select" onchange="updateToDateOptions(); updateSelectedDate();" disabled>
+                <option value="" disabled selected hidden>วัน</option>
             </select>
         </div>
 
         <div id="toDate" style="display: none;">
             <p class="text-center mt-3"> ถึง </p>    
             <div class="date-picker-group mt-4">
-                <select id="selectYear2" class="date-select" onchange="populateDays('selectDay2', 'selectMonth2', 'selectYear2'); updateSelectedDate();">
-                    <option value="">ปี (พ.ศ.)</option>
+                <select id="selectYear2" class="date-select" onchange="updateToDateOptions(); updateSelectedDate();">
+                    <option value="" disabled selected hidden>ปี (พ.ศ.)</option>
                 </select>
-                <select id="selectMonth2" class="date-select" onchange="populateDays('selectDay2', 'selectMonth2', 'selectYear2'); updateSelectedDate();">
-                    <option value="">เดือน</option>
+                <select id="selectMonth2" class="date-select" onchange="updateToDateOptions(); updateSelectedDate();">
+                    <option value="" disabled selected hidden>เดือน</option>
                 </select>
-                <select id="selectDay2" class="date-select" onchange="updateSelectedDate()">
-                    <option value="">วัน</option>
+                <select id="selectDay2" class="date-select" onchange="updateSelectedDate()" disabled>
+                    <option value="" disabled selected hidden>วัน</option>
                 </select>
             </div>  
         </div>
@@ -92,11 +93,11 @@
 
     const saveEventBtn = document.getElementById("saveEventBtn");
     const cancelEventBtn = document.getElementById("cancelEventBtn");
+    const eventDescription = document.getElementById("eventDescription");
 
     const monthTh = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
 
     function initDatePicker() {
-        // รายชื่อ ID ของทั้ง 2 ชุด
         const pickerSets = [
             { year: "selectYear", month: "selectMonth", day: "selectDay" },
             { year: "selectYear2", month: "selectMonth2", day: "selectDay2" }
@@ -107,52 +108,132 @@
         pickerSets.forEach(set => {
             const sMonth = document.getElementById(set.month);
             const sYear = document.getElementById(set.year);
-            
             if (!sMonth || !sYear) return;
 
-            // 1. ใส่ชื่อเดือน
+            // แก้ไขตรงนี้: ล้างค่าเก่าและใส่หัวข้อกลับเข้าไปก่อนเริ่มวน Loop
+            sMonth.innerHTML = '<option value="" disabled selected hidden>เดือน</option>';
+            sYear.innerHTML = '<option value="" disabled selected hidden>ปี (พ.ศ.)</option>';
+
             monthTh.forEach((m, index) => {
                 sMonth.add(new Option(m, index + 1));
             });
 
-            // 2. ใส่ปี (พ.ศ.)
-            for (let i = currentYear + 5; i >= currentYear - 10; i--) {
+            for (let i = currentYear + 10; i >= currentYear; i--) {
                 sYear.add(new Option(i + 543, i));
             }
 
-            // สั่งสร้างวันที่เบื้องต้น
             populateDays(set.day, set.month, set.year);
         });
     }
 
-    // ปรับให้รับ ID เพื่อความยืดหยุ่น
     function populateDays(dayId, monthId, yearId) {
         const sDay = document.getElementById(dayId);
-        const sMonthValue = document.getElementById(monthId).value;
-        const sYearValue = document.getElementById(yearId).value;
+        const sMonthValue = parseInt(document.getElementById(monthId).value);
+        const sYearValue = parseInt(document.getElementById(yearId).value);
         
+        const startDay = parseInt(document.getElementById("selectDay").value) || 0;
+        const startMonth = parseInt(document.getElementById("selectMonth").value) || 0;
+        const startYear = parseInt(document.getElementById("selectYear").value) || 0;
+
         const previousSelectedDay = sDay.value;
-        sDay.innerHTML = '<option value="">วัน</option>';
+        
+        // แก้ไขตรงนี้: ใส่ disabled selected hidden กลับเข้าไป
+        sDay.innerHTML = '<option value="" disabled selected hidden>วัน</option>';
 
         if (sMonthValue && sYearValue) {
-            const daysInMonth = new Date(sYearValue, sMonthValue, 0).getDate();
+            sDay.disabled = false; // เปิดให้เลือกได้
+            
+            const daysInMonth = new Date(parseInt(sYearValue), parseInt(sMonthValue), 0).getDate();
+            
             for (let d = 1; d <= daysInMonth; d++) {
+                if (dayId === 'selectDay2') {
+                    if (parseInt(sYearValue) === startYear && parseInt(sMonthValue) === startMonth) {
+                        if (d <= startDay) continue;
+                    }
+                }
                 sDay.add(new Option(d, d));
             }
-            if (previousSelectedDay <= daysInMonth) {
-                sDay.value = previousSelectedDay;
+        } else {
+            sDay.disabled = true; // ปิดถ้ายังเลือก ปี/เดือน ไม่ครบ
+            sDay.value = "";
+        }
+    }
+
+    // เพิ่มฟังก์ชันใหม่สำหรับกรอง ปี และ เดือน ของชุดที่ 2
+    // แก้ไขฟังก์ชัน updateToDateOptions ให้ฉลาดขึ้น
+    function updateToDateOptions() {
+        const sDay = document.getElementById("selectDay");
+        const sMonth = document.getElementById("selectMonth");
+        const sYear = document.getElementById("selectYear");
+
+        const sDay2 = document.getElementById("selectDay2");
+        const sMonth2 = document.getElementById("selectMonth2");
+        const sYear2 = document.getElementById("selectYear2");
+
+        const startVal = {
+            d: parseInt(sDay.value) || 0,
+            m: parseInt(sMonth.value) || 0,
+            y: parseInt(sYear.value) || 0
+        };
+
+        const currentToDateVal = {
+            d: parseInt(sDay2.value) || 0,
+            m: parseInt(sMonth2.value) || 0,
+            y: parseInt(sYear2.value) || 0
+        };
+
+        // 1. กรองปี (Years)
+        const currentYear = new Date().getFullYear();
+        sYear2.innerHTML = '<option value="" disabled selected hidden>ปี (พ.ศ.)</option>';
+        for (let i = currentYear + 10; i >= currentYear; i--) {
+            if (i < startVal.y) continue;
+            sYear2.add(new Option(i + 543, i));
+        }
+        sYear2.value = currentToDateVal.y || "";
+        // 2. กรองเดือน (Months)
+        sMonth2.innerHTML = '<option value="" disabled selected hidden>เดือน</option>';
+        monthTh.forEach((m, index) => {
+            const monthNum = index + 1;
+            if (parseInt(sYear2.value) === startVal.y && monthNum < startVal.m) return;
+            sMonth2.add(new Option(m, monthNum));
+        });
+        sMonth2.value = currentToDateVal.m || "";
+        
+        // 3. กรองวัน (Days) - เรียกใช้ populateDays เดิมที่คุณแก้ไว้
+        populateDays('selectDay2', 'selectMonth2', 'selectYear2');
+
+        // --- LOGIC ป้องกันค่าค้างที่ผิดพลาด ---
+        // ถ้าค่าที่เลือกไว้ในชุดที่ 2 ดันน้อยกว่าชุดที่ 1 ให้รีเซ็ตชุดที่ 2 ทันที
+        if (startVal.y && startVal.m && startVal.d && currentToDateVal.y && currentToDateVal.m && currentToDateVal.d) {
+            const date1 = new Date(startVal.y, startVal.m - 1, startVal.d);
+            const date2 = new Date(currentToDateVal.y, currentToDateVal.m - 1, currentToDateVal.d);
+            
+            if (date2 < date1) {
+                sDay2.value = ""; // ล้างแค่วันที่ออกเพื่อให้ User เลือกใหม่
             }
         }
     }
 
+    // แก้ไขฟังก์ชัน selectActivity (แก้ตัวสะกดผิด)
     function selectActivity(element) {
         selectedValue = element.innerText;
         document.getElementById("dropdownMenuButton").innerText = selectedValue;
 
         if(selectedValue === "วันสอบ") {
             toDate.style.display = "block";
+            eventDescription.style.display = "none";
         } else {
             toDate.style.display = "none";
+            // ล้างค่าวันที่ชุดที่ 2 ทิ้งถ้าไม่ใช่ "วันสอบ" เพื่อป้องกันข้อมูลขยะส่งไป Backend
+            document.getElementById("selectDay2").value = "";
+            document.getElementById("selectMonth2").value = "";
+            document.getElementById("selectYear2").value = "";
+            
+            if (selectedValue === "อื่นๆ") {
+                eventDescription.style.display = "block";
+            } else {
+                eventDescription.style.display = "none";
+            }
         }
         updateSelectedDate();
     }
@@ -174,21 +255,23 @@
     }
 
     function resetForm() {
-        // รีเซ็ตค่าทั้งหมดในฟอร์ม
+        // 1. รีเซ็ตปุ่ม Dropdown
         document.getElementById("dropdownMenuButton").innerText = "เลือกกิจกรรม";
         selectedValue = "";
+        
+        // 2. ปิดส่วนที่เคยเปิดไว้
         toDate.style.display = "none";
+        eventDescription.style.display = "none";
 
-        // รีเซ็ตตัวเลือกวันที่
-        ['selectDay', 'selectMonth', 'selectYear', 'selectDay2', 'selectMonth2', 'selectYear2'].forEach(id => {
-            const selectElement = document.getElementById(id);
-            if (selectElement) {
-                selectElement.selectedIndex = 0;
-            }
-        });
+        // 3. รีเซ็ตตัวเลือกวันที่ทั้งหมด (รวมถึงการล้าง Option ที่ถูก Filter ค้างไว้)
+        initDatePicker(); 
 
-        // รีเซ็ตรายละเอียดกิจกรรม
-        document.getElementById("eventDescription").value = "";
+        // 4. รีเซ็ตปุ่มบันทึก (กรณีที่เคยกดแล้ว Error)
+        saveEventBtn.disabled = false;
+        saveEventBtn.innerText = "บันทึกกิจกรรม";
+
+        // 5. รีเซ็ตรายละเอียดกิจกรรม
+        eventDescription.value = "";
     }
 
     saveEventBtn.addEventListener("click", () => {
@@ -196,9 +279,15 @@
         const day = document.getElementById("selectDay").value;
         const month = document.getElementById("selectMonth").value;
         const year = document.getElementById("selectYear").value;
-        const description = document.getElementById("eventDescription").value;
+        if (selectedValue === "วันสอบ") {
+            eventDescription.value = "จะมีการจัดสอบในวันที่กำหนด โปรดเตรียมเอกสารในการสอบให้เรียบร้อย";
+        }else if (selectedValue === "วันส่งเอกสาร") {
+            eventDescription.value = "โปรดส่งเอกสารภายในวันที่กำหนด";
+        }else{
+            eventDescription.value = eventDescription.value.trim();
+        }
         
-        if (!eventType || eventType === "เลือกกิจกรรม" || !day || !month || !year || !description) {
+        if (!eventType || eventType === "เลือกกิจกรรม" || !day || !month || !year) {
             alert("กรุณากรอกข้อมูลให้ครบถ้วน");
             return;
         }
@@ -206,7 +295,7 @@
         // แก้ไขตรงนี้: ส่งเป็น String ISO แทน Object Date เพื่อความชัวร์
         let eventData = {
             title: eventType,
-            description: description,
+            description: eventDescription.value,
             date: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}` // ฟอร์แมต YYYY-MM-DD
         };
 
@@ -225,7 +314,11 @@
 
         console.log("Sending Data:", eventData); // ดูค่าใน Console (F12) ว่าออกมาถูกต้องไหม
 
+        saveEventBtn.disabled = true; // ปิดปุ่มทันทีที่กด
+        saveEventBtn.innerText = "กำลังบันทึก...";
+
         fetch('/api/addEvent', {
+            
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -244,6 +337,8 @@
         .catch(error => {
             console.error('Fetch Error:', error); // จะเห็นสาเหตุจริงๆ ในหน้า Console
             alert("ไม่สามารถเชื่อมต่อกับ Server ได้ (Network Error)");
+            saveEventBtn.disabled = false; // ถ้า Error ให้เปิดปุ่มใหม่
+            saveEventBtn.innerText = "บันทึกกิจกรรม";
         });
     });
 

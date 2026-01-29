@@ -1341,6 +1341,37 @@ app.get("/api/getEvents", requireLogin, async (req, res) => {
     }
 });
 
+app.get("/eventInfo/:id", requireLogin, async (req, res) => {
+    try {
+        const event = await Event.findById(req.params.id);
+        if (!event) {
+            return res.status(404).send("Event not found");
+        }
+        renderWithLayout(res, "eventInfo", { title: "KMUTNB Project - Event Info", event }, req.path, req);
+    } catch (err) {
+        console.error("❌ Error fetching event info:", err);
+        res.status(500).send("Error fetching event info");
+    }
+});
+
+app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
+    try {
+        const eventId = req.params.id;
+        
+        // ลบข้อมูลโดยใช้ ID
+        const result = await Event.findByIdAndDelete(eventId);
+
+        if (result) {
+            res.json({ success: true, message: "ลบกิจกรรมสำเร็จ" });
+        } else {
+            res.status(404).json({ success: false, message: "ไม่พบกิจกรรมนี้ในระบบ" });
+        }
+    } catch (err) {
+        console.error("❌ Error:", err);
+        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
+    }
+});
+
 // Socket.IO
 io.on("connection", (socket) => {
   const username = socket.handshake.query.username;

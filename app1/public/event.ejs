@@ -10,7 +10,7 @@
     </div>
 
     <div class="row justify-content-center">
-        <div class="col-xl-8 col-lg-10">
+        <div class="" style="width: 80%;">
             <div id="eventListContainer">
                 <div class="text-center mt-5">
                     <div class="spinner-border text-primary" role="status"></div>
@@ -61,22 +61,25 @@
                 if (ev.title === "วันส่งเอกสาร") colorClass = "warning";
 
                 const eventHtml = `
-                    <div class="card border-left-${colorClass} shadow mb-3">
-                        <div class="card-body">
-                            <div class="row no-gutters align-items-center">
-                                <div class="col mr-2">
-                                    <div class="text-xs font-weight-bold text-${colorClass} text-uppercase mb-1">
-                                        ${ev.title}
+                    <a href="/eventInfo/${ev._id}" style="text-decoration: none;">
+                        <div class="card border-left-${colorClass} shadow mb-3">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center justify-content-between w-100">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-${colorClass} text-uppercase mb-1">
+                                            ${ev.title}
+                                        </div>
+                                        <div class="h5 mb-1 font-weight-bold text-gray-800">${dateRange}</div>
+                                        <div class="text-gray-600">${ev.description}</div>
                                     </div>
-                                    <div class="h5 mb-1 font-weight-bold text-gray-800">${dateRange}</div>
-                                    <div class="text-gray-600">${ev.description}</div>
-                                </div>
-                                <div class="col-auto">
-                                    <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+
+                                    <div class="col-auto">
+                                        <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </a>
                 `;
                 container.insertAdjacentHTML('beforeend', eventHtml);
             });

@@ -1,0 +1,50 @@
+<div class="container-fluid mt-4" style="min-height: 100vh;">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">รายละเอียดกิจกรรม</h1>
+        <% if (user && user.role === 'admin') { %>
+            <button class="btn btn-danger" onclick="deleteEvent()">
+                <span class=""><i class="fas fa-trash"></i></i></span>
+                <span class="text">ลบกิจกรรม</span>
+            </button>
+        <% } %>
+    </div>
+    
+    <div class="row justify-content-center">
+        <div class="card p-4"> 
+            <div class="card-title">
+                <h2 class="text-primary font-weight-bold"><%= event.title %></h2>
+            </div>
+            <hr>
+            <div class="card-body">
+                <p><strong>รายละเอียด:</strong> <%= event.description || 'ไม่มีรายละเอียด' %></p>
+                <p><strong>วันที่จัดงาน:</strong> <%= event.date ? event.date.toDateString() : 'ไม่ได้ระบุ' %></p>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    async function deleteEvent() {
+        if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบกิจกรรมนี้?")) {
+            try {
+                const response = await fetch('/deleteEvent/<%= event._id %>', {
+                    method: 'DELETE', // ต้องตรงกับที่ตั้งไว้ใน Server
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(data.message);
+                    window.location.href = '/event'; // ลบเสร็จแล้วเด้งไปหน้าแสดงกิจกรรมทั้งหมด
+                } else {
+                    alert("ลบไม่สำเร็จ: " + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+            }
+        }
+    }
+</script>

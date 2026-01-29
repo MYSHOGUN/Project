@@ -1,3 +1,21 @@
+<style>
+    #searchContainer, #searchAdvisorContainer {
+        position: relative;
+        width: 100%;
+        max-width: 400px;
+    }
+    #searchMemberResults, #searchAdvisorResults {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 1050;
+        max-height: 200px;
+        overflow-y: auto;
+        background: white;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+</style>
 <div class="container-fluid" style="padding: 0; margin: 0; height: 85vh; line-height: normal;">
     <div id="server-data" data-groups='<%- JSON.stringify(groups || []) %>' hidden></div>
     <div id="grouping" class="d-flex flex-column align-items-center justify-content-center mt-4">

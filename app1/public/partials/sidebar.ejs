@@ -59,10 +59,10 @@
         <!-- Divider -->
          <hr class="sidebar-divider my-0">
 
-        <li class="nav-item <%= currentPath === '/event' || currentPath === '/addEvent' ? 'active' : '' %>">
+        <li class="nav-item <%= currentPath === '/event' || currentPath === '/addEvent' || currentPath.startsWith('/eventInfo') ? 'active' : '' %>">
             <a class="nav-link" href="/event">
                 <i class="fas fa-calendar"></i>
-                <span>จัดตารางกิจกรรม</span></a>
+                <span>ตารางกิจกรรม</span></a>
         </li>
 
         <!-- Divider -->
