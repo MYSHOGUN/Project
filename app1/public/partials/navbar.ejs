@@ -49,43 +49,25 @@
                 </form>
             </div>
         </li>
-
-        <!-- Nav Item - Alerts -->
         <li class="nav-item dropdown no-arrow mx-1">
-            <a class="nav-link dropdown-toggle" href="#" id="alertsDropdown" role="button"
-                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <a class="nav-link dropdown-toggle" href="#" id="alertsDropdown" role="button" data-toggle="dropdown">
                 <i class="fas fa-bell fa-fw"></i>
                 <span id="alert-badge" class="badge badge-danger badge-counter" style="display: none;">0</span>
             </a>
-            <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="alertsDropdown">
+            <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in">
                 <h6 class="dropdown-header">Alerts Center</h6>
-                <div id="alert-container"></div>
-                
-                <a id="load-more-alerts-btn" class="dropdown-item text-center small text-gray-500" href="javascript:void(0)">
-                    Read More Alerts
-                </a>
+                <div id="alert-container" style="max-height: 350px; overflow-y: auto;"></div>
             </div>
         </li>
 
-        <!-- Nav Item - Messages -->
         <li class="nav-item dropdown no-arrow mx-1">
-            <a class="nav-link dropdown-toggle" href="#" id="messagesDropdown" role="button"
-                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <a class="nav-link dropdown-toggle" href="#" id="messagesDropdown" role="button" data-toggle="dropdown">
                 <i class="fas fa-envelope fa-fw"></i>
                 <span id="noti-badge" class="badge badge-danger badge-counter" style="display: none;">0</span>
             </a>
-            <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in"
-                aria-labelledby="messagesDropdown">
-                <h6 class="dropdown-header">
-                    Message Center
-                </h6>
-                
-                <div id="noti-container">
-                    </div>
-
-                <a id="load-more-btn" class="dropdown-item text-center small text-gray-500" href="javascript:void(0)">
-                    Read More Messages
-                </a>
+            <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in">
+                <h6 class="dropdown-header">Message Center</h6>
+                <div id="noti-container" style="max-height: 350px; overflow-y: auto;"></div>
             </div>
         </li>
 
@@ -143,180 +125,217 @@
 </nav>
 <script src="/socket.io/socket.io.js"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const bridge = document.getElementById('socket-bridge');
-        if (!bridge) return;
+document.addEventListener("DOMContentLoaded", function() {
+    const bridge = document.getElementById('socket-bridge');
+    if (!bridge) return;
 
-        const currentUsername = bridge.getAttribute('data-username');
-        const socket = io({ query: { username: currentUsername } });
+    const currentUsername = bridge.getAttribute('data-username');
+    const socket = io({ query: { username: currentUsername } });
+    
+    const alertBadge = document.getElementById('alert-badge');
+    const alertContainer = document.getElementById('alert-container');
+    const notiBadge = document.getElementById('noti-badge');
+    const notiContainer = document.getElementById('noti-container');
+
+    let msgPage = 1;
+    let alertPage = 1;
+    const limit = 5;
+    let isMsgLoading = false, isAlertLoading = false;
+    let hasMoreMsg = true, hasMoreAlert = true;
+
+    // HTML สำหรับ Message
+    function getNotiItemHTML(data) {
+        const content = data.text || data.messageText;
+        const sender = data.senderName || "ระบบ";
+        const isRead = data.isRead;
+        const profileImg = (data.senderPic && data.senderPic.filename) ? `/image/${data.senderPic.filename}` : '/img/undraw_profile.svg';
+        const unreadClass = isRead ? "" : "font-weight-bold bg-light";
+        const gId = data.group?._id || data.group || data.groupId;
         
-        const alertBadge = document.getElementById('alert-badge');
-        const alertContainer = document.getElementById('alert-container');
-        const notiBadge = document.getElementById('noti-badge');
-        const notiContainer = document.getElementById('noti-container');
-        
-        const loadMoreBtn = document.getElementById('load-more-btn'); // ปุ่มของ Message
-        const loadMoreAlertsBtn = document.getElementById('load-more-alerts-btn'); // ปุ่มของ Alert
+        return `<a class="dropdown-item d-flex align-items-center ${unreadClass}" href="/group?open=${gId}" onclick="handleNotiClick(event, '${data._id}', ${isRead})">
+            <div class="dropdown-list-image mr-3">
+                <img class="rounded-circle" src="${profileImg}" style="width:40px; height:40px; object-fit:cover;">
+                ${!isRead ? '<div class="status-indicator bg-primary"></div>' : ''}
+            </div>
+            <div>
+                <div class="text-truncate">${content}</div>
+                <div class="small text-gray-500">${sender}</div>
+            </div>
+        </a>`;
+    }
 
-        // ✅ แยกตัวแปรเก็บหน้าของแต่ละฝั่ง
-        let msgPage = 1;
-        let alertPage = 1;
-        const limit = 5;
+    // HTML สำหรับ Alert (รวม added_to_group)
+    function getAlertItemHTML(data) {
+        const isRead = data.isRead;
+        const unreadClass = isRead ? "" : "font-weight-bold bg-light";
+        const iconBg = data.type === 'added_to_group' ? 'bg-success' : 'bg-primary';
+        const iconFa = data.type === 'added_to_group' ? 'fa-users' : 'fa-file-alt';
 
-        // 1. ฟังก์ชันสร้าง HTML สำหรับ Message (ซองจดหมาย)
-        function getNotiItemHTML(data) {
-            const content = data.text || data.messageText;
-            const sender = data.senderName || "ระบบ";
-            const isRead = data.isRead;
-            const profileImg = (data.senderPic && data.senderPic.filename) ? `/image/${data.senderPic.filename}` : '/img/undraw_profile.svg';
-            const unreadClass = isRead ? "" : "font-weight-bold bg-light";
-            const gId = (data.group && data.group._id) ? data.group._id : (data.group || data.groupId);
-            
-            return `
-                <a class="dropdown-item d-flex align-items-center ${unreadClass}" 
-                   href="/group?open=${gId}" onclick="handleNotiClick(event, '${data._id}', ${isRead})">
-                    <div class="dropdown-list-image mr-3">
-                        <img class="rounded-circle" src="${profileImg}" style="width:40px; height:40px; object-fit:cover;">
-                        ${!isRead ? '<div class="status-indicator bg-primary"></div>' : ''}
+        if (data.type === 'added_to_group') {
+            return `<div class="dropdown-item d-flex align-items-center ${unreadClass}">
+                <div class="mr-3">
+                    <div class="icon-circle ${iconBg}"><i class="fas ${iconFa} text-white"></i></div>
+                </div>
+                <div class="w-100">
+                    <div class="small text-gray-500">${new Date(data.createdAt).toLocaleDateString('th-TH')}</div>
+                    <span class="d-block text-gray-800">${data.text}</span>
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-primary py-0 mr-2" 
+                                onclick="respondInvitation(event, 'accept', '${data.group}', '${data._id}')">
+                            ยอมรับ
+                        </button>
+                        <button class="btn btn-sm btn-secondary py-0" 
+                                onclick="respondInvitation(event, 'deny', '${data.group}', '${data._id}')">
+                            ปฏิเสธ
+                        </button>
                     </div>
-                    <div>
-                        <div class="text-truncate">${content}</div>
-                        <div class="small text-gray-500">${sender}</div>
-                    </div>
-                </a>`;
+                </div>
+            </div>`;
         }
+        return `<a class="dropdown-item d-flex align-items-center ${unreadClass}" href="/event" onclick="handleNotiClick(event, '${data._id}', ${isRead})">
+            <div class="mr-3">
+                <div class="icon-circle ${iconBg}"><i class="fas ${iconFa} text-white"></i></div>
+            </div>
+            <div>
+                <div class="small text-gray-500">${new Date(data.createdAt).toLocaleDateString('th-TH')}</div>
+                <span class="text-truncate d-block" style="max-width: 200px;">${data.text}</span>
+            </div>
+        </a>`;
+    }
 
-        // 2. ฟังก์ชันสร้าง HTML สำหรับ Alert (ระฆัง)
-        function getAlertItemHTML(data) {
-            const isRead = data.isRead;
-            const unreadClass = isRead ? "" : "font-weight-bold bg-light";
-            return `
-                <a class="dropdown-item d-flex align-items-center ${unreadClass}" 
-                   href="/event" onclick="handleNotiClick(event, '${data._id}', ${isRead})">
-                    <div class="mr-3">
-                        <div class="icon-circle bg-primary"><i class="fas fa-file-alt text-white"></i></div>
-                    </div>
-                    <div>
-                        <div class="small text-gray-500">${new Date(data.createdAt).toLocaleDateString('th-TH')}</div>
-                        <span class="text-truncate d-block" style="max-width: 200px;">${data.text}</span>
-                    </div>
-                </a>`;
-        }
+    async function fetchNotifications(page, type, append = false) {
+        if ((type === 'message' && isMsgLoading) || (type === 'alert' && isAlertLoading)) return;
+        type === 'message' ? isMsgLoading = true : isAlertLoading = true;
 
-        // 3. ฟังก์ชันดึงข้อมูลจาก Server
-        function fetchNotifications(page, type, append = false) {
-            fetch(`/api/notifications/unread?page=${page}&limit=${limit}&targetType=${type}`)
-                .then(res => res.json())
-                .then(notifications => {
-                    // กรองข้อมูลตามประเภทที่ต้องการ
-                    const alerts = notifications.filter(n => n.recipient.includes('ALL') || n.type === 'new_alert');
-                    const messages = notifications.filter(n => !n.recipient.includes('ALL') && n.type === 'new_message');
-
-                    // --- กรณีโหลดฝั่ง Alerts ---
-                    if (type === 'alert') {
-                        if (page === 1 && !append) alertContainer.innerHTML = '';
-                        if (alerts.length > 0) {
-                            alerts.forEach(a => {
-                                if (!document.querySelector(`[onclick*="${a._id}"]`)) {
-                                    alertContainer.insertAdjacentHTML('beforeend', getAlertItemHTML(a));
-                                }
-                            });
-                        } else if (!append) {
-                            alertContainer.innerHTML = '<div class="dropdown-item text-center small text-gray-500">ไม่มีประกาศ</div>';
-                        }
-                        // ซ่อนปุ่มถ้าหมดแล้ว
-                        loadMoreAlertsBtn.style.display = alerts.length < limit ? 'none' : 'block';
-                        loadMoreAlertsBtn.innerText = "Read More Alerts";
-                    }
-
-                    // --- กรณีโหลดฝั่ง Messages ---
-                    if (type === 'message') {
-                        if (page === 1 && !append) notiContainer.innerHTML = '';
-                        if (messages.length > 0) {
-                            messages.forEach(m => {
-                                if (!document.querySelector(`[onclick*="${m._id}"]`)) {
-                                    notiContainer.insertAdjacentHTML('beforeend', getNotiItemHTML(m));
-                                }
-                            });
-                        } else if (!append) {
-                            notiContainer.innerHTML = '<div class="dropdown-item text-center small text-gray-500">ไม่มีข้อความ</div>';
-                        }
-                        // ซ่อนปุ่มถ้าหมดแล้ว
-                        loadMoreBtn.style.display = messages.length < limit ? 'none' : 'block';
-                        loadMoreBtn.innerText = "Read More Messages";
-                    }
-
-                    // อัปเดต Badge เฉพาะตอนโหลดครั้งแรก
-                    if (page === 1) updateBadgeUI();
-                });
-        }
-        
-        async function updateBadgeUI() {
-            const res = await fetch('/api/notifications/count');
+        try {
+            const res = await fetch(`/api/notifications/unread?page=${page}&limit=${limit}&targetType=${type}`);
             const data = await res.json();
-            
-            // จัดการ Alert Badge (ระฆัง)
-            if (data.alertUnread > 0) {
-                alertBadge.textContent = data.alertUnread;
-                alertBadge.style.display = 'block';
-            } else {
-                alertBadge.style.display = 'none';
+
+            // กรองข้อมูลตามประเภท
+            const alerts = data.filter(n => n.recipient.includes('ALL') || n.type === 'added_to_group' || n.type === 'new_alert');
+            const messages = data.filter(n => !n.recipient.includes('ALL') && n.type === 'new_message');
+
+            // --- จัดการฝั่ง Alert (ระฆัง) ---
+            if (type === 'alert' || type === 'added_to_group') {
+                if (page === 1 && !append) alertContainer.innerHTML = '';
+                
+                if (alerts.length > 0) {
+                    alerts.forEach(a => alertContainer.insertAdjacentHTML('beforeend', getAlertItemHTML(a)));
+                    if (alerts.length < limit) hasMoreAlert = false;
+                } else {
+                    hasMoreAlert = false;
+                    // ถ้าหน้าแรกไม่มีข้อมูลเลย ให้ขึ้นว่าไม่มี
+                    if (page === 1) {
+                        alertContainer.innerHTML = '<div class="p-3 text-center small text-gray-500">ไม่มีการแจ้งเตือน</div>';
+                    }
+                }
             }
 
-            // จัดการ Message Badge (ซองจดหมาย)
-            if (data.messageUnread > 0) {
-                notiBadge.textContent = data.messageUnread;
-                notiBadge.style.display = 'block';
-            } else {
-                notiBadge.style.display = 'none';
+            // --- จัดการฝั่ง Message (ซองจดหมาย) ---
+            if (type === 'message') {
+                if (page === 1 && !append) notiContainer.innerHTML = '';
+                
+                if (messages.length > 0) {
+                    messages.forEach(m => notiContainer.insertAdjacentHTML('beforeend', getNotiItemHTML(m)));
+                    if (messages.length < limit) hasMoreMsg = false;
+                } else {
+                    hasMoreMsg = false;
+                    // ถ้าหน้าแรกไม่มีข้อมูลเลย ให้ขึ้นว่าไม่มี
+                    if (page === 1) {
+                        notiContainer.innerHTML = '<div class="p-3 text-center small text-gray-500">ไม่มีข้อความใหม่</div>';
+                    }
+                }
             }
+
+            if (page === 1) updateBadgeUI();
+        } catch (err) {
+            console.error("Fetch error:", err);
+        } finally {
+            type === 'message' ? isMsgLoading = false : isAlertLoading = false;
         }
+    }
 
-        // --- Event Listeners ---
-        loadMoreBtn.addEventListener('click', () => {
-            msgPage++;
-            loadMoreBtn.innerText = "Loading...";
-            fetchNotifications(msgPage, 'message', true);
-        });
+    async function updateBadgeUI() {
+        const res = await fetch('/api/notifications/count');
+        const data = await res.json();
+        alertBadge.textContent = data.alertUnread;
+        alertBadge.style.display = data.alertUnread > 0 ? 'block' : 'none';
+        notiBadge.textContent = data.messageUnread;
+        notiBadge.style.display = data.messageUnread > 0 ? 'block' : 'none';
+    }
 
-        loadMoreAlertsBtn.addEventListener('click', () => {
+    // --- Infinite Scroll Logic ---
+    alertContainer.addEventListener('scroll', () => {
+        if (alertContainer.scrollTop + alertContainer.clientHeight >= alertContainer.scrollHeight - 10 && hasMoreAlert && !isAlertLoading) {
             alertPage++;
-            loadMoreAlertsBtn.innerText = "Loading...";
             fetchNotifications(alertPage, 'alert', true);
-        });
-
-        // โหลดข้อมูลครั้งแรก
-        fetchNotifications(1, 'message');
-        fetchNotifications(1, 'alert');
-
-        // 4. รับข้อมูลสดๆ จาก Socket
-        socket.on("new_notification", function(data) {
-            data.isRead = false;
-            // ปรับเงื่อนไขให้ตรงกับ Backend: group_alert หรือ new_alert
-            if (data.recipient.includes('ALL') || data.type === 'new_alert' || data.type === 'group_alert') {
-                alertBadge.style.display = 'block';
-                alertBadge.textContent = (parseInt(alertBadge.textContent) || 0) + 1;
-                if (alertContainer.innerHTML.includes("ไม่มีประกาศ")) alertContainer.innerHTML = '';
-                alertContainer.insertAdjacentHTML('afterbegin', getAlertItemHTML(data));
-            } else if (data.type === 'new_message') {
-                notiBadge.style.display = 'block';
-                notiBadge.textContent = (parseInt(notiBadge.textContent) || 0) + 1;
-                if (notiContainer.innerHTML.includes("ไม่มีข้อความ")) notiContainer.innerHTML = '';
-                notiContainer.insertAdjacentHTML('afterbegin', getNotiItemHTML(data));
-            }
-        });
+        }
     });
 
-    // ฟังก์ชันจัดการการคลิกอ่าน
-    async function handleNotiClick(event, notiId, isRead) {
-        event.preventDefault();
-        const targetUrl = event.currentTarget.getAttribute('href');
-        if (!isRead) {
-            try {
-                await fetch(`/api/notifications/mark-read/${notiId}`, { method: 'POST' });
-            } catch (err) { console.error("Mark read error:", err); }
+    notiContainer.addEventListener('scroll', () => {
+        if (notiContainer.scrollTop + notiContainer.clientHeight >= notiContainer.scrollHeight - 10 && hasMoreMsg && !isMsgLoading) {
+            msgPage++;
+            fetchNotifications(msgPage, 'message', true);
         }
-        window.location.href = targetUrl;
+    });
+
+    // เริ่มต้นโหลดหน้าแรก
+    fetchNotifications(1, 'message');
+    fetchNotifications(1, 'alert');
+
+    // Socket รับแจ้งเตือนสด
+    socket.on("new_notification", function(data) {
+        data.isRead = false;
+        const isAlert = data.recipient.includes('ALL') || data.type === 'added_to_group' || data.type === 'new_alert';
+        
+        if (isAlert) {
+            // ลบข้อความ "ไม่มีการแจ้งเตือน" ออกก่อนถ้ามี
+            if (alertContainer.innerText.includes("ไม่มีการแจ้งเตือน")) alertContainer.innerHTML = '';
+            
+            alertBadge.style.display = 'block';
+            alertBadge.textContent = (parseInt(alertBadge.textContent) || 0) + 1;
+            alertContainer.insertAdjacentHTML('afterbegin', getAlertItemHTML(data));
+        } else {
+            // ลบข้อความ "ไม่มีข้อความใหม่" ออกก่อนถ้ามี
+            if (notiContainer.innerText.includes("ไม่มีข้อความใหม่")) notiContainer.innerHTML = '';
+            
+            notiBadge.style.display = 'block';
+            notiBadge.textContent = (parseInt(notiBadge.textContent) || 0) + 1;
+            notiContainer.insertAdjacentHTML('afterbegin', getNotiItemHTML(data));
+        }
+    });
+});
+
+async function handleNotiClick(event, notiId, isRead) {
+    const targetUrl = event.currentTarget.getAttribute('href');
+    if (!isRead) {
+        try {
+            await fetch(`/api/notifications/mark-read/${notiId}`, { method: 'POST' });
+        } catch (err) { console.error(err); }
     }
+    if (targetUrl && targetUrl !== "javascript:void(0)") window.location.href = targetUrl;
+}
+
+async function respondInvitation(event, action, groupId, notiId) {
+    event.preventDefault();
+    event.stopPropagation(); // กันไม่ให้ Dropdown ปิดทันที
+
+    const url = action === 'accept' 
+        ? `/group/accept-invitation/${groupId}/${notiId}` 
+        : `/group/deny-invitation/${groupId}/${notiId}`;
+
+    try {
+        const res = await fetch(url, { method: 'POST' });
+        if (res.ok) {
+            // ถ้าสำเร็จ ให้ Refresh หน้าเพื่ออัปเดตสถานะกลุ่มใน Session/UI
+            window.location.reload();
+        } else {
+            const errorMsg = await res.text();
+            alert("ผิดพลาด: " + errorMsg);
+        }
+    } catch (err) {
+        console.error("Error:", err);
+    }
+}
 </script>
 <!-- End of Topbar -->

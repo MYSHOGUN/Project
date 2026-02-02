@@ -10,6 +10,8 @@ const Notification = require("./models/Notification");
 
 const NotificationRead = require("./models/NotificationRead");
 
+const crypto = require('crypto');
+
 const userSockets = new Map();
 const mongoose = require("mongoose");
 
@@ -238,6 +240,11 @@ function truncateText(text, maxWords) {
     return text;
 }
 
+function generateEventId() {
+    return crypto.randomUUID(); 
+    // ผลลัพธ์จะเป็นแบบ: "123e4567-e89b-12d3-a456-426614174000"
+}
+
 // Routes
 app.get("/" ,requireLogin, async (req, res) => {
   res.redirect("/group");
@@ -280,7 +287,7 @@ app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (re
       messages.push(textMessage);
 
       io.to(req.params.groupId).emit("group message", textMessage);
-      await sendGroupNotification('message',groupId, req.session.user.username, req.session.user.name, req.body.text.trim(), req.session.user.picture || null);
+      await sendGroupNotification('message',groupId, req.session.user.username, req.session.user.name, req.body.text.trim(), req.session.user.picture || null , null , undefined , null , null);
 
       hasMovement = true;
     }
@@ -319,7 +326,7 @@ app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (re
         messages.push(fileMessage);
 
         io.to(req.params.groupId).emit("group message", fileMessage);
-        await sendGroupNotification('message',groupId, req.session.user.username, req.session.user.name, `ส่งไฟล์: ${file.originalname}`, req.session.user.picture || null);
+        await sendGroupNotification('message',groupId, req.session.user.username, req.session.user.name, `ส่งไฟล์: ${file.originalname}`, req.session.user.picture || null , null , undefined , null , null);
 
         hasMovement = true;
       }
@@ -336,7 +343,7 @@ app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (re
     }
   });
 
-  async function sendGroupNotification(type, groupId, senderUsername, sender, messageText, senderPic) {
+  async function sendGroupNotification(type, groupId, senderUsername, sender, messageText, senderPic, mention , expire , member2 , advisor) {
     try {
         if (type === 'alert') {
             // 1. บันทึกลง DB แค่ 1 อัน (ใช้ recipient: 'ALL')
@@ -347,7 +354,9 @@ app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (re
                 type: 'group_alert', // ปรับให้ตรงกับ Enum ใน Schema
                 group: groupId,
                 text: messageText,
-                isRead: false
+                isRead: false,
+                expireAt: expire || undefined,
+                mention: mention || null,
             });
             await globalNoti.save();
 
@@ -359,7 +368,38 @@ app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (re
                 senderPic: senderPic,
                 type: 'group_alert'
             });
-
+        }else if (type === 'addGroup') {
+          // 1. เตรียมรายชื่อสมาชิกกลุ่ม
+          const recipientList = [];
+          if (member2) recipientList.push(member2);
+          if (advisor) recipientList.push(advisor);
+          // กรองเอาเฉพาะคนที่ไม่ใช่คนส่ง
+          const finalRecipients = recipientList.filter(m => m && m !== senderUsername);
+          // 2. บันทึกแจ้งเตือนลง DB เพียง "แถวเดียว" (ระบุผู้รับเป็น Array)
+          if (finalRecipients.length > 0) {
+              const newNoti = new Notification({
+                  recipient: finalRecipients, // ✅ เปลี่ยนจาก recipient เป็น recipients (Array)
+                  senderUsername: senderUsername,
+                  senderName: sender,
+                  type: 'added_to_group',
+                  group: groupId,
+                  text: messageText,
+                  senderPic: senderPic, // ✅ เก็บรูปคนส่งไว้ด้วย
+                  isRead: false // ค่าเริ่มต้น (ไม่ได้ใช้งานจริงสำหรับระบบแยกคนอ่านแต่ใส่ไว้กัน Error)
+              });
+              await newNoti.save();
+              // 3. ส่ง Socket Real-time แยกรายคนตามรายชื่อผู้รับ
+              finalRecipients.forEach((memberUsername) => {
+                  io.to(memberUsername).emit("new_notification", {
+                      _id: newNoti._id, // ✅ ส่ง ID ที่เพิ่งบันทึกไปเพื่อให้หน้าบ้านกดอ่านได้
+                      senderName: sender,
+                      text: messageText,
+                      groupId: groupId,
+                      senderPic: senderPic,
+                      type: 'added_to_group'
+                  }); 
+              });
+          }
         } else if (type === 'message') {
           // 1. หาข้อมูลกลุ่มและสมาชิก
           const groupData = await Group.findById(groupId);
@@ -427,8 +467,26 @@ app.get("/file/download/:id", requireLogin, async (req, res) => {
   }
 });
 
-app.get("/status", requireLogin, (req, res) => {
-  renderWithLayout(res, "status", { title: "KMUTNB Project - Status" }, req.path,req);
+app.get("/status", requireLogin, async (req, res) => {
+  try {
+    const groups = await Group.find(); // 1. ดึงกลุ่มทั้งหมดออกมา (member1 เป็นแค่ String)
+
+    // 2. ใช้ Promise.all วนลูปหาข้อมูลจากคนละที่มา "ประกอบร่าง"
+    const groupsWithData = await Promise.all(groups.map(async (g) => {
+      // ไปค้นหาใน User Schema โดยใช้ string จาก g.member1
+      // สมมติว่าใน User Schema เก็บชื่อฟิลด์ว่า username
+      const user = await User.findOne({ username: g.member1 }); 
+
+      return {
+          ...g.toObject(), // คัดลอกข้อมูลเดิมในกลุ่ม
+          leaderName: user ? `${user.name} ${user.lastname}` : g.member1 // สร้างฟิลด์ใหม่ขึ้นมาเอง
+      };
+    }));
+    renderWithLayout(res, "status", { title: "KMUTNB Project - Status", groups: groupsWithData }, req.path,req);
+  } catch (err) {
+    console.error("Error fetching groups:", err);
+    res.status(500).send("Error loading status");
+  }
 });
 app.get("/login", checkFailModal, checkSuccessModal, (req, res) => {
   //console.log("Session failModal:", req.session.failModal);
@@ -603,40 +661,51 @@ app.get("/search-users", requireLogin, async (req, res) => {
 // ✅ บันทึกกลุ่มใหม่
 app.post("/groups", requireLogin, async (req, res) => {
   try {
-    const {  projectName, member1, member2, advisor ,status} = req.body;
+    const {  projectName, member1, member2, advisor} = req.body;
+
+    const status = "รอนำเสนอหัวข้อ";
+
+    let existingGroup;
 
     if (!projectName||!member1) {
       return res.status(400).send("ข้อมูลไม่ครบ");
     }
 
     // ตรวจสอบว่ามีใครอยู่ในกลุ่มแล้วหรือยัง
-    const existingGroup = await Group.findOne({
+    if(member2 != null && member2 !== "" && member2 !== "undefined"){
+      existingGroup = await Group.findOne({
       $or: [
         { member1: member1 },
         { member2: member2 }
       ]
     });
+  } else {
+      existingGroup = await Group.findOne({
+      $or: [
+        { member1: member1 }
+      ]
+    });
+  }
 
     if (existingGroup) {
+      console.log(existingGroup, " สมาชิกนี้มีกลุ่มอยู่แล้ว");
       return res.status(400).send("สมาชิกนี้มีกลุ่มอยู่แล้ว");
     }
 
+    const mem1 = await User.findOne({ username: member1 });
+
+    const mem2 = member2 === null || member2 === "" || member2 === "undefined" ? null : `${member2} Pending`;
+
     // บันทึกกลุ่มใหม่
-    const newGroup = new Group({ projectName, member1, member2, advisor ,status});
+    const newGroup = new Group({ projectName, member1, mem2 , advisor ,status});
     await newGroup.save();
+
+    sendGroupNotification("addGroup", newGroup._id, "ระบบ", "ระบบ", `คุณถูกเพิ่มเข้ากลุ่มโดย ${mem1.name}`, null, null , null , member2 , advisor)
 
     await User.findOneAndUpdate(
       { username: member1 }, // หรือฟิลด์สำหรับค้นหาผู้ใช้ เช่น { username: member1 }
-      { $set: { group: projectName } }
+      { $set: { group: newGroup._id } }
     );
-
-    // อัปเดต member2 (ถ้ามีค่า)
-    if (member2) {
-        await User.findOneAndUpdate(
-          { username: member2  }, // หรือฟิลด์สำหรับค้นหาผู้ใช้ เช่น { username: member2 }
-          { $set: { group: projectName } }
-        );
-    }
 
     // อัปเดต session.user.group = "true"
     req.session.user.group = projectName;
@@ -648,28 +717,91 @@ app.post("/groups", requireLogin, async (req, res) => {
   }
 });
 
+
+app.post("/group/accept-invitation/:groupId/:notiId", requireLogin, async (req, res) => {
+  try {
+    const { groupId, notiId } = req.params;
+    const username = req.session.user.username;
+    const group = await Group.findById(groupId);
+
+    if (!group) {
+      return res.status(404).send("ไม่พบกลุ่ม");
+    }
+
+    // ตรวจสอบว่ามีคนอื่นมาเสียบแทนไปก่อนหรือยัง
+    if (group.member2 && group.member2 !== username) {
+      return res.status(400).send("กลุ่มนี้มีสมาชิกครบแล้ว");
+    }
+    
+    // 1. อัปเดตข้อมูลกลุ่ม
+    group.member2 = username;
+    await group.save();
+
+    // 2. ลบแจ้งเตือนทิ้ง
+    await Notification.findByIdAndDelete(notiId);
+
+    // 3. อัปเดตข้อมูล User ใน DB
+    await User.findOneAndUpdate(
+      { username: username },
+      { $set: { group: group.projectName } }
+    );
+
+    // 4. อัปเดต Session และบันทึกให้เสร็จก่อนตอบกลับ
+    req.session.user.group = group.projectName;
+    
+    req.session.save((err) => {
+      if (err) {
+        console.error("❌ Session Save Error:", err);
+        return res.status(500).send("เกิดข้อผิดพลาดในการบันทึกข้อมูลเซสชัน");
+      }
+      // ส่ง Response กลับเมื่อบันทึก Session เสร็จชัวร์ๆ แล้วเท่านั้น
+      res.status(200).send("เข้าร่วมกลุ่มสำเร็จ");
+    });
+
+  } catch (err) {
+    console.error("❌ Error accepting invitation:", err);
+    res.status(500).send("เกิดข้อผิดพลาดในการเข้าร่วมกลุ่ม");
+  }
+});
+
+app.post("/group/deny-invitation/:groupId" ,requireLogin , async (req,res) => {
+  try {
+    const { groupId } = req.params;
+    const group = await Group.findById(groupId);
+    group.member2 = null;
+
+    if (!group) {
+      return res.status(404).send("ไม่พบกลุ่ม");
+    }
+    group.member2 = username;
+    await group.save();
+
+    req.session.user.group = group.projectName;
+    res.status(200).send("ปฏิเสธเรียบร้อย");
+  } catch (err) {
+    console.error("❌ Error accepting invitation:", err);
+    res.status(500).send("เกิดข้อผิดพลาดในการปฏิเสธ");
+  }
+});
+
 app.post("/groups-update/:groupId", requireLogin, async (req, res) => {
   try {
     const {  member2, advisor } = req.body;
+    const { groupId } = req.params;
 
     // ตรวจสอบว่ามีใครอยู่ในกลุ่มแล้วหรือยัง
     const existingGroup = await Group.findOne({
       member2: member2,
-      _id: { $ne: req.params.groupId } // ไม่รวมกลุ่มที่กำลังอัปเดต
+      _id: groupId  // ไม่รวมกลุ่มที่กำลังอัปเดต
     });
     if (existingGroup) {
       return res.status(400).send("สมาชิกนี้มีกลุ่มอยู่แล้ว");
     }
 
     // แก้ไขกลุ่ม
-    const updatedGroup = await Group.findByIdAndUpdate(
-      req.params.groupId,
-      { member2, advisor },
-      { new: true } // คืนค่ากลุ่มที่อัปเดตกลับมา
-    );
+    sendGroupNotification("addGroup", groupId, "ระบบ", "ระบบ", `คุณถูกเพิ่มเข้ากลุ่มโดย ${mem1.name}`, null, null , null , member2 , advisor)
 
-
-    res.status(201).send("บันทึกกลุ่มสำเร็จ");
+    res.status(201).send("ส่งคำเชิญกลุ่มสำเร็จ");
   } catch (err) {
     console.error("❌ Error saving group:", err);
     res.status(500).send("เกิดข้อผิดพลาดในการบันทึกกลุ่ม");
@@ -716,9 +848,7 @@ app.post("/groups/leave/:groupId", async (req, res) => {
       group.member2 = null; // ล้าง member2
     } else if (group.member2 === username) {
       group.member2 = null;
-    } else if (group.advisor === username) {
-      group.advisor = null;
-    } else {
+    }  else {
       return res.status(400).send("คุณไม่ได้อยู่ในกลุ่มนี้");
     }
 
@@ -794,9 +924,20 @@ app.get("/updateGroup", requireLogin, async (req, res) => {
 
   let userInfo = [];
 
+  const m2 = await User.findOne({username: groups[0].member2});
+
+  let mem2;
+
     if (groups.length > 0) {
       const mem1 = await User.findOne({username: groups[0].member1});
-      const mem2 = await User.findOne({username: groups[0].member2});
+      if (m2 && m2.username.endsWith("Pending")) {
+        const user2 = await User.findOne({username: groups[0].member2});
+
+        mem2 = `${user2.name} (Pending)`;
+      }else{
+        mem2 = await User.findOne({username: groups[0].member2});
+      }
+      
       const adv = await User.findOne({username: groups[0].advisor});
       userInfo = [mem1, mem2, adv];
     }
@@ -1250,11 +1391,13 @@ app.post("/api/notifications/mark-read/:id", requireLogin, async (req, res) => {
         const notiId = req.params.id;
         const username = req.session.user.username;
 
+        const expiredNoti = await Notification.findOne({ _id: notiId, expireAt: { $lt: new Date() } });
+
         // ไม่ว่าจะเป็นกลุ่ม หรือ 1:1 ให้บันทึกลง NotificationRead ทั้งหมด
         // เพื่อให้ระบบเสถียรและเช็ค hasRead ได้จากที่เดียว
         await NotificationRead.updateOne(
             { notificationId: notiId, userId: username },
-            { $setOnInsert: { readAt: new Date() } },
+            { $setOnInsert: { readAt: new Date(), expireAt: expiredNoti ? expiredNoti.expireAt : undefined } },
             { upsert: true }
         );
 
@@ -1273,16 +1416,21 @@ app.get("/api/notifications/count", requireLogin, async (req, res) => {
         const readIds = await NotificationRead.find({ userId: username }).distinct("notificationId");
 
         // 2. นับแยกประเภท
-        // Alert (ประกาศทั่วไป/กิจกรรม)
+        
+        // --- แก้ไข Alert: ให้นับรวม ALL และ added_to_group ที่ส่งถึงเรา ---
         const alertUnread = await Notification.countDocuments({
-            recipient: 'ALL',
+            $or: [
+                { recipient: 'ALL' },
+                { recipient: username, type: 'added_to_group' }, // นับการดึงเข้ากลุ่มเป็น Alert
+                { recipient: username, type: 'new_alert' }      // เผื่อมีการส่ง Alert ส่วนตัว
+            ],
             _id: { $nin: readIds }
         });
 
-        // Message (ข้อความในกลุ่ม)
+        // --- Message (คงเดิม หรือเช็คให้ชัวร์ว่าไม่เอา added_to_group มารวม) ---
         const messageUnread = await Notification.countDocuments({
             recipient: username,
-            type: 'new_message',
+            type: 'new_message', // เฉพาะข้อความแชทเท่านั้น
             _id: { $nin: readIds }
         });
 
@@ -1311,18 +1459,26 @@ app.post("/api/addEvent", requireLogin, async (req, res) => {
         if (!title || !date) {
             return res.status(400).json({ error: "ข้อมูลไม่ครบถ้วน" });
         }
+        
+        const eventId = generateEventId();
+
+        const expire = toDate ? new Date(toDate) : new Date(date);
+
+        expire.setHours(23, 59, 59, 999); // ตั้งเวลาเป็นสิ้นวันของวันที่กำหนด
 
         const newEvent = new Event({
+            id: eventId,
             title,
             description,
             date: new Date(date), // มั่นใจว่าเป็น Date Object
-            toDate: toDate ? new Date(toDate) : null
+            toDate: toDate ? new Date(toDate) : null,
+            expireAt: expire
         });
 
         await newEvent.save();
         
         // 🔔 เรียกแจ้งเตือน (เช็คให้ชัวร์ว่าลบบั๊กในฟังก์ชันนี้แล้ว)
-        await sendGroupNotification('alert', null, req.session.user.username, req.session.user.name, `มีกิจกรรมใหม่: ${title}`, req.session.user.picture || null);
+        await sendGroupNotification('alert', null, req.session.user.username, req.session.user.name, `มีกิจกรรมใหม่: ${title}`, req.session.user.picture || null , eventId , expire , null , null);
 
         res.status(201).json({ message: "บันทึกสำเร็จ" });
     } catch (err) {
@@ -1354,6 +1510,8 @@ app.get("/eventInfo/:id", requireLogin, async (req, res) => {
     }
 });
 
+
+
 app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
     try {
         const eventId = req.params.id;
@@ -1361,7 +1519,9 @@ app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
         // ลบข้อมูลโดยใช้ ID
         const result = await Event.findByIdAndDelete(eventId);
 
-        if (result) {
+        const notiResult = await Notification.deleteMany({ mention: eventId });
+
+        if (result && notiResult) {
             res.json({ success: true, message: "ลบกิจกรรมสำเร็จ" });
         } else {
             res.status(404).json({ success: false, message: "ไม่พบกิจกรรมนี้ในระบบ" });
