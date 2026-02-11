@@ -119,7 +119,7 @@ async function saveUsersFromExcel(dataArray) {
             continue;
         }
 
-        const branch = row.branch || row.Branch || row.BRANCH || null;
+        const branch = row.branch || row.Branch || row.BRANCH || "EnET";
 
         const role = row.role || row.Role || row.ROLE || 'user';
 
