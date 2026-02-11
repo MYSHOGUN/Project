@@ -66,7 +66,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 const fs = require('fs'); // ต้องใช้ในการลบไฟล์ แต่ในกรณีนี้เราจะใช้ Buffer แทน
-const xlsx = require('xlsx'); // ✅ นำเข้าไลบรารีสำหรับอ่าน Excel
+const xlsx = require('XLSX'); // ✅ นำเข้าไลบรารีสำหรับอ่าน Excel
 const { send } = require("process");
 
 
@@ -1862,10 +1862,7 @@ app.post("/api/submitPaperResult", requireLogin, async (req, res) => {
                 date: currentPaper.date
             });
             await fixPaper.save();
-            
-            // ลบ Paper เก่าทิ้ง หรือทำสัญลักษณ์ว่าตรวจสอบแล้ว
-            await Paper.findByIdAndDelete(paperId);
-
+          
             return res.status(200).json({ success: true, message: "บันทึกการแก้ไขเรียบร้อยแล้ว" });
         } 
 
