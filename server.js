@@ -61,6 +61,7 @@ const { GridFSBucket, ObjectId } = require("mongodb");
 const { userInfo, devNull } = require("os");
 const { group } = require("console");
 
+//GGEZ
 // ใช้ memory storage ของ multer
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
