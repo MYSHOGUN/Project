@@ -1,16 +1,17 @@
-// แก้ไขใน db.js
+// db.js
+const mongoose = require("mongoose");
+
 const connectDB = async () => {
   try {
-    // ใช้ค่าจาก Cloud Run Configuration (MONGODB_URI)
-    const dbURI = process.env.MONGODB_URI || "mongodb://localhost:27017/test";
-    await mongoose.connect(dbURI, {
-      // ตัวเลือกเหล่านี้ใน Mongoose 6+ ไม่จำเป็นต้องใส่แล้ว แต่ใส่ไว้ไม่เสียหายครับ
+    await mongoose.connect("mongodb+srv://MYSHOGUN:h7IQ4L3fn6EvUshn@datatest.kbity8h.mongodb.net/?appName=DataTest", {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log("✅ MongoDB connected to Atlas");
+    console.log("✅ MongoDB connected");
   } catch (err) {
     console.error("❌ MongoDB connection error:", err.message);
     process.exit(1);
   }
 };
+
+module.exports = connectDB;
