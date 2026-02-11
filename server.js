@@ -121,11 +121,6 @@ async function saveUsersFromExcel(dataArray) {
 
         const branch = row.branch || row.Branch || row.BRANCH || null;
 
-        if (!branch) {
-            console.warn(`Skipping row due to missing branch for username ${usernameFromExcel}`);
-            continue;
-        }
-
         const role = row.role || row.Role || row.ROLE || 'user';
 
         const trimedBranch = String(branch).trim();
