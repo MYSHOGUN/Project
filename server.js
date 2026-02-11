@@ -66,7 +66,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 const fs = require('fs'); // ต้องใช้ในการลบไฟล์ แต่ในกรณีนี้เราจะใช้ Buffer แทน
-const xlsx = require('XLSX'); // ✅ นำเข้าไลบรารีสำหรับอ่าน Excel
+const xlsx = require('xlsx'); // ✅ นำเข้าไลบรารีสำหรับอ่าน Excel
 const { send } = require("process");
 
 
