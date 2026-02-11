@@ -137,7 +137,7 @@ async function saveUsersFromExcel(dataArray) {
             // ใช้ค่า Default สำหรับ non-required fields
             role: role, 
             phone: null, 
-            email: null,
+            email: emailExel,
             group: null,
             branch: trimedBranch // สามารถนำเข้า group ได้ถ้ามีใน Excel
         };
