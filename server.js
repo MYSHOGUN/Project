@@ -1556,9 +1556,9 @@ app.post("/api/addEvent", requireLogin, async (req, res) => {
 
             
         } else if (title === "วันสอบ" && file) {
-            const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+            const workbook = xlsx.read(file.buffer, { type: 'buffer' });
             const sheetName = workbook.SheetNames[0];
-            const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+            const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
             const testresultsdate = new Date(expire);
             testresultsdate.setDate(testresultsdate.getDate() + 7);
