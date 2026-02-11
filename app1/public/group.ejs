@@ -1,20 +1,90 @@
 <style>
+  /* Wrapper คลุม Input และปุ่มบวก */
+  .chat-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1; /* ให้ขยายเต็มพื้นที่ที่เหลือ */
+  }
+
+  /* ช่องกรอกข้อความ */
+  #message-input {
+    padding-right: 45px !important; /* เว้นที่ด้านขวาไม่ให้ตัวหนังสือทับปุ่ม */
+    border-radius: 25px !important;
+    height: 45px;
+    border: 1px solid #d1d3e2;
+  }
+
+  /* ปุ่มบวกที่ลอยอยู่ในช่องแชท */
+  #file-input-label {
+    position: absolute;
+    right: 15px; /* ห่างจากขอบขวาของ input */
+    top: 50%;
+    transform: translateY(-50%); /* จัดให้อยู่กึ่งกลางแนวตั้ง */
+    cursor: pointer;
+    color: #4e73df;
+    margin-bottom: 0;
+    z-index: 10;
+    line-height: 0;
+  }
+
+  #file-input-label:hover {
+    color: #2e59d9;
+    transform: translateY(-50%) scale(1.1);
+  }
+
+  /* ปุ่มส่งข้อความแบบวงกลม */
+  #message-sent {
+    width: 45px;
+    height: 45px;
+    border-radius: 50% !important;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    flex-shrink: 0; /* ไม่ให้ปุ่มเบี้ยว */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
   .group-item {
     cursor: pointer;
     transition: all 0.2s ease;
-    border-left: 5px solid transparent; /* เตรียมที่ไว้สำหรับแถบสี */
+    border-left: 5px solid transparent;
   }
-
-  /* สไตล์เมื่อเอาเมาส์ไปวาง */
   .group-item:hover {
       background-color: #f1f3f5;
   }
-
-  /* สไตล์สำหรับกลุ่มที่กำลังแชทอยู่ (Active) */
   .group-item.active-group {
-      background-color: #e8f0fe !important; /* สีฟ้าอ่อน */
-      border-left: 5px solid #00b91f;      /* เพิ่มแถบสีน้ำเงินด้านซ้าย */
+      background-color: #e8f0fe !important;
+      border-left: 5px solid #00b91f;
       font-weight: bold;
+  }
+  .message-content {
+    max-width: 85%;
+    word-wrap: break-word;
+  }
+  .chat-image-preview {
+    width: 100%;
+    max-width: 230px;
+    height: auto;
+    border-radius: 12px;
+    display: block;
+    transition: transform 0.2s;
+  }
+  .chat-image-preview:hover {
+    transform: scale(1.02);
+  }
+  .pdf-preview-box {
+    width: 100%;
+    max-width: 280px;
+  }
+  @media (max-width: 576px) {
+    .chat-image-preview {
+      max-width: 100%;
+    }
+    .message-content {
+      max-width: 95%;
+    }
   }
 </style>
 
@@ -25,7 +95,7 @@
     <!-- รายชื่อ -->
     <div id="group-list-section" class="col-sm-4 col-12" style="background-color: lightgrey; height: 100%; width: 33.3333%;">
       <div class="mx-4 mt-4">
-        <h2>รายชื่อกลุ่ม</h2>
+        <h2 style="color: #4e73df;">รายชื่อกลุ่ม</h2>
         <ul class="list-group" id="group-list">
 
           <% groups.forEach(g => { %>
@@ -50,7 +120,7 @@
     <!-- ระบบแชท -->
     <div id="chat-section" class="col-sm-8 col-12 d-flex flex-column " style="height: 100%; display: none; width: 66.6666%;">
       <div class="mt-4 mx-4 d-flex align-items-center justify-content-between">
-        <h2>
+        <h2 style="color: #4e73df;">
           แชทกลุ่ม: <span id="chat-with">-</span>
         </h2>
         <button id="back-button" class="btn btn-secondary d-sm-none">
@@ -62,25 +132,28 @@
         <!-- ข้อความแชท -->
       </div>
       <div id="file-preview-box" class="mx-4" style="display: flex; gap: 5px; flex-wrap: wrap;"></div>
-      <form id="chat-form" class="d-flex align-items-center mx-4 my-2" style="gap: 10px;">
-        <div class="input-group">
-          <input id="message-input" autocomplete="off" placeholder="พิมพ์ข้อความ..." class="form-control" style="border-top-left-radius: 10rem; border-bottom-left-radius: 10rem;">
-          <label 
-            id="file-input"
-            for="file-upload" 
-            class="form-control" 
-            style="cursor: pointer; display: flex; justify-content: center; align-items: center; padding: 0; margin-bottom: 0; border-top-right-radius: 10rem; border-bottom-right-radius: 10rem;">
-            <i class="fas fa-plus"></i>
-          </label>
-          <input id="file-upload" type="file" hidden multiple>
+      <form id="chat-form" class="d-flex align-items-center mx-4 my-2" style="gap: 10px; display: flex !important;">
+        <div class="chat-input-wrapper" style="position: relative !important; flex: 1 !important; display: flex !important; align-items: center !important;">
+            
+            <input id="message-input" autocomplete="off" placeholder="พิมพ์ข้อความ..." class="form-control" 
+                  style="padding-right: 45px !important; border-radius: 20px !important; height: 45px !important; width: 100% !important;">
+            
+            <label for="file-upload" id="file-input-label" 
+                  style="position: absolute !important; right: 15px !important; top: 50% !important; transform: translateY(-50%) !important; cursor: pointer !important; color: #4e73df !important; margin: 0 !important; z-index: 10 !important; line-height: 0 !important;">
+                <i class="fas fa-plus-circle fa-lg"></i>
+            </label>
+            
+            <input id="file-upload" type="file" hidden multiple>
         </div>
-        <button id="message-sent" class="form-control form-control-chat btn btn-primary" style="display: flex; justify-content: center; align-items: center; padding: 0;">
-          ส่ง
+
+        <button id="message-sent" type="submit" class="btn btn-primary" 
+                style="width: 45px !important; height: 45px !important; border-radius: 50% !important; display: flex !important; justify-content: center !important; align-items: center !important; padding: 0 !important; flex-shrink: 0 !important;">
+            <i class="fas fa-paper-plane"></i>
         </button>
-      </form>
-    </div>
+    </form>
   </div>
-  <script>
+</div>
+<script>
 document.addEventListener("DOMContentLoaded", () => {
   const socket = io({ query: { username: "<%= user.username %>" } });
   const groupListSection = document.getElementById("group-list-section");
@@ -94,6 +167,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const fileInput = document.getElementById('file-upload');
   const filePreviewBox = document.getElementById('file-preview-box');
+  // ในส่วนประกาศตัวแปรใน <script> ให้แก้บรรทัดนี้เล็กน้อยเพื่อให้ตรงกับ ID ใหม่
+  const fileInputLabel = document.getElementById('file-input-label'); // ถ้าคุณมีการเรียกใช้ในส่วนอื่น
 
   let currentGroupId = "<%= groups.length > 0 ? groups[0]._id : '' %>";
   let currentGroupName = "<%= groups.length > 0 ? groups[0].projectName : '' %>";
@@ -205,27 +280,37 @@ document.addEventListener("DOMContentLoaded", () => {
     joinGroup(groupId, groupName);
   });
 
-  function addMessage(msg){
-    console.log("🖊️ addMessage called with:", msg); // ✅
+  function addMessage(msg) {
     const div = document.createElement('div');
-    if(msg.type === "file" && msg.file && msg.file.fileId){
-      div.innerHTML = `${msg.senderName}: <a href="/file/download/${msg.file.fileId}" download="${msg.file.filename}"> ${msg.file.filename}</a>`;
-    } else {
-      div.textContent = `${msg.senderName}: ${msg.text}`;
-    }
-    
-  const currentUser = "<%= user.username %>".trim();
-  const sender = (msg.senderUsername || "").trim();
+    const currentUser = "<%= user.username %>".trim();
+    const sender = (msg.senderUsername || "").trim();
 
-  if(sender.trim() === currentUser.trim()){
-    div.classList.add('chat-messages-sent');
-  } else {
-    div.classList.add('chat-messages-received');
-  }
+    div.classList.add(sender === currentUser ? 'chat-messages-sent' : 'chat-messages-received');
+
+    if (msg.type === "file" && msg.file && msg.file.fileId) {
+        const fileId = msg.file.fileId;
+        const fileName = msg.file.filename;
+        const mimeType = msg.file.contentType;
+
+        // 1. พรีวิวรูปภาพ (Responsive)
+        if (mimeType && mimeType.startsWith('image/')) {
+            div.innerHTML = `<div class="d-block my-2">${msg.senderName}:</div><a href="/image/${fileId}" target="_blank"><img src="/image/${fileId}" alt="${fileName}" class="chat-image-preview"></a><div class="mt-1 small"><a href="/file/download/${fileId}" class="${sender === currentUser ? 'text-white-50' : 'text-primary'} mb-2"><i class="fas fa-download"></i> โหลดรูป</a></div>`;
+        } 
+        // 2. พรีวิว PDF (Responsive)
+        else if (mimeType === 'application/pdf') {
+            div.innerHTML = `<div class="d-block my-2">${msg.senderName}: ${fileName}</div><div class="pdf-preview-box p-2 rounded d-flex align-items-center justify-content-center mb-2" style="color: #333;"><a href="/image/${fileId}" target="_blank" class="font-weight-bold d-block text-truncate" style="color: #4e73df; text-decoration: none;"><i class="fas fa-file-pdf text-danger fa-6x"></i></a></div>`;
+        } 
+        // 3. ไฟล์อื่นๆ
+        else {
+            div.innerHTML = `<div class="d-block my-2">${msg.senderName}: ${fileName}</div><div class="p-2 mb-2 rounded text-dark d-flex align-items-center justify-content-center"><a href="/file/download/${fileId}" download="${fileName}" class="text-truncate" style="max-width: 150px;"><i class="fas fa-file-alt fa-6x"></i></a></div>`;
+        }
+    } else {
+        div.innerHTML = `<div class="d-block my-2">${msg.senderName}: ${msg.text}</div>`;
+    }
 
     messagesContainer.appendChild(div);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
-  }
+}
 
   // ส่งข้อความ
   chatForm.addEventListener("submit", e => {

@@ -212,7 +212,7 @@ document.addEventListener("DOMContentLoaded", function() {
             const data = await res.json();
 
             // กรองข้อมูลตามประเภท
-            const alerts = data.filter(n => n.recipient.includes('ALL') || n.type === 'added_to_group' || n.type === 'new_alert');
+            const alerts = data.filter(n => n.recipient.includes('ALL') || n.type === 'added_to_group' || n.type === 'new_alert' || n.type === 'group_alert');
             const messages = data.filter(n => !n.recipient.includes('ALL') && n.type === 'new_message');
 
             // --- จัดการฝั่ง Alert (ระฆัง) ---
@@ -286,7 +286,7 @@ document.addEventListener("DOMContentLoaded", function() {
     // Socket รับแจ้งเตือนสด
     socket.on("new_notification", function(data) {
         data.isRead = false;
-        const isAlert = data.recipient.includes('ALL') || data.type === 'added_to_group' || data.type === 'new_alert';
+        const isAlert = data.recipient.includes('ALL') || data.type === 'added_to_group' || data.type === 'new_alert' || data.type === 'group_alert';
         
         if (isAlert) {
             // ลบข้อความ "ไม่มีการแจ้งเตือน" ออกก่อนถ้ามี

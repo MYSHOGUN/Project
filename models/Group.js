@@ -6,7 +6,8 @@ const groupSchema = new mongoose.Schema({
   member2: { type: String, default: null },
   advisor: { type: String, default: null },
   status: { type: String, default: "รอนำเสนอหัวข้อ" },
-  lastUpdatedTime: { type: Date, default: null }
+  lastUpdatedTime: { type: Date, default: null },
+  passTimes: {type: Number, default: 0 }
 },{timestamps: true}
 );
 

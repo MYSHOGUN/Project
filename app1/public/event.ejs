@@ -1,6 +1,14 @@
+<style>
+    /* ใส่ Hover effect ให้ดูพรีเมียม */
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+</style>
+
 <div class="container-fluid mt-4" style="min-height: 100vh;">               
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">ตารางกิจกรรม</h1>
+        <h1 style="color: #4e73df;">ตารางกิจกรรม</h1>
         <% if (user && user.role === 'admin') { %>
             <button class="btn btn-primary btn-icon-split shadow-sm" onclick="location.href='/addEvent'">
                 <span class="icon text-white-50"><i class="fas fa-plus"></i></span>
@@ -29,7 +37,7 @@
 
             if (events.length === 0) {
                 container.innerHTML = `
-                    <div class="card shadow mb-4">
+                    <div class="card shadow mb-4" style="transition: transform 0.2s;">
                         <div class="card-body text-center py-5">
                             <i class="fas fa-calendar-times fa-3x text-gray-300 mb-3"></i>
                             <p class="mb-0">ยังไม่มีกิจกรรมที่ประกาศไว้</p>
@@ -61,8 +69,8 @@
                 if (ev.title === "วันส่งเอกสาร") colorClass = "warning";
 
                 const eventHtml = `
-                    <a href="/eventInfo/${ev._id}" style="text-decoration: none;">
-                        <div class="card border-left-${colorClass} shadow mb-3">
+                    <a href="/eventInfo/${ev.id}" style="text-decoration: none;">
+                        <div class="card border-left-${colorClass} shadow mb-3" style="transition: transform 0.2s;">
                             <div class="card-body">
                                 <div class="row no-gutters align-items-center justify-content-between w-100">
                                     <div class="col mr-2">

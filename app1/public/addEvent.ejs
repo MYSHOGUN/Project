@@ -41,7 +41,7 @@
 <div class="container-fluid mt-4" style="height: 100%;">               
     <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1>จัดตารางกิจกรรม</h1>
+        <h1 style="color: #4e73df;">จัดตารางกิจกรรม</h1>
     </div>
     <div class="d-flex flex-column justify-content-center align-items-center">
         <div class="dropdown">
@@ -58,7 +58,7 @@
             <select id="selectYear" class="date-select" onchange="populateDays('selectDay', 'selectMonth', 'selectYear'); updateToDateOptions(); updateSelectedDate();">
                 <option value="" disabled selected hidden>ปี (พ.ศ.)</option>
             </select>
-            <select id="selectMonth" class="date-select" onchange="populateDays('selectDay', 'selectMonth', 'selectYear'); updateToDateOptions(); updateSelectedDate();">
+            <select id="selectMonth" class="date-select" onchange="populateDays('selectDay', 'selectMonth', 'selectYear'); updateToDateOptions(); updateSelectedDate();" disabled>
                 <option value="" disabled selected hidden>เดือน</option>
             </select>
             <select id="selectDay" class="date-select" onchange="updateToDateOptions(); updateSelectedDate();" disabled>
@@ -72,7 +72,7 @@
                 <select id="selectYear2" class="date-select" onchange="updateToDateOptions(); updateSelectedDate();">
                     <option value="" disabled selected hidden>ปี (พ.ศ.)</option>
                 </select>
-                <select id="selectMonth2" class="date-select" onchange="updateToDateOptions(); updateSelectedDate();">
+                <select id="selectMonth2" class="date-select" onchange="updateToDateOptions(); updateSelectedDate();" disabled>
                     <option value="" disabled selected hidden>เดือน</option>
                 </select>
                 <select id="selectDay2" class="date-select" onchange="updateSelectedDate()" disabled>
@@ -81,6 +81,12 @@
             </div>  
         </div>
         <textarea class="form-control mt-4" id="eventDescription" rows="4" cols="50" placeholder="รายละเอียดกิจกรรม"></textarea>
+        <div id="fileUploadSection" class="justify-content-center align-items-center text-center d-none" style="width: 80%;">
+            <div id="drop-area" class="my-4">
+                <p id="defaultDropText">ลากไฟล์ Excel มาวางที่นี่ หรือ คลิกเพื่อเลือกไฟล์</p>
+                <input type="file" id="file-input" style="display:none;">
+            </div>
+        </div>
         <div>
             <button class="btn btn-success btn-lg mt-4" id="saveEventBtn">บันทึกกิจกรรม</button>
             <button class="btn btn-danger btn-lg mt-4" id="cancelEventBtn" onclick="resetForm()">ยกเลิก</button>
@@ -90,6 +96,18 @@
 <script>
     let toDate = document.getElementById("toDate");
     let selectedValue = "";
+    
+    const fileUploadSection = document.getElementById("fileUploadSection");
+    let selectedFile = null;
+    const dropArea = document.getElementById('drop-area');
+    const defaultDropText = document.getElementById('defaultDropText'); // ข้อความเริ่มต้น
+    const fileInput = document.getElementById('file-input');
+    const allowedTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+        'application/vnd.ms-excel', // .xls
+        'application/vnd.ms-office' 
+    ];
+    const defaultDropAreaBorder = '2px dashed #ccc'; 
 
     const saveEventBtn = document.getElementById("saveEventBtn");
     const cancelEventBtn = document.getElementById("cancelEventBtn");
@@ -103,27 +121,47 @@
             { year: "selectYear2", month: "selectMonth2", day: "selectDay2" }
         ];
 
-        const currentYear = new Date().getFullYear();
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1; // 1-12
 
         pickerSets.forEach(set => {
             const sMonth = document.getElementById(set.month);
             const sYear = document.getElementById(set.year);
             if (!sMonth || !sYear) return;
 
-            // แก้ไขตรงนี้: ล้างค่าเก่าและใส่หัวข้อกลับเข้าไปก่อนเริ่มวน Loop
             sMonth.innerHTML = '<option value="" disabled selected hidden>เดือน</option>';
             sYear.innerHTML = '<option value="" disabled selected hidden>ปี (พ.ศ.)</option>';
 
-            monthTh.forEach((m, index) => {
-                sMonth.add(new Option(m, index + 1));
-            });
-
-            for (let i = currentYear + 10; i >= currentYear; i--) {
+            // ปี: วนจากปัจจุบันไปอีก 10 ปี
+            for (let i = currentYear; i <= currentYear + 10; i++) {
                 sYear.add(new Option(i + 543, i));
             }
 
+            // เดือน: จะถูกเติมเมื่อมีการเลือกปีใน onchange หรือเรียกผ่านฟังก์ชันนี้
+            updateMonthOptions(set.month, set.year);
             populateDays(set.day, set.month, set.year);
         });
+    }
+
+    // ฟังก์ชันใหม่: ช่วยกรองเดือนตามปีที่เลือก (ป้องกันเดือนในอดีต)
+    function updateMonthOptions(monthId, yearId) {
+        const sMonth = document.getElementById(monthId);
+        const sYearValue = parseInt(document.getElementById(yearId).value);
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+
+        const currentSel = sMonth.value;
+        sMonth.innerHTML = '<option value="" disabled selected hidden>เดือน</option>';
+
+        monthTh.forEach((m, index) => {
+            const monthNum = index + 1;
+            // ถ้าเลือกปีปัจจุบัน ห้ามเลือกเดือนที่ผ่านมาแล้ว
+            if (sYearValue === currentYear && monthNum < currentMonth) return;
+            sMonth.add(new Option(m, monthNum));
+        });
+        sMonth.value = currentSel;
     }
 
     function populateDays(dayId, monthId, yearId) {
@@ -131,90 +169,100 @@
         const sMonthValue = parseInt(document.getElementById(monthId).value);
         const sYearValue = parseInt(document.getElementById(yearId).value);
         
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+        const currentDate = now.getDate();
+
         const startDay = parseInt(document.getElementById("selectDay").value) || 0;
         const startMonth = parseInt(document.getElementById("selectMonth").value) || 0;
         const startYear = parseInt(document.getElementById("selectYear").value) || 0;
 
-        const previousSelectedDay = sDay.value;
-        
-        // แก้ไขตรงนี้: ใส่ disabled selected hidden กลับเข้าไป
         sDay.innerHTML = '<option value="" disabled selected hidden>วัน</option>';
 
         if (sMonthValue && sYearValue) {
-            sDay.disabled = false; // เปิดให้เลือกได้
-            
-            const daysInMonth = new Date(parseInt(sYearValue), parseInt(sMonthValue), 0).getDate();
+            sDay.disabled = false;
+            const daysInMonth = new Date(sYearValue, sMonthValue, 0).getDate();
             
             for (let d = 1; d <= daysInMonth; d++) {
-                if (dayId === 'selectDay2') {
-                    if (parseInt(sYearValue) === startYear && parseInt(sMonthValue) === startMonth) {
-                        if (d <= startDay) continue;
-                    }
+                // 1. ป้องกันวันในอดีต (สำหรับชุดที่ 1)
+                if (dayId === 'selectDay') {
+                    if (sYearValue === currentYear && sMonthValue === currentMonth && d < currentDate) continue;
                 }
+
+                // 2. ป้องกันวันสิ้นสุดก่อนวันเริ่มต้น (สำหรับชุดที่ 2)
+                if (dayId === 'selectDay2') {
+                    if (sYearValue === startYear && sMonthValue === startMonth && d < startDay) continue;
+                }
+
                 sDay.add(new Option(d, d));
             }
         } else {
-            sDay.disabled = true; // ปิดถ้ายังเลือก ปี/เดือน ไม่ครบ
-            sDay.value = "";
+            sDay.disabled = true;
         }
     }
 
-    // เพิ่มฟังก์ชันใหม่สำหรับกรอง ปี และ เดือน ของชุดที่ 2
-    // แก้ไขฟังก์ชัน updateToDateOptions ให้ฉลาดขึ้น
+    function updateMonthOptions(monthId, yearId) {
+        const sMonth = document.getElementById(monthId);
+        const sYear = document.getElementById(yearId);
+        const sYearValue = parseInt(sYear.value);
+        
+        // --- ส่วนที่เพิ่มเพื่อ Lock/Unlock เดือน ---
+        if (sYearValue) {
+            sMonth.disabled = false; // ปลดล็อคเมื่อเลือกปีแล้ว
+        } else {
+            sMonth.disabled = true;  // ล็อคไว้ถ้ายังไม่เลือกปี
+            sMonth.value = "";
+            return; 
+        }
+        // ---------------------------------------
+
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+        const currentSel = sMonth.value;
+        
+        sMonth.innerHTML = '<option value="" disabled selected hidden>เดือน</option>';
+
+        monthTh.forEach((name, index) => {
+            const monthNum = index + 1;
+            // Logic กรองเดือนในอดีต
+            if (monthId === 'selectMonth') {
+                if (sYearValue === currentYear && monthNum < currentMonth) return;
+            }
+            if (monthId === 'selectMonth2') {
+                const startYear = parseInt(document.getElementById("selectYear").value) || 0;
+                const startMonth = parseInt(document.getElementById("selectMonth").value) || 0;
+                if (sYearValue === startYear && monthNum < startMonth) return;
+            }
+            sMonth.add(new Option(name, monthNum));
+        });
+        sMonth.value = currentSel;
+    }
+
     function updateToDateOptions() {
-        const sDay = document.getElementById("selectDay");
-        const sMonth = document.getElementById("selectMonth");
+        // อัปเดต List เดือนของทั้งสองชุดก่อน (เผื่อมีการสลับปีไปมา)
+        updateMonthOptions('selectMonth', 'selectYear');
+        updateMonthOptions('selectMonth2', 'selectYear2');
+
         const sYear = document.getElementById("selectYear");
-
-        const sDay2 = document.getElementById("selectDay2");
-        const sMonth2 = document.getElementById("selectMonth2");
         const sYear2 = document.getElementById("selectYear2");
+        const startYear = parseInt(sYear.value) || 0;
 
-        const startVal = {
-            d: parseInt(sDay.value) || 0,
-            m: parseInt(sMonth.value) || 0,
-            y: parseInt(sYear.value) || 0
-        };
-
-        const currentToDateVal = {
-            d: parseInt(sDay2.value) || 0,
-            m: parseInt(sMonth2.value) || 0,
-            y: parseInt(sYear2.value) || 0
-        };
-
-        // 1. กรองปี (Years)
+        // กรองปีชุดที่ 2 ไม่ให้ต่ำกว่าชุดที่ 1
         const currentYear = new Date().getFullYear();
+        const savedYear2 = sYear2.value;
         sYear2.innerHTML = '<option value="" disabled selected hidden>ปี (พ.ศ.)</option>';
-        for (let i = currentYear + 10; i >= currentYear; i--) {
-            if (i < startVal.y) continue;
+        for (let i = currentYear; i <= currentYear + 10; i++) {
+            if (i < startYear) continue;
             sYear2.add(new Option(i + 543, i));
         }
-        sYear2.value = currentToDateVal.y || "";
-        // 2. กรองเดือน (Months)
-        sMonth2.innerHTML = '<option value="" disabled selected hidden>เดือน</option>';
-        monthTh.forEach((m, index) => {
-            const monthNum = index + 1;
-            if (parseInt(sYear2.value) === startVal.y && monthNum < startVal.m) return;
-            sMonth2.add(new Option(m, monthNum));
-        });
-        sMonth2.value = currentToDateVal.m || "";
-        
-        // 3. กรองวัน (Days) - เรียกใช้ populateDays เดิมที่คุณแก้ไว้
-        populateDays('selectDay2', 'selectMonth2', 'selectYear2');
+        sYear2.value = savedYear2;
 
-        // --- LOGIC ป้องกันค่าค้างที่ผิดพลาด ---
-        // ถ้าค่าที่เลือกไว้ในชุดที่ 2 ดันน้อยกว่าชุดที่ 1 ให้รีเซ็ตชุดที่ 2 ทันที
-        if (startVal.y && startVal.m && startVal.d && currentToDateVal.y && currentToDateVal.m && currentToDateVal.d) {
-            const date1 = new Date(startVal.y, startVal.m - 1, startVal.d);
-            const date2 = new Date(currentToDateVal.y, currentToDateVal.m - 1, currentToDateVal.d);
-            
-            if (date2 < date1) {
-                sDay2.value = ""; // ล้างแค่วันที่ออกเพื่อให้ User เลือกใหม่
-            }
-        }
+        // รีเฟรชวันของชุดที่ 2
+        populateDays('selectDay2', 'selectMonth2', 'selectYear2');
     }
 
-    // แก้ไขฟังก์ชัน selectActivity (แก้ตัวสะกดผิด)
     function selectActivity(element) {
         selectedValue = element.innerText;
         document.getElementById("dropdownMenuButton").innerText = selectedValue;
@@ -222,9 +270,12 @@
         if(selectedValue === "วันสอบ") {
             toDate.style.display = "block";
             eventDescription.style.display = "none";
+            fileUploadSection.classList.remove("d-none");
+            fileUploadSection.classList.add("d-flex");
         } else {
+            fileUploadSection.classList.remove("d-flex");
+            fileUploadSection.classList.add("d-none");
             toDate.style.display = "none";
-            // ล้างค่าวันที่ชุดที่ 2 ทิ้งถ้าไม่ใช่ "วันสอบ" เพื่อป้องกันข้อมูลขยะส่งไป Backend
             document.getElementById("selectDay2").value = "";
             document.getElementById("selectMonth2").value = "";
             document.getElementById("selectYear2").value = "";
@@ -239,109 +290,162 @@
     }
 
     function updateSelectedDate() {
-        // คุณสามารถเพิ่ม Logic การรวมวันที่เริ่มต้น-สิ้นสุดเพื่อแสดงผลที่นี่ได้
         const d = document.getElementById("selectDay").value;
         const m = document.getElementById("selectMonth").value;
         const y = document.getElementById("selectYear").value;
 
         if (d && m && y) {
-            if (typeof currentDate !== 'undefined') {
-                currentDate = new Date(y, m - 1, d);
-                if (typeof renderCalendar === 'function') {
-                    renderCalendar();
-                }
-            }
+            // ส่วนนี้ไว้เชื่อมกับ Calendar หรือ Preview ของคุณ
+            console.log("Selected Start Date:", `${y}-${m}-${d}`);
         }
     }
 
     function resetForm() {
-        // 1. รีเซ็ตปุ่ม Dropdown
         document.getElementById("dropdownMenuButton").innerText = "เลือกกิจกรรม";
         selectedValue = "";
-        
-        // 2. ปิดส่วนที่เคยเปิดไว้
         toDate.style.display = "none";
         eventDescription.style.display = "none";
-
-        // 3. รีเซ็ตตัวเลือกวันที่ทั้งหมด (รวมถึงการล้าง Option ที่ถูก Filter ค้างไว้)
+        eventDescription.value = "";
         initDatePicker(); 
-
-        // 4. รีเซ็ตปุ่มบันทึก (กรณีที่เคยกดแล้ว Error)
         saveEventBtn.disabled = false;
         saveEventBtn.innerText = "บันทึกกิจกรรม";
+        window.location.href = "/event"
+    }
 
-        // 5. รีเซ็ตรายละเอียดกิจกรรม
-        eventDescription.value = "";
+    dropArea.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        dropArea.style.border = '2px dashed green'; 
+    });
+
+    dropArea.addEventListener('dragleave', () => {
+        // คืนค่า border เมื่อลากไฟล์ออก
+        if (!selectedFile) {
+            dropArea.style.border = defaultDropAreaBorder; 
+        }
+    });
+
+    dropArea.addEventListener('drop', (event) => {
+        event.preventDefault();
+        const files = event.dataTransfer.files;
+        handleFiles(files);
+    });
+
+    dropArea.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', () => {
+        const files = fileInput.files;
+        handleFiles(files);
+    });
+
+    // -------------------------------------------------------------
+    // 2. ฟังก์ชันหลัก: จัดการไฟล์และตรวจสอบประเภท (แก้ไขให้แสดงชื่อไฟล์)
+    // -------------------------------------------------------------
+    function handleFiles(files) {
+        const file = files[0];
+        
+        // 🚨 รีเซ็ตสถานะทั้งหมดให้กลับไปที่ค่าเริ่มต้นก่อน
+        selectedFile = null;
+        
+        // รีเซ็ตการแสดงผล
+        defaultDropText.innerHTML = 'ลากไฟล์ Excel มาวางที่นี่ หรือ คลิกเพื่อเลือกไฟล์';
+        dropArea.style.border = defaultDropAreaBorder; 
+        dropArea.style.backgroundColor = 'transparent'; 
+
+        if (file) {
+            // ตรวจสอบประเภทไฟล์
+            const isAllowedType = allowedTypes.includes(file.type) || file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+
+            if (isAllowedType) {
+                // ถ้าเป็นไฟล์ Excel ที่ยอมรับ
+                selectedFile = file; 
+                
+                // 💡 ส่วนที่แก้ไข: แสดงชื่อไฟล์ใน Drop Area
+                defaultDropText.innerHTML = `
+                    ✅ **เลือกไฟล์สำเร็จ:**<br>
+                    <span style="font-weight: bold; color: #155724;">${file.name}</span>
+                `;
+                dropArea.style.border = '2px solid green';
+                dropArea.style.backgroundColor = '#e6ffe6';
+                
+            } else {
+                // ถ้าไม่ใช่ไฟล์ Excel: แจ้งเตือน
+                alert('ไฟล์ที่เลือกไม่ใช่ไฟล์ Excel ที่ถูกต้อง (ยอมรับ: .xlsx, .xls) ประเภทที่เลือกคือ: ' + file.type);
+                fileInput.value = ''; // ล้างค่าใน input
+            }
+        } else {
+            fileInput.value = ''; 
+        }
     }
 
     saveEventBtn.addEventListener("click", () => {
-        const eventType = selectedValue;
         const day = document.getElementById("selectDay").value;
         const month = document.getElementById("selectMonth").value;
         const year = document.getElementById("selectYear").value;
-        if (selectedValue === "วันสอบ") {
-            eventDescription.value = "จะมีการจัดสอบในวันที่กำหนด โปรดเตรียมเอกสารในการสอบให้เรียบร้อย";
-        }else if (selectedValue === "วันส่งเอกสาร") {
-            eventDescription.value = "โปรดส่งเอกสารภายในวันที่กำหนด";
-        }else{
-            eventDescription.value = eventDescription.value.trim();
-        }
-        
-        if (!eventType || eventType === "เลือกกิจกรรม" || !day || !month || !year) {
+
+        if (!selectedValue || selectedValue === "เลือกกิจกรรม" || !day || !month || !year) {
             alert("กรุณากรอกข้อมูลให้ครบถ้วน");
             return;
         }
 
-        // แก้ไขตรงนี้: ส่งเป็น String ISO แทน Object Date เพื่อความชัวร์
-        let eventData = {
-            title: eventType,
-            description: eventDescription.value,
-            date: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}` // ฟอร์แมต YYYY-MM-DD
-        };
+        // ตั้งค่า Description อัตโนมัติ
+        let desc = eventDescription.value.trim();
+        if (selectedValue === "วันสอบ") desc = "จะมีการจัดสอบในวันที่กำหนด โปรดเตรียมเอกสารในการสอบให้เรียบร้อย";
+        else if (selectedValue === "วันส่งเอกสาร") desc = "โปรดส่งเอกสารภายในวันที่กำหนด";
 
-        if(toDate.style.display === "block") {
-            const toDay = document.getElementById("selectDay2").value;
-            const toMonth = document.getElementById("selectMonth2").value;
-            const toYear = document.getElementById("selectYear2").value;
-            
-            if (toDay && toMonth && toYear) {
-                eventData.toDate = `${toYear}-${toMonth.padStart(2, '0')}-${toDay.padStart(2, '0')}`;
+        // 1. ใช้ FormData แทน JSON ปกติเพื่อส่งไฟล์
+        const formData = new FormData();
+        formData.append("title", selectedValue);
+        formData.append("description", desc);
+        formData.append("date", `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+
+        if (toDate.style.display === "block") {
+            const td = document.getElementById("selectDay2").value;
+            const tm = document.getElementById("selectMonth2").value;
+            const ty = document.getElementById("selectYear2").value;
+            if (td && tm && ty) {
+                formData.append("toDate", `${ty}-${tm.padStart(2, '0')}-${td.padStart(2, '0')}`);
             } else {
-                alert("กรุณาระบุวันที่สิ้นสุดการสอบ");
+                alert("กรุณาระบุวันที่สิ้นสุด");
                 return;
             }
+
+            // ตรวจสอบไฟล์สำหรับกิจกรรมวันสอบ
+            if (!selectedFile) {
+                alert("กรุณาเลือกไฟล์ Excel สำหรับกิจกรรมวันสอบ");
+                return;
+            }
+            formData.append("file", selectedFile);
         }
 
-        console.log("Sending Data:", eventData); // ดูค่าใน Console (F12) ว่าออกมาถูกต้องไหม
-
-        saveEventBtn.disabled = true; // ปิดปุ่มทันทีที่กด
+        saveEventBtn.disabled = true;
         saveEventBtn.innerText = "กำลังบันทึก...";
 
+        // 2. ส่งข้อมูลไปยัง API
         fetch('/api/addEvent', {
-            
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(eventData)
+            // หมายเหตุ: ไม่ต้องตั้ง Content-Type เมื่อใช้ FormData เบราว์เซอร์จะจัดการให้เอง
+            body: formData 
         })
         .then(async response => {
-            const result = await response.json(); // อ่าน Error Message จาก Server
+            const result = await response.json();
             if (response.ok) {
                 alert("บันทึกกิจกรรมสำเร็จ");
                 window.location.href = "/event";
             } else {
-                alert("Error: " + (result.message || "เกิดข้อผิดพลาดจาก Server"));
+                alert("Error: " + (result.message || "เกิดข้อผิดพลาด"));
+                saveEventBtn.disabled = false;
+                saveEventBtn.innerText = "บันทึกกิจกรรม";
             }
         })
-        .catch(error => {
-            console.error('Fetch Error:', error); // จะเห็นสาเหตุจริงๆ ในหน้า Console
-            alert("ไม่สามารถเชื่อมต่อกับ Server ได้ (Network Error)");
-            saveEventBtn.disabled = false; // ถ้า Error ให้เปิดปุ่มใหม่
+        .catch(err => {
+            console.error("Fetch Error:", err);
+            alert("Network Error");
+            saveEventBtn.disabled = false;
             saveEventBtn.innerText = "บันทึกกิจกรรม";
         });
     });
 
-    // เรียกใช้ตอนโหลด
     document.addEventListener("DOMContentLoaded", initDatePicker);
 </script>

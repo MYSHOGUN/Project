@@ -57,24 +57,38 @@
         </li>-->
 
         <!-- Divider -->
-         <hr class="sidebar-divider my-0">
+         <% if (typeof user !== 'undefined') { %>
+            <hr class="sidebar-divider my-0">
 
-        <li class="nav-item <%= currentPath === '/event' || currentPath === '/addEvent' || currentPath.startsWith('/eventInfo') ? 'active' : '' %>">
-            <a class="nav-link" href="/event">
-                <i class="fas fa-calendar"></i>
-                <span>ตารางกิจกรรม</span></a>
-        </li>
+            <li class="nav-item <%= currentPath === '/event' || currentPath === '/addEvent' || currentPath.startsWith('/eventInfo') ? 'active' : '' %>">
+                <a class="nav-link" href="/event">
+                    <i class="fas fa-calendar"></i>
+                    <span>ตารางกิจกรรม</span></a>
+            </li>
+        <% } %>
+        <!-- Divider -->
+         <% if (typeof user !== 'undefined') { %>
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/status' ? 'active' : '' %>">
+                <a class="nav-link" href="/status">
+                    <i class="fas fa-fw fa-table"></i>
+                    <span>สถานะปริญญานิพนธ์</span></a>
+            </li>
+        <% } %>
 
         <!-- Divider -->
-        <hr class="sidebar-divider my-0">
+        <% if (typeof user !== 'undefined') { %>
+            <hr class="sidebar-divider my-0">
 
-        <li class="nav-item <%= currentPath === '/status' ? 'active' : '' %>">
-            <a class="nav-link" href="/status">
-                <i class="fas fa-fw fa-table"></i>
-                <span>สถานะปริญญานิพนธ์</span></a>
-        </li>
+            <li class="nav-item <%= currentPath === '/paper' ? 'active' : '' %>">
+                <a class="nav-link" href="/paper">
+                    <i class="fas fa-file-alt"></i></i>
+                    <span>เอกสารก่อนสอบ</span></a>
+            </li>
+        <% } %>
 
-        <!-- Divider -->
+        
         <hr class="sidebar-divider my-0">
 
         <li class="nav-item <%= currentPath === '/flowchart' ? 'active' : '' %>">

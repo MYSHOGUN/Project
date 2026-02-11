@@ -14,6 +14,7 @@ const userSchema = new mongoose.Schema({
           contentType: String,
           id: mongoose.Schema.Types.ObjectId
       }
+  ,branch: { type: String, default: "EnET" }
 });
 
 module.exports = mongoose.model("User", userSchema);

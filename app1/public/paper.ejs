@@ -1,0 +1,254 @@
+<input type="hidden" id="raw-groups-data" value='<%- JSON.stringify(groups) %>'>
+<input type="hidden" id="raw-result-data" value='<%- JSON.stringify(result) %>'>
+<div class="container-fluid" style="min-height: 84vh; height: 100%;">
+    <div class="d-flex align-items-center justify-content-between mt-4">
+        <h1 style="color: #4e73df;">แพลตฟอร์มส่งเอกสาร</h1>
+    </div>
+
+    <div class="row mt-4" style="justify-content: center !important; align-items: center !important;">
+        <div class="col-lg-12" style="width: 80%;">
+            <div id="paper-platform-container">
+                <div class="text-center p-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2">กำลังโหลดรายการส่งเอกสาร...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+const groupsData = JSON.parse(document.getElementById('raw-groups-data').value);
+const resultData = JSON.parse(document.getElementById('raw-result-data').value);
+
+    window.submitResult = function submitResult(paperId) {
+        const choices = document.getElementsByName(`choice-${paperId}`); 
+        let selectedValue = null;
+        for (const choice of choices) {
+            if (choice.checked) {
+                selectedValue = choice.value;
+                break;
+            }
+        }
+
+        const commentBox = document.getElementById(`comment-${paperId}`);
+        const commentTrim = commentBox ? commentBox.value.trim() : "";
+
+        if (!selectedValue) {
+            alert("กรุณาเลือกผลการสอบก่อนส่ง");
+            return;
+        }
+
+        if (selectedValue === "แก้ไข" && commentTrim === "") {
+            alert("กรุณาระบุสิ่งที่ต้องการให้แก้ไข");
+            return;
+        }
+
+        // เพิ่ม Confirm เพื่อป้องกันการกดพลาด
+        if(!confirm(`ยืนยันการบันทึกผล: ${selectedValue}?`)) return;
+
+        fetch('/api/submitPaperResult', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // ส่ง paperId, result, และ comment ให้ตรงกับ API
+            body: JSON.stringify({ paperId, result: selectedValue, comment: commentTrim })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message || "ส่งผลการสอบเรียบร้อยแล้ว");
+                // ใช้ location.reload() หรือ loadPaperPlatforms() ตามที่คุณสะดวก
+                // แต่แนะนำ reload() เพื่อให้ UI เคลียร์ค่าได้สะอาดที่สุด
+                location.reload(); 
+            } else {
+                alert("เกิดข้อผิดพลาด: " + (data.error || "ไม่ทราบสาเหตุ"));
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+        });
+    }
+
+    window.showComment = function showComment(paperId) {
+        const fixRadio = document.getElementById(`fix-${paperId}`);
+        const commentBox = document.getElementById(`comment-${paperId}`);
+        if (fixRadio.checked) {
+            commentBox.classList.remove('d-none');
+        } else {
+            commentBox.classList.add('d-none');
+            commentBox.value = "";
+        }
+    }
+    const currentUsername = "<%= user.username %>";
+    const currentRole = "<%= user.role %>";
+document.addEventListener("DOMContentLoaded", function() {
+    loadPaperPlatforms();
+
+    async function loadPaperPlatforms() {
+        try {
+            const res = await fetch('/api/getMyPapers');
+            const papers = await res.json();
+            const container = document.getElementById('paper-platform-container');
+            
+            if (!papers || papers.length === 0) {
+                container.innerHTML = `<div class="alert alert-info py-5 px-5 text-center w-100">ไม่มีรายการส่งเอกสาร</div>`;
+                return;
+            }
+            
+
+            container.innerHTML = papers.map(paper => {
+                const isSubmitted = paper.isSubmitted;
+                const paperId = paper._id;
+                const groupId = paper.groupId;
+
+                const targetGroup = groupsData.find(g => g._id === groupId);
+                const targetResult = resultData.find(r => r.groupId === groupId);
+                const groupName = targetGroup.projectName;
+                const groupAdvisors = targetGroup.advisors;
+                const groupMembers = targetGroup.member1 === currentUsername ? currentUsername : targetGroup.member2 === currentUsername ? currentUsername : null;
+
+                const today = new Date().setHours(0,0,0,0);
+                const paperDate = new Date(paper.date).getTime();
+                if (((currentRole === "teacher" && groupAdvisors.includes(currentUsername)) || currentRole === "admin") && paper.date != null && paperDate < today && (!targetResult || !targetResult.pass.includes(currentUsername) || !targetResult.fail.includes(currentUsername))) {
+                    return `
+                    <div class="card shadow mb-4 border-left-secondary" id="card-${paperId}">
+                        <div class="card-body">
+                            <div class="ml-4">
+                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">หัวข้อ: ผลการสอบ</div>
+                                <div class="h5 mb-3 font-weight-bold text-gray-800">โปรดเลือกตัวเลือกผลการสอบของกลุ่ม ${groupName}</div>
+                                
+                                <input type="radio" id="pass-${paperId}" name="choice-${paperId}" value="ผ่าน" onchange="showComment('${paperId}')">
+                                <label  for="pass-${paperId}">ผ่าน</label>
+                                
+                                <input type="radio" id="fail-${paperId}" name="choice-${paperId}" value="ไม่ผ่าน" onchange="showComment('${paperId}')">
+                                <label  for="fail-${paperId}">ไม่ผ่าน</label>
+
+                                <input type="radio" id="fix-${paperId}" name="choice-${paperId}" value="แก้ไข" onchange="showComment('${paperId}')">
+                                <label  for="fix-${paperId}">แก้ไข</label>
+
+                                <textarea class="form-control mt-3 d-none" id="comment-${paperId}" rows="3" placeholder="สิ่งที่อยากให้แก้ไข"></textarea>
+                                
+                                <br>
+                                <button type="button" class="btn btn-success btn-sm" 
+                                        onclick="submitResult('${paperId}')">ส่งผลการสอบ</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }else if((currentRole === "student" && groupMembers) || currentRole === "admin" ) {
+                    return `
+                    <div class="card shadow mb-4 border-left-${isSubmitted ? 'success' : 'warning'}">
+                        <div class="card-body">
+                            <div>
+                                <div class="ml-4">
+                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">หัวข้อ: ${paper.mention}</div>
+                                    <div class="h5 mb-3 font-weight-bold text-gray-800">📦 รายการเอกสารที่ส่ง</div>
+                                </div>
+                                
+                                <div class="mt-3 row" style="justify-content: space-evenly;">
+                                    <div id="file-list-${paperId}" class="list-group list-group-flush border rounded shadow-sm overflow-auto" style="width: 40%">
+                                        <div class="p-3 text-center text-muted small">กำลังโหลดรายการไฟล์...</div>
+                                    </div>
+
+                                    <div class="drop-zone  p-4 text-center" 
+                                        id="drop-zone-${paperId}" 
+                                        style="border: 2px dashed #ccc; border-radius: 15px; cursor: pointer; background: #f8f9fc;"
+                                        onclick="document.getElementById('file-input-${paperId}').click()">
+                                        <i class="fas fa-sync-alt fa-2x mb-2 text-primary"></i>
+                                        <p class="mb-0 small" id="text-${paperId}">ลากไฟล์ใหม่มาวางที่นี่เพื่อ <b>ส่งทับของเดิม</b></p>
+                                        <input type="file" id="file-input-${paperId}" style="display:none" multiple onchange="handleUpload('${paperId}', this.files)">
+                                        
+                                        <div class="progress mt-3" id="progress-container-${paperId}" style="display:none; height: 10px;">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated" id="bar-${paperId}" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+            }).join('');
+
+            papers.forEach(paper => {
+                initDragAndDrop(paper._id);
+                fetchFileList(paper._id); // ดึงพรีวิวไฟล์มาโชว์
+            });
+        } catch (err) { console.error(err); }
+    }
+
+    // ฟังก์ชันดึงรายการไฟล์และพรีวิว
+    async function fetchFileList(paperId) {
+        try {
+            const res = await fetch(`/api/getPaperFiles/${paperId}`);
+            const files = await res.json();
+            const listContainer = document.getElementById(`file-list-${paperId}`);
+            
+            if (files.length === 0) {
+                listContainer.innerHTML = `<div class="p-3 text-center text-muted small">ยังไม่มีไฟล์ในระบบ</div>`;
+                return;
+            }
+
+            /*<a href="/image/${f.file.fileId}" target="_blank" class="btn btn-sm btn-outline-info border-0 mr-1" title="Preview">
+                <i class="fas fa-eye"></i>
+            </a>*/
+
+            listContainer.innerHTML = files.map(f => `
+                <div class="list-group-item d-flex justify-content-between align-items-center py-2 bg-white">
+                    <span class="small text-truncate" title="${f.file.filename}">
+                        <i class="fas fa-file-pdf mr-2 text-danger"></i>${f.file.filename}
+                    </span>
+                    <div>
+                        <a href="/file/download/${f.file.fileId}" class="btn btn-sm btn-outline-success border-0" title="Download">
+                            <i class="fas fa-download"></i>
+                        </a>
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) { console.error(e); }
+    }
+
+    function initDragAndDrop(id) {
+        const zone = document.getElementById(`drop-zone-${id}`);
+        if (!zone) return;
+        ['dragover', 'dragleave', 'drop'].forEach(e => zone.addEventListener(e, (ev) => ev.preventDefault()));
+        zone.addEventListener('drop', (e) => {
+            if (confirm("การส่งใหม่จะลบไฟล์เก่าทั้งหมดในหัวข้อนี้ ยืนยันหรือไม่?")) {
+                handleUpload(id, e.dataTransfer.files);
+            }
+        });
+    }
+
+    
+
+    window.handleUpload = async function(paperId, files) {
+        if (files.length === 0) return;
+        const textElem = document.getElementById(`text-${paperId}`);
+        const bar = document.getElementById(`bar-${paperId}`);
+        const progressContainer = document.getElementById(`progress-container-${paperId}`);
+        
+        progressContainer.style.display = 'block';
+        let filesData = [];
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            textElem.innerHTML = `กำลังอัปโหลดไฟล์ที่ ${i + 1}...`;
+            const formData = new FormData();
+            formData.append('files', file);
+
+            const uploadRes = await fetch(`/upload-file/${paperId}`, { method: 'POST', body: formData });
+            const result = await uploadRes.json();
+            const fileInfo = result.find(item => item.type === 'file');
+            if (fileInfo) filesData.push({ id: fileInfo.file.fileId, filename: fileInfo.file.filename });
+        }
+
+        if (filesData.length > 0) {
+            await fetch('/api/PaperUploadFile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paperId, filesData })
+            });
+            loadPaperPlatforms(); // รีเฟรชทั้ง Card เพื่อเคลียร์ไฟล์เก่าและโชว์ไฟล์ใหม่
+        }
+    };
+});
+
+</script>

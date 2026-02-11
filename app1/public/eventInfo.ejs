@@ -26,7 +26,7 @@
     async function deleteEvent() {
         if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบกิจกรรมนี้?")) {
             try {
-                const response = await fetch('/deleteEvent/<%= event._id %>', {
+                const response = await fetch('/deleteEvent/<%= event.id %>', {
                     method: 'DELETE', // ต้องตรงกับที่ตั้งไว้ใน Server
                     headers: {
                         'Content-Type': 'application/json'
