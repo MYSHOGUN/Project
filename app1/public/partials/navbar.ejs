@@ -27,12 +27,14 @@
     <ul class="navbar-nav ml-auto">
 
         <!-- Nav Item - Search Dropdown (Visible Only XS) -->
+         <!--
         <li class="nav-item dropdown no-arrow d-sm-none">
             <a class="nav-link dropdown-toggle" href="#" id="searchDropdown" role="button"
                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                 <i class="fas fa-search fa-fw"></i>
-            </a>
+            </a>-->
             <!-- Dropdown - Messages -->
+            <!--
             <div class="dropdown-menu dropdown-menu-right p-3 shadow animated--grow-in"
                 aria-labelledby="searchDropdown">
                 <form class="form-inline mr-auto w-100 navbar-search">
@@ -49,6 +51,7 @@
                 </form>
             </div>
         </li>
+        -->
         <li class="nav-item dropdown no-arrow mx-1">
             <a class="nav-link dropdown-toggle" href="#" id="alertsDropdown" role="button" data-toggle="dropdown">
                 <i class="fas fa-bell fa-fw"></i>
@@ -148,7 +151,7 @@ document.addEventListener("DOMContentLoaded", function() {
         const content = data.text || data.messageText;
         const sender = data.senderName || "ระบบ";
         const isRead = data.isRead;
-        const profileImg = (data.senderPic && data.senderPic.filename) ? `/image/${data.senderPic.filename}` : '/img/undraw_profile.svg';
+        const profileImg = data.senderPic ? `/image/${data.senderPic.filename}` : '/img/undraw_profile.svg';
         const unreadClass = isRead ? "" : "font-weight-bold bg-light";
         const gId = data.group?._id || data.group || data.groupId;
         

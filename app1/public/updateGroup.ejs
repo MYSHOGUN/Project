@@ -291,7 +291,7 @@
                 };
 
                 $.ajax({
-                    url: "/groups-update/<%= groups.length > 0 ? groups[0]._id : 'no-id' %> %>",
+                    url: "/groups-update/<%= groups.length > 0 ? groups[0]._id : 'no-id' %>",
                     method: "POST",
                     contentType: "application/json",
                     data: JSON.stringify(groupData),

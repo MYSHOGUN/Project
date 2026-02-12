@@ -294,14 +294,14 @@ app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (re
         senderName: req.session.user.name,
         type: "text",
         text: req.body.text.trim(),
-        senderPic: req.session.user.picture || null,
+        senderPic: req.session.user.picture,
         timestamp: new Date()
       });
       await textMessage.save();
       messages.push(textMessage);
 
       io.to(req.params.groupId).emit("group message", textMessage);
-      await sendGroupNotification('message',groupId, req.session.user.username, req.session.user.name, req.body.text.trim(), req.session.user.picture || null , null , undefined , null , null , null);
+      await sendGroupNotification('message',groupId, req.session.user.username, req.session.user.name, req.body.text.trim(), req.session.user.picture ? req.session.user.picture : null , null , undefined , null , null , null);
 
       hasMovement = true;
     }
@@ -833,6 +833,10 @@ app.post("/groups-update/:groupId", requireLogin, async (req, res) => {
     const { groupId } = req.params;
 
     // ตรวจสอบว่ามีใครอยู่ในกลุ่มแล้วหรือยัง
+    const group = await Group.findById({ _id : groupId })
+
+    const mem1 = await User.findOne({ username: group.member1 });
+
     const existingGroup = await Group.findOne({
       member2: member2,
       _id: groupId  // ไม่รวมกลุ่มที่กำลังอัปเดต
@@ -961,7 +965,6 @@ app.get("/updateGroup", requireLogin, async (req, res) => {
       $or: [
         { member1: username },
         { member2: username },
-        { advisor: username }
       ]
     });
 
@@ -1728,9 +1731,6 @@ app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
 });
 
 app.get("/paper", requireLogin, async (req, res) => {
-  if(req.session.user.role !== "admin"){
-    return res.redirect("/event");
-  }
   try {
       // 2. เพิ่ม await เพื่อรอให้ดึงข้อมูลจาก MongoDB เสร็จก่อน
       const groups = await Group.find({});
