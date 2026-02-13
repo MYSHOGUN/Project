@@ -7,6 +7,7 @@ const paperFileSchema = new mongoose.Schema({
     filename: String,
     fileId: mongoose.Schema.Types.ObjectId // GridFS ID
   },
+  passTimes: { type: Number, default: 0 }, 
   submittedAt: { type: Date, default: Date.now }
 });
 

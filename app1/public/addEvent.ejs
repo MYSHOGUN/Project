@@ -434,17 +434,17 @@
                 alert("บันทึกกิจกรรมสำเร็จ");
                 window.location.href = "/event";
             } else {
-                alert("Error: " + (result.message || "เกิดข้อผิดพลาด"));
+                // 💡 แสดงผล Error ที่ส่งมาจาก Server ถ้าไม่มีให้ใช้ข้อความ Default
+                const errorMsg = result.message || result.error || "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
+                alert("Error: " + errorMsg);
+                
+                // 💡 พิมพ์ลง Console ของ Browser ไว้เช็คละเอียดๆ
+                console.error("Server Result:", result); 
+
                 saveEventBtn.disabled = false;
                 saveEventBtn.innerText = "บันทึกกิจกรรม";
             }
         })
-        .catch(err => {
-            console.error("Fetch Error:", err);
-            alert("Network Error");
-            saveEventBtn.disabled = false;
-            saveEventBtn.innerText = "บันทึกกิจกรรม";
-        });
     });
 
     document.addEventListener("DOMContentLoaded", initDatePicker);

@@ -67,19 +67,19 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 const fs = require('fs'); // ต้องใช้ในการลบไฟล์ แต่ในกรณีนี้เราจะใช้ Buffer แทน
-const xlsx = require('xlsx'); // ✅ นำเข้าไลบรารีสำหรับอ่าน Excel
+const XLSX = require('xlsx'); // ✅ นำเข้าไลบรารีสำหรับอ่าน Excel
 const { send } = require("process");
 
 
 const processExcelFile = (buffer) => {
     try {
         // ใช้ XLSX.read() อ่าน Buffer โดยตรง
-        const workbook = xlsx.read(buffer, { type: 'buffer' });
+        const workbook = XLSX.read(buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0]; // อ่านชีทแรก
         const worksheet = workbook.Sheets[sheetName];
 
         // แปลงข้อมูลชีทเป็น JSON Array
-        const data = xlsx.utils.sheet_to_json(worksheet); 
+        const data = XLSX.utils.sheet_to_json(worksheet); 
         
         if (data.length === 0) {
             throw new Error("Excel file is empty or data format is incorrect.");
@@ -193,23 +193,28 @@ app.set("views", path.join(__dirname, "app1", "public"));
 app.use(express.static(path.join(__dirname, "app1", "src")));
 
 // ฟังก์ชัน render
-function renderWithLayout(res, view, data = {}, reqPath = "",req) {
+function renderWithLayout(res, view, data = {}, reqPath = "", req) {
   const extendedData = { ...data, currentPath: reqPath };
 
-  // เพิ่ม user ถ้ามี req และ session.user
   if (req && req.session && req.session.user) {
     extendedData.user = req.session.user;
   }
+
   ejs.renderFile(
     path.join(__dirname, "app1", "public", `${view}.ejs`),
     extendedData,
     (err, str) => {
       if (err) {
-        res.status(500).send(err.message);
-      } else if (view === "login" || view === "register") {
-        return res.render(view, extendedData);
+        // ✅ เติม return เพื่อหยุดการทำงาน
+        return res.status(500).send(err.message); 
+      }
+      
+      if (view === "login" || view === "register") {
+        // ✅ return ตรงนี้ถูกต้องแล้ว
+        return res.render(view, extendedData); 
       } else {
-        res.render("layout", { ...extendedData, body: str});
+        // ✅ เติม return เพื่อความปลอดภัย
+        return res.render("layout", { ...extendedData, body: str }); 
       }
     }
   );
@@ -1498,13 +1503,14 @@ app.get("/addEvent", requireLogin, (req, res) => {
   renderWithLayout(res, "addEvent", { title: "KMUTNB Project - Add Event" }, req.path,req);
 });
 
-app.post("/api/addEvent", requireLogin, async (req, res) => {
+app.post("/api/addEvent", requireLogin, upload.single("file"), async (req, res) => {
     try {
         const { title, date, toDate, description } = req.body;
         const file = req.file;
         
         // ตรวจสอบว่าส่งค่ามาจริงไหม
         if (!title || !date) {
+            console.log("Missing required fields:", { title, date });
             return res.status(400).json({ error: "ข้อมูลไม่ครบถ้วน" });
         }
         
@@ -1523,7 +1529,7 @@ app.post("/api/addEvent", requireLogin, async (req, res) => {
                 contentType: file.mimetype,
                 fileId: null // จะอัปเดตหลังจากอัปโหลดไฟล์เสร็จ
             } : null,
-            date: new Date(date), // มั่นใจว่าเป็น Date Object
+            date: expire, // มั่นใจว่าเป็น Date Object
             toDate: toDate ? new Date(toDate) : null,
             expireAt: expire
         });
@@ -1537,9 +1543,10 @@ app.post("/api/addEvent", requireLogin, async (req, res) => {
             
             const paperPlatforms = allGroups.map(group => ({
                 eventId: eventId,
-                groupId: group.id, // หรือ group._id
+                groupId: group._id, // หรือ group._id
                 mention: description || title,
-                expireAt: expire // ตั้งวันหมดอายุไว้ที่นี่
+                expireAt: expire, // ตั้งวันหมดอายุไว้ที่นี่
+                passTimes: group.passTimes
             }));
 
             const updateGroupStatus = allGroups.map(group => ({
@@ -1554,9 +1561,9 @@ app.post("/api/addEvent", requireLogin, async (req, res) => {
 
             
         } else if (title === "วันสอบ" && file) {
-            const workbook = xlsx.read(file.buffer, { type: 'buffer' });
+            const workbook = XLSX.read(file.buffer, { type: 'buffer' });
             const sheetName = workbook.SheetNames[0];
-            const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+            const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
             const testresultsdate = new Date(expire);
             testresultsdate.setDate(testresultsdate.getDate() + 7);
@@ -1596,7 +1603,7 @@ app.post("/api/addEvent", requireLogin, async (req, res) => {
                     // 4. เตรียมข้อมูล Paper สำหรับบันทึก (1 กลุ่มต่อ 1 Card)
                     paperPlatforms.push({
                         eventId: eventId,
-                        groupId: group.id,
+                        groupId: group._id,
                         mention: description || title,
                         expireAt: testresultsdate,
                         passTimes: paperPassTimes,
@@ -1616,10 +1623,14 @@ app.post("/api/addEvent", requireLogin, async (req, res) => {
         // 🔔 เรียกแจ้งเตือน (เช็คให้ชัวร์ว่าลบบั๊กในฟังก์ชันนี้แล้ว)
         await sendGroupNotification('alert', null, req.session.user.username, req.session.user.name, `มีกิจกรรมใหม่: ${title}`, req.session.user.picture || null , eventId , expire , null , null , null);
 
-        res.status(201).json({ message: "บันทึกสำเร็จ" });
-    } catch (err) {
-        console.error("❌ Server Error:", err); // ดู Error จริงๆ ใน Terminal ของคุณ
-        res.status(500).json({ error: err.message });
+        return res.status(201).json({ message: "บันทึกสำเร็จ" });
+    } catch (err) {  
+        console.error("❌ API Error:", err); 
+
+        // 💡 ส่ง Error กลับไปหาหน้าบ้านแบบ string
+        return res.status(500).json({ 
+            message: err.message || err.toString() || "Server Internal Error" 
+        });
     }
 });
 
@@ -1886,7 +1897,7 @@ app.post("/api/submitPaperResult", requireLogin, async (req, res) => {
         await examResult.save();
 
         // ตรวจสอบว่ากรรมการลงครบทุกคนหรือยัง
-        if (examResult.pass.length + examResult.fail.length >= currentPaper.director.length) {
+        if (examResult.pass.length + examResult.fail.length >= currentPaper.director.length && currentPaper.director.length >= 3) {
             
             // ดึงข้อมูลสมาชิกเพื่อเช็คสาขา (EnET หรือสาขาอื่น)
             const student = await User.findOne({ username: group.member1 });
