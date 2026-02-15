@@ -1516,6 +1516,9 @@ app.post("/api/addEvent", requireLogin, upload.single("file"), async (req, res) 
         
         const eventId = generateEventId();
 
+        const date1 = new Date(date);
+        const date2 = toDate ? new Date(toDate) : null;
+
         const expire = toDate ? new Date(toDate) : new Date(date);
 
         expire.setHours(23, 59, 59, 999); // ตั้งเวลาเป็นสิ้นวันของวันที่กำหนด
@@ -1529,8 +1532,8 @@ app.post("/api/addEvent", requireLogin, upload.single("file"), async (req, res) 
                 contentType: file.mimetype,
                 fileId: null // จะอัปเดตหลังจากอัปโหลดไฟล์เสร็จ
             } : null,
-            date: expire, // มั่นใจว่าเป็น Date Object
-            toDate: toDate ? new Date(toDate) : null,
+            date: date1, // มั่นใจว่าเป็น Date Object
+            toDate: date2,
             expireAt: expire
         });
 
