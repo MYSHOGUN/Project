@@ -203,7 +203,7 @@
                 const $results = $("#searchAdvisorResults");
                 $results.empty();
                 if (keyword.length > 0) {
-                    $.get("/search-users?keyword=" + encodeURIComponent(keyword), function(data) {
+                    $.get("/search-advisor?keyword=" + encodeURIComponent(keyword), function(data) {
                         $results.empty();
                         if (data && data.length > 0) {
                             data.forEach(function(user) {

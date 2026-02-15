@@ -59,7 +59,7 @@
     <div id="server-data" data-groups='<%- JSON.stringify(groups || []) %>' hidden></div>
 
     <div id="group" class="flex-column align-items-center justify-content-center" style="display: flex;  margin-top: 30vh;">
-        <h1>คุณยังไม่มีเข้ากลุ่ม</h1>
+        <h1>คุณยังไม่มีกลุ่ม</h1>
         <% if (user.role != 'teacher') { %>
             <button type="button" id="createGroupBtn" class="btn btn-secondary mt-3" style="width: 50%;background-color: white; color: gray;">
                 <h5 class="mt-2">สร้างกลุ่มใหม่</h5>
@@ -144,7 +144,7 @@
     // --- ฟังก์ชันอัปเดตสถานะปุ่ม (แบบเดิมที่คุณต้องการ) ---
 
     // --- Logic ค้นหา (โครงสร้างใหม่ที่คุณชอบ) ---
-    function setupSearch(inputId, resultsId, containerId, selectBtnId, selectedDisplayId, selectedDivId, clearBtnId, type, fixBtn) {
+    function setupSearchUser(inputId, resultsId, containerId, selectBtnId, selectedDisplayId, selectedDivId, clearBtnId, type, fixBtn) {
         const $input = $(`#${inputId}`);
         const $results = $(`#${resultsId}`);
         
@@ -187,9 +187,52 @@
         });
     }
 
+    function setupSearchAdvisor(inputId, resultsId, containerId, selectBtnId, selectedDisplayId, selectedDivId, clearBtnId, type, fixBtn) {
+        const $input = $(`#${inputId}`);
+        const $results = $(`#${resultsId}`);
+        
+        $input.on("input", function() {
+            const keyword = $(this).val().trim();
+            if (keyword.length === 0) {
+                $results.empty().hide();
+                return;
+            }
+
+            $.get("/search-advisor?keyword=" + encodeURIComponent(keyword), function(data) {
+                $results.empty().show();
+                if (data && data.length > 0) {
+                    data.forEach(function(user) {
+                        const $li = $(`<li class="list-group-item list-group-item-action" style="cursor:pointer;">
+                            <strong>${user.name} ${user.lastname}</strong> (${user.username})
+                        </li>`);
+                        
+                        $li.on("click", function() {
+                            if (type === 'member') {
+                                chosenUser = user.username;
+                                $(`#${selectedDisplayId}`).text(`2. ${user.name} ${user.lastname}`);
+                            } else {
+                                chosenAdvisor = user.username;
+                                $(`#${selectedDisplayId}`).text(`Advisor: ${user.name} ${user.lastname}`);
+                            }
+
+                            $(`#${containerId}`).addClass("d-none"); 
+                            $(`#${selectedDivId}`).removeClass("d-none").addClass("d-flex"); 
+                            $(`#${selectBtnId}`).addClass("d-none"); 
+                            $(`#${fixBtn}`).removeClass("d-none"); 
+                            $results.empty().hide();
+                        });
+                        $results.append($li);
+                    });
+                } else {
+                    $results.append(`<li class="list-group-item text-muted" style="width:100%; text-align:center;">ไม่พบข้อมูล</li>`);
+                }
+            });
+        });
+    }
+
     // เรียกใช้ Search (เหมือนโครงสร้างที่คุณชอบ)
-    setupSearch('searchUser', 'searchMemberResults', 'searchContainer', 'addMemberBtn', 'selectedUser', 'selectedContainer', 'clearSelection', 'member', 'clearSelection');
-    setupSearch('searchAdvisor', 'searchAdvisorResults', 'searchAdvisorContainer', 'addAdvisorBtn', 'selectedAdvisor', 'selectedAdvisorContainer', 'clearAdvisorSelection', 'advisor', 'clearAdvisorSelection');
+    setupSearchUser('searchUser', 'searchMemberResults', 'searchContainer', 'addMemberBtn', 'selectedUser', 'selectedContainer', 'clearSelection', 'member', 'clearSelection');
+    setupSearchAdvisor('searchAdvisor', 'searchAdvisorResults', 'searchAdvisorContainer', 'addAdvisorBtn', 'selectedAdvisor', 'selectedAdvisorContainer', 'clearAdvisorSelection', 'advisor', 'clearAdvisorSelection');
 
     // ปุ่มจัดการ UI อื่นๆ (ซ่อน/แสดง)
     $("#addMemberBtn").on("click", function() {

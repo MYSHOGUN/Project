@@ -690,6 +690,31 @@ app.get("/search-users", requireLogin, async (req, res) => {
     const users = await User.find({
       $and: [
         { username: { $ne: req.session.user.username } }, // ไม่เอาตัวเอง
+        { role: { $ne: "teacher" } }, // ไม่เอาอาจารย์
+        { lastname: { $ne: "Registration"} },
+        { name: { $ne: "Pending"}}, // ไม่เอาบัญชีที่รอการลงทะเบียน
+        {
+          $or: [
+            { username: { $regex: keyword, $options: "i" } },
+            { name: { $regex: keyword, $options: "i" } },
+            { lastname: { $regex: keyword, $options: "i" } }
+          ]
+        }
+      ]
+    });
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+app.get("/search-advisor", requireLogin, async (req, res) => {
+  const keyword = req.query.keyword || "";
+  try {
+    const users = await User.find({
+      $and: [
+        { username: { $ne: req.session.user.username } }, // ไม่เอาตัวเอง
+        { role: "teacher" }, // เอาอาจารย์
         {
           $or: [
             { username: { $regex: keyword, $options: "i" } },
@@ -789,10 +814,17 @@ app.post("/group/accept-invitation/:groupId/:notiId", requireLogin, async (req, 
     await Notification.findByIdAndDelete(notiId);
 
     // 3. อัปเดตข้อมูล User ใน DB
-    await User.findOneAndUpdate(
-      { username: username },
-      { $set: { group: group._id } }
-    );
+    if (req.session.user.role !== "teacher") {
+      await User.findOneAndUpdate(
+        { username: username },
+        { $set: { group: group._id } }
+      );
+    }else{
+      await User.findOneAndUpdate(
+        { username: username },
+        { push: { group: group._id } } // สำหรับ teacher อนุญาตให้มีหลายกลุ่มได้ (เก็บเป็น Array)
+      );
+    }
 
     // 4. อัปเดต Session และบันทึกให้เสร็จก่อนตอบกลับ
     req.session.user.group = group._id;
@@ -812,22 +844,27 @@ app.post("/group/accept-invitation/:groupId/:notiId", requireLogin, async (req, 
   }
 });
 
-app.post("/group/deny-invitation/:groupId" ,requireLogin , async (req,res) => {
+app.post("/group/deny-invitation/:groupId/:notiId", requireLogin, async (req, res) => {
   try {
-    const { groupId } = req.params;
+    const { groupId, notiId } = req.params;
     const group = await Group.findById(groupId);
-    group.member2 = null;
+    
+    if (!group) return res.status(404).send("ไม่พบกลุ่ม");
 
-    if (!group) {
-      return res.status(404).send("ไม่พบกลุ่ม");
-    }
-    group.member2 = username;
+    // ✅ 1. ล้างชื่อสมาชิกคนที่ 2 ออกเพื่อให้กลุ่มว่าง
+    group.member2 = null; 
     await group.save();
 
-    req.session.user.group = group.projectName;
-    res.status(200).send("ปฏิเสธเรียบร้อย");
+    // ✅ 2. ลบการแจ้งเตือนทิ้งเพื่อให้หายไปจากหน้าจอผู้ใช้
+    await Notification.findByIdAndDelete(notiId);
+
+    // ✅ 3. อัปเดต Session ของผู้ใช้ที่กดปฏิเสธให้กลับเป็นไม่มีกลุ่ม (null)
+    
+    req.session.save(() => {
+        res.status(200).send("ปฏิเสธเรียบร้อย");
+    });
   } catch (err) {
-    console.error("❌ Error accepting invitation:", err);
+    console.error("❌ Error denying invitation:", err);
     res.status(500).send("เกิดข้อผิดพลาดในการปฏิเสธ");
   }
 });
