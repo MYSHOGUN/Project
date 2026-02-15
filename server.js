@@ -791,11 +791,11 @@ app.post("/group/accept-invitation/:groupId/:notiId", requireLogin, async (req, 
     // 3. อัปเดตข้อมูล User ใน DB
     await User.findOneAndUpdate(
       { username: username },
-      { $set: { group: group.projectName } }
+      { $set: { group: group._id } }
     );
 
     // 4. อัปเดต Session และบันทึกให้เสร็จก่อนตอบกลับ
-    req.session.user.group = group.projectName;
+    req.session.user.group = group._id;
     
     req.session.save((err) => {
       if (err) {
