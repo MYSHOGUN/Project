@@ -37,6 +37,10 @@
             height: 300px;
             display: none;
         }
+        #eventName {
+            width: 500px;
+            display: none;
+        }
 </style>
 <div class="container-fluid mt-4" style="height: 100%;">               
     <!-- Page Heading -->
@@ -80,6 +84,7 @@
                 </select>
             </div>  
         </div>
+        <input id="eventName" type="text" class="form-control mt-4" placeholder="ชื่อกิจกรรม" style="width: 500px;"></input>
         <textarea class="form-control mt-4" id="eventDescription" rows="4" cols="50" placeholder="รายละเอียดกิจกรรม"></textarea>
         <div id="fileUploadSection" class="justify-content-center align-items-center text-center d-none" style="width: 80%;">
             <div id="drop-area" class="my-4">
@@ -111,6 +116,8 @@
 
     const saveEventBtn = document.getElementById("saveEventBtn");
     const cancelEventBtn = document.getElementById("cancelEventBtn");
+
+    const eventName = document.getElementById("eventName");
     const eventDescription = document.getElementById("eventDescription");
 
     const monthTh = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
@@ -270,6 +277,7 @@
         if(selectedValue === "วันสอบ") {
             toDate.style.display = "block";
             eventDescription.style.display = "none";
+            eventName.style.display = "none";
             fileUploadSection.classList.remove("d-none");
             fileUploadSection.classList.add("d-flex");
         } else {
@@ -281,8 +289,10 @@
             document.getElementById("selectYear2").value = "";
             
             if (selectedValue === "อื่นๆ") {
+                eventName.style.display = "block";
                 eventDescription.style.display = "block";
             } else {
+                eventName.style.display = "none";
                 eventDescription.style.display = "none";
             }
         }
@@ -306,6 +316,8 @@
         toDate.style.display = "none";
         eventDescription.style.display = "none";
         eventDescription.value = "";
+        eventName.style.display = "none";
+        eventName.value = "";
         initDatePicker(); 
         saveEventBtn.disabled = false;
         saveEventBtn.innerText = "บันทึกกิจกรรม";
@@ -390,13 +402,17 @@
         }
 
         // ตั้งค่า Description อัตโนมัติ
+        const Name = eventName.value.trim();
         let desc = eventDescription.value.trim();
         if (selectedValue === "วันสอบ") desc = "จะมีการจัดสอบในวันที่กำหนด โปรดเตรียมเอกสารในการสอบให้เรียบร้อย";
         else if (selectedValue === "วันส่งเอกสาร") desc = "โปรดส่งเอกสารภายในวันที่กำหนด";
-
+        else if (selectedValue === "อื่นๆ" && !desc && !eventName.value.trim()) {
+            alert("กรุณากรอกรายละเอียดกิจกรรมสำหรับกิจกรรมอื่นๆ");
+            return;
+        }
         // 1. ใช้ FormData แทน JSON ปกติเพื่อส่งไฟล์
         const formData = new FormData();
-        formData.append("title", selectedValue);
+        formData.append("title", Name || selectedValue);
         formData.append("description", desc);
         formData.append("date", `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
 
