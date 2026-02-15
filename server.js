@@ -842,16 +842,18 @@ app.post("/groups-update/:groupId", requireLogin, async (req, res) => {
 
     const mem1 = await User.findOne({ username: group.member1 });
 
-    const existingGroup = await Group.findOne({
-      member2: member2,
-      _id: groupId  // ไม่รวมกลุ่มที่กำลังอัปเดต
-    });
-    if (existingGroup) {
-      return res.status(400).send("สมาชิกนี้มีกลุ่มอยู่แล้ว");
-    }
+      if (member2 !== null && member2 !== "" && member2 !== "undefined") {
+        const existingGroup = await Group.findOne({
+          member2: member2,
+          _id: groupId  // ไม่รวมกลุ่มที่กำลังอัปเดต
+        });
+        if (existingGroup) {
+          return res.status(400).send("สมาชิกนี้มีกลุ่มอยู่แล้ว");
+        }
+      }
 
     // แก้ไขกลุ่ม
-    sendGroupNotification("addGroup", groupId, "ระบบ", "ระบบ", `คุณถูกเพิ่มเข้ากลุ่มโดย ${mem1.name}`, null, null , undefined , null, member2 , advisor)
+    sendGroupNotification("addGroup", groupId, "ระบบ", "ระบบ", `คุณถูกเพิ่มเข้ากลุ่มโดย ${mem1.name}`, null, null , undefined , null, member2 !== undefined && member2 !== null && member2 !== "" ? member2 : null, advisor)
 
     res.status(201).send("ส่งคำเชิญกลุ่มสำเร็จ");
   } catch (err) {
