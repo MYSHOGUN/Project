@@ -562,13 +562,19 @@ app.get("/group", requireLogin, async (req, res) => {
     }
 
     const username = req.session.user.username;
-    const groups = await Group.find({
-      $or: [
-        { member1: username },
-        { member2: username },
-        { advisor: username }
-      ]
-    }).sort({ lastUpdatedTime: -1 });
+
+    let groups;
+    if(req.session.user.role === "admin"){
+      groups = await Group.find().sort({ lastUpdatedTime: -1 });
+    }else{   
+      groups = await Group.find({
+        $or: [
+          { member1: username },
+          { member2: username },
+          { advisor: username }
+        ]
+      }).sort({ lastUpdatedTime: -1 });
+    }
 
     let userInfo = [];
 
@@ -690,7 +696,7 @@ app.get("/search-users", requireLogin, async (req, res) => {
     const users = await User.find({
       $and: [
         { username: { $ne: req.session.user.username } }, // ไม่เอาตัวเอง
-        { role: { $ne: "teacher" } }, // ไม่เอาอาจารย์
+        { role: "user" }, // ไม่เอาอาจารย์
         { lastname: { $ne: "Registration"} },
         { name: { $ne: "Pending"}}, // ไม่เอาบัญชีที่รอการลงทะเบียน
         {
@@ -714,7 +720,7 @@ app.get("/search-advisor", requireLogin, async (req, res) => {
     const users = await User.find({
       $and: [
         { username: { $ne: req.session.user.username } }, // ไม่เอาตัวเอง
-        { role: "teacher" }, // เอาอาจารย์
+        { role: { $ne: "user"} }, // เอาอาจารย์
         {
           $or: [
             { username: { $regex: keyword, $options: "i" } },
@@ -1970,6 +1976,44 @@ app.post("/api/submitPaperResult", requireLogin, async (req, res) => {
     }
 });
 
+app.get("/admin", requireLogin, async (req, res) => {
+  if(req.session.user.role !== "admin"){
+    return res.redirect("/");
+  }
+  try {
+      renderWithLayout(res, "admin", { title: "KMUTNB Project - Admin Panel" }, req.path,req);
+  } catch (err) {
+      console.error("Admin Panel Error:", err);
+      res.status(500).send("Internal Server Error");
+  }
+});
+
+app.post("/api/admin", requireLogin, async (req, res) => {
+  if(req.session.user.role !== "admin"){
+    return res.status(403).json({ error: "Unauthorized" });
+  }
+  try {
+      const { chosenAdvisor } = req.body;
+
+      if (!chosenAdvisor) {
+          return res.status(400).json({ error: "Missing chosenAdvisor" });
+      }
+
+      const adminUser = await User.findOneAndUpdate({ username: req.session.user.username }, { role: "advisor" });
+
+      const advisorUser = await User.findOneAndUpdate({ username: chosenAdvisor }, { role: "admin" });
+
+      if (!adminUser || !advisorUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json({ success: true, message: `เปลี่ยน ${advisorUser.username} เป็น admin และ ${adminUser.username} เป็น advisor เรียบร้อยแล้ว` });
+  }catch (err) {
+      console.error("Admin Action Error:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+      
 
 // Socket.IO
 io.on("connection", (socket) => {

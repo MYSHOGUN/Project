@@ -109,7 +109,7 @@
           
         </ul>
         
-        <div class="<% if(user.role === 'teacher'){ %> d-none <% }else{ %> d-flex <% } %>flex-row" style="margin-bottom: 20px; justify-content: space-evenly;">
+        <div class="<% if(user.role === 'teacher' || user.role === 'admin'){ %> d-none <% }else{ %> d-flex <% } %>flex-row" style="margin-bottom: 20px; justify-content: space-evenly;">
           <button id="addMemberBtn" class="btn btn-light" style="width: 45%;">เพิ่มสมาชิก</button>
           <button id="leaveGroupBtn" class="btn btn-danger" style="width: 45%;">ออกจากกลุ่ม</button>
         </div>

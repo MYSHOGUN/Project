@@ -88,6 +88,16 @@
             </li>
         <% } %>
 
+        <% if (typeof user !== 'undefined' && user.role === 'admin') { %>
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/admin' ? 'active' : '' %>">
+                <a class="nav-link" href="/admin">
+                    <i class="fas fa-user"></i>
+                    <span>มอบสิทธิ์อาจารย์หัวหน้าแขนง</span></a>
+            </li>
+        <% } %>
+
         
         <hr class="sidebar-divider my-0">
 
