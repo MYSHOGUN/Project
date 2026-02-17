@@ -1820,6 +1820,10 @@ app.post("/api/PaperUploadFile", requireLogin, async (req, res) => {
 
         // --- 1. ค้นหาและลบไฟล์เก่าทั้งหมดของ PaperId นี้ ---
         const oldFiles = await PaperFile.find({ paperId: paperId });
+
+        const paper = await Paper.findById(paperId);
+        const paperGroup = paper.groupId;
+
         for (const oldFile of oldFiles) {
             if (oldFile.file && oldFile.file.fileId) {
                 try {
@@ -1836,7 +1840,7 @@ app.post("/api/PaperUploadFile", requireLogin, async (req, res) => {
         const savePromises = filesData.map(file => {
             return new PaperFile({
                 paperId: paperId,
-                groupId: req.session.user.group,
+                groupId: paperGroup,
                 file: { 
                     fileId: file.id, 
                     filename: file.filename 
