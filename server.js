@@ -665,6 +665,8 @@ app.post("/login" , async (req, res) => {
     return req.session.save(() => res.redirect("/login"));
   }
 
+  const group = user.group; // สมมติว่าเก็บแค่กลุ่มเดียวใน Array
+
   
     req.session.user = {
     username: user.username,
@@ -673,7 +675,7 @@ app.post("/login" , async (req, res) => {
     role: user.role,
     email: user.email,
     phone: user.phone,
-    group: user.group,
+    group: group,
     picture: user.picture && user.picture.id ? user.picture.id.toString() : null
   };
 
@@ -1857,22 +1859,31 @@ app.post("/api/PaperUploadFile", requireLogin, async (req, res) => {
 
 app.get("/api/getMyPapers", requireLogin, async (req, res) => {
     try {
-        const userGroupId = req.session.user.group; // ค่านี้คือ ID (เช่น 65b2...)
-        
-        // 1. ไปหาข้อมูลกลุ่มเพื่อเอา "ชื่อโปรเจกต์" (projectName) มาก่อน
-        const groupData = await Group.findById(userGroupId);
-        if (!groupData) {
-            return res.json([]); // ถ้าไม่เจอชื่อกลุ่ม ให้ส่งอาเรย์ว่างกลับไป
+        const userGroupIds = req.session.user.group; // คาดว่าเป็น Array ของ IDs
+
+        // 1. ตรวจสอบว่ามีข้อมูลกลุ่มใน Session หรือไม่
+        if (!userGroupIds || !Array.isArray(userGroupIds) || userGroupIds.length === 0) {
+            return res.json([]);
         }
 
-        const id = groupData.id;
+        // 2. ค้นหาข้อมูลกลุ่มทั้งหมดที่อยู่ใน Array นี้ (ใช้ $in เพื่อประสิทธิภาพ)
+        //const groups = await Group.find({ _id: { $in: userGroupIds } });
+        
+        //if (!groups || groups.length === 0) {
+            //return res.json([]);
+        //}
 
-        // 2. ค้นหา Platform ใน Paper โดยใช้ชื่อโปรเจกต์ให้ตรงกับที่บันทึกไว้ในตอน addEvent
-        const platforms = await Paper.find({ groupId: id }).lean();
+        // 3. ดึงเฉพาะ ID ของกลุ่มทั้งหมดออกมาเป็น Array ของ String หรือ ObjectId
+        //const allGroupIds = groups.map(g => g._id);
 
-        // 3. ตรวจสอบสถานะการส่ง (คงเดิม)
+        // 4. ค้นหา Platform ใน Paper ทั้งหมดที่อยู่ในกลุ่มเหล่านี้
+        const platforms = await Paper.find({ groupId: { $in: userGroupIds } }).lean();
+
+        // 5. ตรวจสอบสถานะการส่งไฟล์ (Check isSubmitted)
         const finalData = await Promise.all(platforms.map(async (p) => {
+            // ค้นหาไฟล์ที่ส่งล่าสุดของ Paper นี้
             const fileRecord = await PaperFile.findOne({ paperId: p._id });
+            
             return {
                 ...p,
                 isSubmitted: !!fileRecord,
@@ -1883,7 +1894,7 @@ app.get("/api/getMyPapers", requireLogin, async (req, res) => {
         res.json(finalData);
     } catch (err) {
         console.error("❌ Error in getMyPapers:", err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: "เกิดข้อผิดพลาดในการดึงข้อมูลเอกสาร" });
     }
 });
 
@@ -2013,8 +2024,11 @@ app.post("/api/admin", requireLogin, async (req, res) => {
       res.status(500).json({ error: "Internal Server Error" });
   }
 });
-      
 
+app.get("/api/server-time", (req, res) => {
+    res.json({ now: new Date().getTime() }); // ส่ง timestamp ปัจจุบันของ Server ไป
+});
+      
 // Socket.IO
 io.on("connection", (socket) => {
   const username = socket.handshake.query.username;

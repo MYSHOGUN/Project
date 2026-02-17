@@ -153,5 +153,21 @@
                 }
             });
         </script>
+        <script>
+            async function getRealToday() {
+                try {
+                    const response = await fetch('/api/server-time');
+                    const data = await response.json();
+                    const serverDate = new Date(data.now);
+                    serverDate.setHours(0, 0, 0, 0); // รีเซ็ตเวลาให้เหลือแค่วันที่
+                    return serverDate;
+                } catch (err) {
+                    // กรณีเชื่อมต่อไม่ได้ ให้ใช้เวลาเครื่องเป็นค่าสำรอง (Optional)
+                    const fallback = new Date();
+                    fallback.setHours(0, 0, 0, 0);
+                    return fallback;
+                }
+            }
+        </script>
     </body>
 </html>
