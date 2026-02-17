@@ -775,10 +775,12 @@ app.post("/groups", requireLogin, async (req, res) => {
 
     const mem1 = await User.findOne({ username: member1 });
 
-    const mem2 = member2 === null || member2 === "" || member2 === "undefined" ? null : `${member2} Pending`;
+    const mem2 = member2 === null || member2 === "" || member2 === "undefined" ? null : `${member2} (Pending)`;
+
+    const adv = advisor === null || advisor === "" || advisor === "undefined" ? null : `${advisor} (Pending)`;
 
     // บันทึกกลุ่มใหม่
-    const newGroup = new Group({ projectName, member1, mem2 , advisor ,status});
+    const newGroup = new Group({ projectName, member1: member1, member2: mem2 , advisor : adv,status});
     await newGroup.save();
 
     sendGroupNotification("addGroup", newGroup._id, "ระบบ", "ระบบ", `คุณถูกเพิ่มเข้ากลุ่มโดย ${mem1.name}`, null, null , undefined , null ,  member2 , advisor)
@@ -892,15 +894,29 @@ app.post("/groups-update/:groupId", requireLogin, async (req, res) => {
 
     const mem1 = await User.findOne({ username: group.member1 });
 
-      if (member2 !== null && member2 !== "" && member2 !== "undefined") {
-        const existingGroup = await Group.findOne({
-          member2: member2,
-          _id: groupId  // ไม่รวมกลุ่มที่กำลังอัปเดต
-        });
-        if (existingGroup) {
-          return res.status(400).send("สมาชิกนี้มีกลุ่มอยู่แล้ว");
-        }
+    let existingGroup;
+
+    if (member2 !== null && member2 !== "" && member2 !== "undefined") {
+      existingGroup = await Group.findOne({
+        member2: member2,
+        _id: groupId 
+      });
+      if (existingGroup) {
+        return res.status(400).send("สมาชิกนี้มีกลุ่มอยู่แล้ว");
       }
+      existingGroup = await Group.findOneAndUpdate(
+        { member2: `${member2} (Pending)` }
+      );
+    }
+
+    if (advisor !== null && advisor !== "" && advisor !== "undefined") {
+      existingGroup = await Group.findOneAndUpdate(
+        { advisor: `${advisor} (Pending)` }
+      );
+    }
+
+    existingGroup.save();
+    
 
     // แก้ไขกลุ่ม
     sendGroupNotification("addGroup", groupId, "ระบบ", "ระบบ", `คุณถูกเพิ่มเข้ากลุ่มโดย ${mem1.name}`, null, null , undefined , null, member2 !== undefined && member2 !== null && member2 !== "" ? member2 : null, advisor)
@@ -1046,7 +1062,6 @@ app.get("/updateGroup", requireLogin, async (req, res) => {
       userInfo = [mem1, mem2, adv];
     }
 
-    user
   renderWithLayout(res, "updateGroup", { title: "KMUTNB Project - Update Group" ,groups,userInfo}, req.path,req);
 });
 
