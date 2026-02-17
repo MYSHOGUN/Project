@@ -239,36 +239,6 @@
                 updateButtonState();
             });
             
-            $("#createGroupBtn").on("click", function() {
-                const projectName = $("#projectName").val().trim();
-                if (!projectName) {
-                    alert("กรุณากรอกชื่อปริญญานิพนธ์");
-                    $("#projectName").focus(); // ย้าย cursor ไปที่ช่อง
-                    return;
-                }
-
-                const groupData = {
-                    projectName: projectName,
-                    member1: "<%= user.username %>",   // คนแรกคือผู้ที่ล็อกอิน
-                    member2: chosenUser || null,
-                    advisor: chosenAdvisor || null,
-                    status: "รอนำเสนอหัวข้อ"
-                };
-
-                $.ajax({
-                    url: "/groups",
-                    method: "POST",
-                    contentType: "application/json",
-                    data: JSON.stringify(groupData),
-                    success: function(res) {
-                        alert("สร้างกลุ่มสำเร็จ!");
-                        window.location.href = "/group";
-                    },
-                    error: function(err) {
-                        alert("เกิดข้อผิดพลาด: " + err.responseText);
-                    }
-                });
-            });
 
             function updateButtonState() {
                 const hasMember = groups[0].member2 ? true : false;

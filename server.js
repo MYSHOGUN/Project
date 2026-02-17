@@ -961,11 +961,11 @@ app.post("/groups/leave/:groupId", async (req, res) => {
     // อัปเดต User ด้วย (ถ้า User มี field group)
     await User.findOneAndUpdate(
       { username },
-      { $set: { group: null } } // เอา group ออก
+      { $set: { group: [] } } // เอา group ออก
     );
 
     // อัปเดต session
-    req.session.user.group = null;
+    req.session.user.group = [];
 
     res.send("ออกจากกลุ่มสำเร็จ");
   } catch (err) {
