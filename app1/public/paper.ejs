@@ -17,8 +17,11 @@
     </div>
 </div>
 <script>
-const groupsData = JSON.parse(document.getElementById('raw-groups-data').value);
-const resultData = JSON.parse(document.getElementById('raw-result-data').value);
+const rawGroups = document.getElementById('raw-groups-data')?.value;
+const groupsData = rawGroups ? JSON.parse(rawGroups) : [];
+
+const rawResult = document.getElementById('raw-result-data')?.value;
+const resultData = rawResult ? JSON.parse(rawResult) : [];
 
     window.submitResult = function submitResult(paperId) {
         const choices = document.getElementsByName(`choice-${paperId}`); 
@@ -94,6 +97,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 container.innerHTML = `<div class="alert alert-info py-5 px-5 text-center w-100">ไม่มีรายการส่งเอกสาร</div>`;
                 return;
             }
+
+            console.log("Papers:", papers);
+            
             
 
             container.innerHTML = papers.map(paper => {
@@ -104,8 +110,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 const targetGroup = groupsData.find(g => g._id === groupId);
                 const targetResult = resultData.find(r => r.groupId === groupId);
                 const groupName = targetGroup.projectName;
-                const groupAdvisors = targetGroup.advisors;
-                const groupMembers = targetGroup.member1 === currentUsername ? currentUsername : targetGroup.member2 === currentUsername ? currentUsername : targetGroup.advisor === currentUsername ? currentUsername : null;
+                const groupAdvisors = targetGroup.advisor;
+                const isUserInGroup = [targetGroup.member1, targetGroup.member2, targetGroup.advisor].includes(currentUsername);
+
+                // กำหนดค่า groupMembers
+                const groupMembers = isUserInGroup ? currentUsername : null;
 
                 const today = new Date().setHours(0,0,0,0);
                 const paperDate = new Date(paper.date).getTime();

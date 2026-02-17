@@ -815,7 +815,12 @@ app.post("/group/accept-invitation/:groupId/:notiId", requireLogin, async (req, 
     }
     
     // 1. อัปเดตข้อมูลกลุ่ม
-    group.member2 = username;
+    const user = await User.findOne({ username: username }); // ดึงข้อมูลผู้ใช้จาก DB เพื่อความแน่นอน
+    if(user.role === "teacher"){
+      group.advisor = username;
+    }else{
+      group.member2 = username;
+    }
     await group.save();
 
     // 2. ลบแจ้งเตือนทิ้ง
@@ -1867,6 +1872,7 @@ app.get("/api/getMyPapers", requireLogin, async (req, res) => {
 
         // 1. ตรวจสอบว่ามีข้อมูลกลุ่มใน Session หรือไม่
         if (!userGroupIds || !Array.isArray(userGroupIds) || userGroupIds.length === 0) {
+            console.log("⚠️ No group IDs found in session for user:", req.session.user.username);
             return res.json([]);
         }
 
