@@ -557,7 +557,7 @@ app.get("/file", requireLogin, (req, res) => {
 app.get("/group", requireLogin, async (req, res) => {
   try{
 
-    if(req.session.user && req.session.user.group === null && req.session.user.role !== "teacher"){
+    if(req.session.user && req.session.user.group.length === 0 && req.session.user.role !== "teacher"){
       return res.redirect("/addGroup");
     }
 
@@ -1025,6 +1025,7 @@ app.get("/updateGroup", requireLogin, async (req, res) => {
       ]
     });
 
+
   let userInfo = [];
 
   const m2 = await User.findOne({username: groups[0].member2});
@@ -1044,6 +1045,8 @@ app.get("/updateGroup", requireLogin, async (req, res) => {
       const adv = await User.findOne({username: groups[0].advisor});
       userInfo = [mem1, mem2, adv];
     }
+
+    user
   renderWithLayout(res, "updateGroup", { title: "KMUTNB Project - Update Group" ,groups,userInfo}, req.path,req);
 });
 
