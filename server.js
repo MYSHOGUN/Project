@@ -812,7 +812,7 @@ app.post("/group/accept-invitation/:groupId/:notiId", requireLogin, async (req, 
     }
 
     // ตรวจสอบว่ามีคนอื่นมาเสียบแทนไปก่อนหรือยัง
-    if (group.member2 && group.member2 !== username) {
+    if (group.member2 && group.member2 !== `${username} (Pending)`) {
       return res.status(400).send("กลุ่มนี้มีสมาชิกครบแล้ว");
     }
     
