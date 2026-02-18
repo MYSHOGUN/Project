@@ -118,6 +118,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 const paperDate = new Date(paper.date).getTime();
                 const passTime = paper.passTimes + 1;
                 if ((currentRole === "teacher" || currentRole === "admin") && paper.date != null && paperDate < today && (!targetResult || (!targetResult.pass.includes(currentUsername) && !targetResult.fail.includes(currentUsername)))) {
+                    console.log("Rendering result form for paper:", paperId);
                     return `
                     <div class="card shadow mb-4 border-left-secondary" id="card-${paperId}">
                         <div class="card-body">

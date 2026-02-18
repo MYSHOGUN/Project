@@ -965,6 +965,10 @@ app.post("/groups/leave/:groupId", async (req, res) => {
       return res.status(400).send("คุณไม่ได้อยู่ในกลุ่มนี้");
     }
 
+    if(group.member1 === null){
+      group.status = "ไปคุยกับรากมะม่วง"
+    }
+
     await group.save();
 
     // อัปเดต User ด้วย (ถ้า User มี field group)
@@ -1626,7 +1630,11 @@ app.post("/api/addEvent", requireLogin, upload.single("file"), async (req, res) 
         let targetGroups = [];
 
         if(title === "วันส่งเอกสาร"){
-          const allGroups = await Group.find({ status: { $ne: "ผ่านการสอบปริญญานิพนธ์" } });
+          const allGroups = await Group.find({ 
+            status: { 
+                $nin: ["ผ่านการสอบปริญญานิพนธ์", "ไปคุยกับรากมะม่วง"] 
+            } 
+          });
             
             const paperPlatforms = allGroups.map(group => ({
                 eventId: eventId,
@@ -1649,59 +1657,73 @@ app.post("/api/addEvent", requireLogin, upload.single("file"), async (req, res) 
 
             
         } else if (title === "วันสอบ" && file) {
+            console.log("Processing Excel file for event:", title);
             const workbook = XLSX.read(file.buffer, { type: 'buffer' });
             const sheetName = workbook.SheetNames[0];
             const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
             const testresultsdate = new Date(expire);
             testresultsdate.setDate(testresultsdate.getDate() + 7);
-
+          
             const paperPlatforms = [];
 
             // วนลูปทีละแถวใน Excel (1 แถว = 1 กลุ่ม)
             for (const row of data) {
-                const groupNameStr = (row.groupName || row.name || "").toString().trim();
-                if (!groupNameStr) continue;
+                const groupNameStr = (row.groupName || row.name || row.Groupname || row.ชื่อกลุ่ม).toString().trim();
+                if (!groupNameStr){
+                  return res.status(400).json({ error: "ข้อมูลใน Excel ไม่ถูกต้อง: ไม่มีชื่อกลุ่ม (groupName)" });
+                }
 
                 // 1. หาข้อมูลกลุ่มจาก DB เพื่อเอา id และ advisor (ใช้ findOne เพราะมีกลุ่มเดียว)
                 const group = await Group.findOne({ projectName: groupNameStr });
 
-                if (group) {
-                    // 2. จัดการรายชื่อกรรมการจาก Excel: แยกชื่อ / ตัดคำนำหน้า / ตัดนามสกุล
-                    let directors = row.director ? row.director.toString().split(/[,\/;]|\sและ\s/).map(s => {
-                        let cleanName = s.trim().replace(/^(ดร\.|ผศ\.ดร\.|ผศ\.|รศ\.ดร\.|รศ\.|ศ\.|มร\.|นาย|นางสาว|นาง|อาจารย์|อ\.)\s?/, "");
-                        return cleanName.split(/\s+/)[0]; 
-                    }).filter(s => s !== "") : [];
-
-                    // 3. ไปดึงชื่อ Advisor จาก Collection User มาเพิ่ม (Add เข้าไป)
-                    const advisorUser = await User.findOne({ username: group.advisor });
-                    if (advisorUser && advisorUser.name) {
-                        let advisorCleanName = advisorUser.name.toString().trim()
-                            .replace(/^(ดร\.|ผศ\.ดร\.|ผศ\.|รศ\.ดร\.|รศ\.|ศ\.|มร\.|นาย|นางสาว|นาง|อาจารย์|อ\.)\s?/, "")
-                            .split(/\s+/)[0];
-                        
-                        // ตรวจสอบก่อนว่าชื่อ Advisor ซ้ำกับกรรมการที่มีอยู่แล้วไหม ถ้าไม่ซ้ำก็ push เข้าไป
-                        if (!directors.includes(advisorCleanName)) {
-                            directors.push(advisorCleanName);
-                        }
-                    }
-
-                    const paperPassTimes = group.passTimes || 0;
-
-                    // 4. เตรียมข้อมูล Paper สำหรับบันทึก (1 กลุ่มต่อ 1 Card)
-                    paperPlatforms.push({
-                        eventId: eventId,
-                        groupId: group._id,
-                        mention: description || title,
-                        expireAt: testresultsdate,
-                        passTimes: paperPassTimes,
-                        date: expire,
-                        director: directors // ในอาเรย์นี้จะมีทั้ง [กรรมการจาก Excel + Advisor]
-                    });
-
-                    group.status = "รอสอบ";
-                    await group.save();
+                if (!group) {
+                  return res.status(400).json({ error: "ไม่มีกลุ่ม" });
                 }
+                // 2. จัดการรายชื่อกรรมการจาก Excel: แยกชื่อ / ตัดคำนำหน้า / ตัดนามสกุล
+                let directorslist = row.director || row.Director || row.กรรมการ
+                if(!directorslist){
+                  return res.status(400).json({ error: "ไม่มีกรรมการ" });
+                }
+
+                let directors = directorslist.toString().split(/[,\/;]|\sและ\s/).map(s => {
+                  let cleanName = s.trim().replace(/^(ดร\.|ผศ\.ดร\.|ผศ\.|รศ\.ดร\.|รศ\.|ศ\.|มร\.|นาย|นางสาว|นาง|อาจารย์|อ\.)\s?/, "");
+                  return cleanName.split(/\s+/)[0]; 
+                }).filter(s => s !== "");
+
+                if(!directors || !Array.isArray(directors) || directorslist.length === 0){
+                  return res.status(400).json({ error: "ไม่มีกรรมการ" });
+                }
+
+                // 3. ไปดึงชื่อ Advisor จาก Collection User มาเพิ่ม (Add เข้าไป)
+                const advisorUser = await User.findOne({ username: group.advisor });
+                if (advisorUser && advisorUser.name) {
+                  let advisorCleanName = advisorUser.name.toString().trim()
+                    .replace(/^(ดร\.|ผศ\.ดร\.|ผศ\.|รศ\.ดร\.|รศ\.|ศ\.|มร\.|นาย|นางสาว|นาง|อาจารย์|อ\.)\s?/, "")
+                    .split(/\s+/)[0];
+                        
+                    // ตรวจสอบก่อนว่าชื่อ Advisor ซ้ำกับกรรมการที่มีอยู่แล้วไหม ถ้าไม่ซ้ำก็ push เข้าไป
+                    if (!directors.includes(advisorCleanName)) {
+                      directors.push(advisorCleanName);
+                      }
+                }
+
+                const paperPassTimes = group.passTimes || 0;
+
+                // 4. เตรียมข้อมูล Paper สำหรับบันทึก (1 กลุ่มต่อ 1 Card)
+                paperPlatforms.push({
+                eventId: eventId,
+                groupId: group._id,
+                mention: description || title,
+                expireAt: testresultsdate,
+                passTimes: paperPassTimes,
+                date: expire,
+                director: directors // ในอาเรย์นี้จะมีทั้ง [กรรมการจาก Excel + Advisor]
+              });
+
+              group.status = "รอสอบ";
+              await group.save();
+                
             }
 
             if (paperPlatforms.length > 0) {
@@ -1971,6 +1993,8 @@ app.post("/api/submitPaperResult", requireLogin, async (req, res) => {
                 date: currentPaper.date
             });
             await fixPaper.save();
+
+            sendGroupNotification('alert_group', null, username, user, `กลุ่ม ${group.projectName} ต้องมีการแก้ไข`, req.session.user.picture || null , currentPaper.eventId , group.member1 , group.member2 , group.advisor);
           
             return res.status(200).json({ success: true, message: "บันทึกการแก้ไขเรียบร้อยแล้ว" });
         } 
@@ -1999,7 +2023,7 @@ app.post("/api/submitPaperResult", requireLogin, async (req, res) => {
         await examResult.save();
 
         // ตรวจสอบว่ากรรมการลงครบทุกคนหรือยัง
-        if (examResult.pass.length + examResult.fail.length >= currentPaper.director.length && currentPaper.director.length >= 3) {
+        if (examResult.pass.length + examResult.fail.length === currentPaper.director.length) {
             
             // ดึงข้อมูลสมาชิกเพื่อเช็คสาขา (EnET หรือสาขาอื่น)
             const student = await User.findOne({ username: group.member1 });
