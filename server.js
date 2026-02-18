@@ -1633,7 +1633,8 @@ app.post("/api/addEvent", requireLogin, upload.single("file"), async (req, res) 
                 groupId: group._id, // หรือ group._id
                 mention: description || title,
                 expireAt: expire, // ตั้งวันหมดอายุไว้ที่นี่
-                passTimes: group.passTimes
+                passTimes: group.passTimes,
+                date: expire, // หรือใช้วันที่ปัจจุบันก็ได้ ขึ้นอยู่กับความหมายที่ต้องการ
             }));
 
             const updateGroupStatus = allGroups.map(group => ({
