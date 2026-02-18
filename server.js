@@ -991,7 +991,7 @@ app.post("/groups/leave/:groupId", async (req, res) => {
 });
 
 app.get("/addGroup", requireLogin, async (req, res) => {
-  if(req.session.user && req.session.user.group !== null){
+  if(req.session.user && Array.isArray(req.session.user.group) && req.session.user.group.length > 0){
     console.log("User already in group, redirecting to /group");
       return res.redirect("/group");
   }
