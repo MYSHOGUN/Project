@@ -835,7 +835,7 @@ app.post("/group/accept-invitation/:groupId/:notiId", requireLogin, async (req, 
     }else{
       await User.findOneAndUpdate(
         { username: username },
-        { push: { group: group._id } } // สำหรับ teacher อนุญาตให้มีหลายกลุ่มได้ (เก็บเป็น Array)
+        { $push: { group: group._id } } // สำหรับ teacher อนุญาตให้มีหลายกลุ่มได้ (เก็บเป็น Array)
       );
     }
 

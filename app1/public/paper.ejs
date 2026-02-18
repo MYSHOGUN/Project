@@ -97,11 +97,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 container.innerHTML = `<div class="alert alert-info py-5 px-5 text-center w-100">ไม่มีรายการส่งเอกสาร</div>`;
                 return;
             }
-
-            console.log("Papers:", papers);
             
-            
-
             container.innerHTML = papers.map(paper => {
                 const isSubmitted = paper.isSubmitted;
                 const paperId = paper._id;
@@ -115,6 +111,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 // กำหนดค่า groupMembers
                 const groupMembers = isUserInGroup ? currentUsername : null;
+
+                console.log({groupMembers});
 
                 const today = new Date().setHours(0,0,0,0);
                 const paperDate = new Date(paper.date).getTime();
@@ -144,7 +142,7 @@ document.addEventListener("DOMContentLoaded", function() {
                             </div>
                         </div>
                     </div>`;
-                }else if((groupMembers || currentRole === "admin" ) && targetGroup.status !== "ผ่านการสอบปริญญานิพนธ์") {
+                }else if((groupMembers && targetGroup.status !== "ผ่านการสอบปริญญานิพนธ์") || currentRole === "admin") {
                     return `
                     <div class="card shadow mb-4 border-left-${isSubmitted ? 'success' : 'warning'}">
                         <div class="card-body">
