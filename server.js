@@ -675,7 +675,7 @@ app.post("/login" , async (req, res) => {
     role: user.role,
     email: user.email,
     phone: user.phone,
-    group: group,
+    group: Array.isArray(group) ? group : [],
     picture: user.picture && user.picture.id ? user.picture.id.toString() : null
   };
 
