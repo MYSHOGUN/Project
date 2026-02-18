@@ -241,14 +241,17 @@
             
 
             function updateButtonState() {
-                const hasMember = groups[0].member2 ? true : false;
-                const hasAdvisor = groups[0].advisor ? true : false;
-                if ((groups[0].member2 &&  groups[0].advisor) || (!chosenUser && !chosenAdvisor)) {
-                    $("#updateGroupBtn").prop("disabled", true);
-                    console.log(hasMember , hasAdvisor , !chosenUser , !chosenAdvisor,'✔️ No changes, disabling update button');
-                } else {
+                // เช็คว่ามีการเลือกสมาชิกใหม่ หรือ อาจารย์ใหม่ หรือไม่
+                const hasChosenNewMember = chosenUser !== null;
+                const hasChosenNewAdvisor = chosenAdvisor !== null;
+
+                // ถ้ามีการเลือกอย่างใดอย่างหนึ่ง ให้เปิดปุ่มอัปเดต
+                if (hasChosenNewMember || hasChosenNewAdvisor) {
                     $("#updateGroupBtn").prop("disabled", false);
-                    console.log(hasMember , hasAdvisor , !chosenUser , !chosenAdvisor,'🔄 Change detected, enabling update button');
+                    console.log('🔄 Change detected, enabling update button');
+                } else {
+                    $("#updateGroupBtn").prop("disabled", true);
+                    console.log('✔️ No changes, disabling update button');
                 }
             }
 

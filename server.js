@@ -884,45 +884,40 @@ app.post("/group/deny-invitation/:groupId/:notiId", requireLogin, async (req, re
 
 app.post("/groups-update/:groupId", requireLogin, async (req, res) => {
   try {
-    const {  member2, advisor } = req.body;
+    const { member2, advisor } = req.body;
     const { groupId } = req.params;
 
-    // ตรวจสอบว่ามีใครอยู่ในกลุ่มแล้วหรือยัง
-    const group = await Group.findById({ _id : groupId })
+    // 1. ค้นหากลุ่มด้วย ID ที่ได้มา (ตัวแปร group จะมีค่าแน่นอนถ้าเจอ)
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).send("ไม่พบข้อมูลกลุ่ม");
 
     const mem1 = await User.findOne({ username: group.member1 });
 
-    let existingGroup;
-
-    if (member2 !== null && member2 !== "" && member2 !== "undefined") {
-      existingGroup = await Group.findOne({
-        member2: member2,
-        _id: groupId 
-      });
-      if (existingGroup) {
-        return res.status(400).send("สมาชิกนี้มีกลุ่มอยู่แล้ว");
-      }
-      existingGroup = await Group.findOneAndUpdate(
-        { member2: `${member2} (Pending)` }
-      );
+    // 2. อัปเดตข้อมูลเฉพาะที่มีการส่งมาใหม่
+    if (member2 && member2 !== "" && !member2.includes("(Pending)")) {
+        group.member2 = `${member2} (Pending)`;
     }
 
-    if (advisor !== null && advisor !== "" && advisor !== "undefined") {
-      existingGroup = await Group.findOneAndUpdate(
-        { advisor: `${advisor} (Pending)` }
-      );
+    if (advisor && advisor !== "" && !advisor.includes("(Pending)")) {
+        group.advisor = `${advisor} (Pending)`;
     }
 
-    existingGroup.save();
-    
+    // 3. บันทึก (ใช้ await group.save() มั่นใจว่าไม่ล่มเพราะ group ไม่เป็น null)
+    await group.save();
 
-    // แก้ไขกลุ่ม
-    sendGroupNotification("addGroup", groupId, "ระบบ", "ระบบ", `คุณถูกเพิ่มเข้ากลุ่มโดย ${mem1.name}`, null, null , undefined , null, member2 !== undefined && member2 !== null && member2 !== "" ? member2 : null, advisor)
+    // 4. ส่งแจ้งเตือน
+    await sendGroupNotification(
+      "addGroup", groupId, "ระบบ", "ระบบ", 
+      `คุณถูกเพิ่มเข้ากลุ่มโดย ${mem1?.name || 'หัวหน้ากลุ่ม'}`, 
+      null, null, undefined, null, 
+      (member2 && !member2.includes("(Pending)")) ? member2 : null, 
+      advisor
+    );
 
     res.status(201).send("ส่งคำเชิญกลุ่มสำเร็จ");
   } catch (err) {
-    console.error("❌ Error saving group:", err);
-    res.status(500).send("เกิดข้อผิดพลาดในการบันทึกกลุ่ม");
+    console.error("❌ Error:", err);
+    res.status(500).send("เกิดข้อผิดพลาด: " + err.message);
   }
 });
 
@@ -1031,36 +1026,57 @@ app.get("/addGroup", requireLogin, async (req, res) => {
 });
 
 app.get("/updateGroup", requireLogin, async (req, res) => {
-  const username = req.session.user.username;
-  const groups = await Group.find({
+  try {
+    const username = req.session.user.username;
+    
+    // 1. ดึงกลุ่มของผู้ใช้
+    const groups = await Group.find({
       $or: [
         { member1: username },
         { member2: username },
       ]
     });
 
-
-  let userInfo = [];
-
-  const m2 = await User.findOne({username: groups[0].member2});
-
-  let mem2;
-
-    if (groups.length > 0) {
-      const mem1 = await User.findOne({username: groups[0].member1});
-      if (m2 && m2.username.endsWith("Pending")) {
-        const user2 = await User.findOne({username: groups[0].member2});
-
-        mem2 = `${user2.name} (Pending)`;
-      }else{
-        mem2 = await User.findOne({username: groups[0].member2});
-      }
-      
-      const adv = await User.findOne({username: groups[0].advisor});
-      userInfo = [mem1, mem2, adv];
+    // 2. ถ้าไม่พบกลุ่ม ให้ Redirect หรือส่งค่าว่างไปป้องกันการ Crash
+    if (!groups || groups.length === 0) {
+      console.log("⚠️ No groups found for user:", username);
+      return res.redirect("/group"); // หรือส่ง [] ไปที่ render
     }
 
-  renderWithLayout(res, "updateGroup", { title: "KMUTNB Project - Update Group" ,groups,userInfo}, req.path,req);
+    let userInfo = [];
+    const targetGroup = groups[0];
+
+    // 3. ดึงข้อมูลสมาชิกด้วยความระมัดระวัง
+    const mem1 = await User.findOne({ username: targetGroup.member1 });
+    
+    // เช็คกรณี member2 อาจจะเป็นค่าว่าง หรือเป็น String "(Pending)"
+    let mem2 = null;
+    if (targetGroup.member2) {
+        // ลบคำว่า (Pending) ออกก่อนค้นหาใน DB ถ้ามีการเก็บแบบต่อท้าย string
+        const cleanM2Username = targetGroup.member2.replace(" (Pending)", "");
+        const user2 = await User.findOne({ username: cleanM2Username });
+        
+        if (targetGroup.member2.includes("(Pending)")) {
+            mem2 = user2 ? { ...user2.toObject(), name: `${user2.name} (Pending)` } : null;
+        } else {
+            mem2 = user2;
+        }
+    }
+
+    const adv = await User.findOne({ username: targetGroup.advisor?.replace(" (Pending)", "") });
+
+    userInfo = [mem1, mem2, adv];
+
+    renderWithLayout(res, "updateGroup", { 
+      title: "KMUTNB Project - Update Group", 
+      groups, 
+      userInfo 
+    }, req.path, req);
+
+  } catch (err) {
+    console.error("❌ Crash in /updateGroup:", err);
+    res.status(500).send("เกิดข้อผิดพลาดในการโหลดข้อมูลกลุ่ม");
+  }
 });
 
 app.post("/api/news", requireLogin, upload.single("file"), async (req, res) => {
