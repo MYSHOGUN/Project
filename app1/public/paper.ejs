@@ -117,7 +117,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 const today = new Date().setHours(0,0,0,0);
                 const paperDate = new Date(paper.date).getTime();
                 const passTime = paper.passTimes + 1;
-                if (((currentRole === "teacher" && groupAdvisors.includes(currentUsername)) || currentRole === "admin") && paper.date != null && paperDate < today && (!targetResult || (!targetResult.pass.includes(currentUsername) && !targetResult.fail.includes(currentUsername)))) {
+                if ((currentRole === "teacher" || currentRole === "admin") && paper.date != null && paperDate < today && (!targetResult || (!targetResult.pass.includes(currentUsername) && !targetResult.fail.includes(currentUsername)))) {
                     return `
                     <div class="card shadow mb-4 border-left-secondary" id="card-${paperId}">
                         <div class="card-body">
@@ -142,7 +142,30 @@ document.addEventListener("DOMContentLoaded", function() {
                             </div>
                         </div>
                     </div>`;
-                }else if((groupMembers && targetGroup.status !== "ผ่านการสอบปริญญานิพนธ์") || currentRole === "admin") {
+                }
+            }).join('');
+            
+            container.innerHTML = papers.map(paper => {
+                const isSubmitted = paper.isSubmitted;
+                const paperId = paper._id;
+                const groupId = paper.groupId;
+
+                const targetGroup = groupsData.find(g => g._id === groupId);
+                const targetResult = resultData.find(r => r.groupId === groupId);
+                const groupName = targetGroup.projectName;
+                const groupAdvisors = targetGroup.advisor;
+                const isUserInGroup = [targetGroup.member1, targetGroup.member2, targetGroup.advisor].includes(currentUsername);
+
+                // กำหนดค่า groupMembers
+                const groupMembers = isUserInGroup ? currentUsername : null;
+
+                console.log({groupMembers});
+
+                const today = new Date().setHours(0,0,0,0);
+                const paperDate = new Date(paper.date).getTime();
+                const passTime = paper.passTimes + 1;
+                
+                if((groupMembers && targetGroup.status !== "ผ่านการสอบปริญญานิพนธ์") || currentRole === "admin") {
                     return `
                     <div class="card shadow mb-4 border-left-${isSubmitted ? 'success' : 'warning'}">
                         <div class="card-body">
@@ -167,6 +190,8 @@ document.addEventListener("DOMContentLoaded", function() {
                                             
                                             <div class="progress mt-3" id="progress-container-${paperId}" style="display:none; height: 10px;">
                                                 <div class="progress-bar progress-bar-striped progress-bar-animated" id="bar-${paperId}" style="width: 0%"></div>
+                                            </div>
+
                                             </div>
                                         </div>
                                     ` : ''}
