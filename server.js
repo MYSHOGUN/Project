@@ -557,7 +557,7 @@ app.get("/file", requireLogin, (req, res) => {
 app.get("/group", requireLogin, async (req, res) => {
   try{
 
-    if(req.session.user && req.session.user.group.length === 0 && req.session.user.role !== "teacher"){
+    if (req.session.user && Array.isArray(req.session.user.group) && req.session.user.group.length === 0 && req.session.user.role !== "teacher") {
       return res.redirect("/addGroup");
     }
 
@@ -664,20 +664,18 @@ app.post("/login" , async (req, res) => {
     console.log("Set failModal = password");
     return req.session.save(() => res.redirect("/login"));
   }
-
-  const group = user.group; // สมมติว่าเก็บแค่กลุ่มเดียวใน Array
-
   
     req.session.user = {
-    username: user.username,
-    name: user.name,
-    lastname: user.lastname,
-    role: user.role,
-    email: user.email,
-    phone: user.phone,
-    group: Array.isArray(group) ? group : [],
-    picture: user.picture && user.picture.id ? user.picture.id.toString() : null
-  };
+      username: user.username,
+      name: user.name,
+      lastname: user.lastname,
+      role: user.role,
+      email: user.email,
+      phone: user.phone,
+      // 💡 บรรทัดสำคัญ: ป้องกันค่า null/undefined จาก Database
+      group: Array.isArray(user.group) ? user.group : (user.group ? [user.group] : []), 
+      picture: user.picture && user.picture.id ? user.picture.id.toString() : null
+    };
 
   if (rememberMe === "on") {
     // ถ้าติ๊ก Remember Me ให้ Cookie อยู่ได้ 30 วัน
