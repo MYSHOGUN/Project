@@ -2140,7 +2140,9 @@ app.post("/forgot-password",checkFailModal , async (req, res) => {
         };
 
         await transporter.sendMail(mailOptions);
-        res.send("ระบบได้ส่งลิงก์ไปที่อีเมลสถาบันของคุณแล้ว");
+        
+        req.session.successModal = "forget_success";
+        req.session.save(() => res.redirect("/login"));
     } catch (err) {
         console.error("❌ Mail Error:", err);
         res.status(500).send("เกิดข้อผิดพลาดในการส่งอีเมล");
