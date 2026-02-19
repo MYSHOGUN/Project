@@ -8,6 +8,8 @@ const userSchema = new mongoose.Schema({
   role: { type: String, default: "user" },
   phone: { type: String, default: null },
   email:{ type: String, default: null },
+  resetPasswordToken: String,
+  resetPasswordExpires: Date,
   group: { type: [String], default: [] }, // เปลี่ยนเป็นอาเรย์ว่างเพื่อความปลอดภัย
   picture: {
           filename: String,

@@ -79,7 +79,7 @@
                                         <a class="small" href="/register">สมัครสมาชิก</a>
                                     </div>
                                     <div class="text-center">
-                                        <a class="small" href="https://account.kmutnb.ac.th/web/recovery/index">ลืมรหัสผ่าน ICIT ACCOUNT</a>
+                                        <a class="small" href="/forgotPassword">ลืมรหัสผ่าน</a>
                                     </div>
                                     <hr>
                                     <div class="text-center">
@@ -131,7 +131,9 @@
                     </div>
                     <% if (successModal === "success") { %>
                         <div class="modal-body">ลงทะเบียนสำเร็จ</div>
-                    <% }%>
+                    <% } else if (successModal === "reset_success") { %>
+                        <div class="modal-body">บันทึกรหัสผ่านสำเร็จ</div>
+                    <% } %>
                 </div>
             </div>
         </div>

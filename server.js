@@ -16,6 +16,8 @@ const Notification = require("./models/Notification");
 
 const NotificationRead = require("./models/NotificationRead");
 
+const nodemailer = require("nodemailer");
+
 const crypto = require('crypto');
 
 const userSockets = new Map();
@@ -209,7 +211,7 @@ function renderWithLayout(res, view, data = {}, reqPath = "", req) {
         return res.status(500).send(err.message); 
       }
       
-      if (view === "login" || view === "register") {
+      if (view === "login" || view === "register" || view === "forgotPassword" || view === "resetPassword") {
         // ✅ return ตรงนี้ถูกต้องแล้ว
         return res.render(view, extendedData); 
       } else {
@@ -2094,6 +2096,106 @@ app.post("/api/admin", requireLogin, async (req, res) => {
 
 app.get("/api/server-time", (req, res) => {
     res.json({ now: new Date().getTime() }); // ส่ง timestamp ปัจจุบันของ Server ไป
+});
+
+app.get("/forgotPassword", (req, res) => {
+    renderWithLayout(res, "forgotPassword", { title: "Forgot Password" , failModal: res.locals.failModal}, req.path, req);
+});
+
+app.post("/forgot-password",checkFailModal , async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) return res.status(404).send("ไม่พบผู้ใช้งานนี้");
+
+        // สร้าง Token (ต้องแก้ Schema เพิ่ม 2 ฟิลด์นี้ก่อนตามที่คุยกัน)
+        const token = crypto.randomBytes(20).toString('hex');
+        user.resetPasswordToken = token;
+        user.resetPasswordExpires = Date.now() + 3600000; // 1 ชั่วโมง
+        await user.save();
+
+        const resetUrl = `https://${req.get('host')}/reset-password/${token}`;
+        
+        const mailOptions = {
+            from: `"KMUTNB System" <${process.env.EMAIL_USER}>`,
+            to: `${email}`, // ✅ ส่งหาอีเมลสถาบัน
+            subject: '🔒 คำขอรีเซ็ตรหัสผ่าน',
+            html: `<h3>สวัสดีคุณ ${user.name}</h3>
+                   <p>คลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่านใหม่:</p>
+                   <a href="${resetUrl}">${resetUrl}</a>
+                   <p>ลิงก์จะหมดอายุใน 1 ชม.</p>`
+        };
+
+        await transporter.sendMail(mailOptions);
+        res.send("ระบบได้ส่งลิงก์ไปที่อีเมลสถาบันของคุณแล้ว");
+    } catch (err) {
+        console.error("❌ Mail Error:", err);
+        res.status(500).send("เกิดข้อผิดพลาดในการส่งอีเมล");
+    }
+});
+
+app.get("/reset-password/:token", checkFailModal , async (req, res) => {
+    try {
+        // ค้นหา User ที่มี Token ตรงกันและยังไม่หมดอายุ
+        const user = await User.findOne({
+            resetPasswordToken: req.params.token,
+            resetPasswordExpires: { $gt: Date.now() } // $gt คือ Greater Than (ยังไม่ถึงเวลาหมดอายุ)
+        });
+
+        if (!user) {
+            // ถ้า Token ผิดหรือหมดอายุ ให้ส่งกลับไปหน้าลืมรหัสผ่านพร้อมข้อความเตือน
+            req.session.failModal = "token_expired"; 
+            return req.session.save(() => res.redirect("/forgot-password"));
+        }
+
+        // ถ้า Token ถูกต้อง ให้แสดงหน้าตั้งรหัสผ่านใหม่
+        renderWithLayout(res, "resetPassword", { 
+            title: "Reset Password",
+            failModal: res.locals.failModal, 
+            token: req.params.token 
+        }, req.path, req);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server Error");
+    }
+});
+
+app.post("/reset-password/:token", async (req, res) => {
+    try {
+        const { password, passwordConfirm } = req.body;
+
+        if (password !== passwordConfirm) {
+            return res.status(400).send("รหัสผ่านไม่ตรงกัน");
+        }
+
+        const user = await User.findOne({
+            resetPasswordToken: req.params.token,
+            resetPasswordExpires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).send("Link รีเซ็ตรหัสผ่านไม่ถูกต้องหรือหมดอายุแล้ว");
+        }
+
+        // 1. Hash รหัสผ่านใหม่
+        const hashedPassword = await bcrypt.hash(password, 10);
+        user.password = hashedPassword;
+
+        // 2. ล้างค่า Token และวันหมดอายุทิ้ง (เพื่อไม่ให้ใช้ซ้ำได้อีก)
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+
+        await user.save();
+
+        // 3. แจ้งเตือนสำเร็จและให้ไป Login ใหม่
+        req.session.successModal = "reset_success";
+        req.session.save(() => res.redirect("/login"));
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("เกิดข้อผิดพลาดในการบันทึกรหัสผ่าน");
+    }
 });
       
 // Socket.IO
