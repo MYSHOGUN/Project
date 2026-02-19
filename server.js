@@ -2115,6 +2115,18 @@ app.post("/forgot-password",checkFailModal , async (req, res) => {
         user.resetPasswordExpires = Date.now() + 3600000; // 1 ชั่วโมง
         await user.save();
 
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            host: 'smtp.gmail.com',
+            port: 587,
+            secure: false, // ใช้ false สำหรับ port 587 และต้องมี requireTLS
+            requireTLS: true,
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS // ต้องเป็น App Password 16 หลัก
+            }
+        });
+
         const resetUrl = `https://${req.get('host')}/reset-password/${token}`;
         
         const mailOptions = {
