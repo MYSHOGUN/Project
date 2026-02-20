@@ -1,10 +1,19 @@
+<style>
+    /* ใส่ Hover effect ให้ดูพรีเมียม */
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+</style>
 <div class="container-fluid mt-4" style="min-height: 84vh;">                
     <div class="mb-4">
         <h1 style="color: #4e73df;">สถานะปริญญานิพนธ์</h1>
     </div>
-
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 40vw), 1fr)); gap: 1.5rem; width: 100%;">
-        <!-- <input type="text" class="form-control mb-4" placeholder="ค้นหาปริญญานิพนธ์..." style="max-width: 400px;"> -->
+    <div class="d-flex justify-content-center align-items-center">
+        <input type="text" id="searchInput" class="form-control mb-4" placeholder="ค้นหาปริญญานิพนธ์..." style="max-width: 600px;">
+    </div>
+    <div id="groupGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 40vw), 1fr)); gap: 1.5rem; width: 100%;">
+        
         <% groups.forEach(g => { %>
             <div class="content-group">
                 <a href="#" class="text-decoration-none text-dark d-block h-100">
@@ -21,7 +30,13 @@
                             <hr class="my-3" style="opacity: 0.1;">
                             <div class="d-flex align-items-center">
                                 <span class="text-muted small mr-2">สถานะ:</span>
-                                <span class="badge rounded-pill px-3 py-2" style="background-color: #f8f9fc; color: #4e73df; border: 1px solid #e3e6f0;">
+                                <% 
+                                let badgeClass = "badge-primary"; // สีน้ำเงินเริ่มต้น
+                                if (g.status.includes("ผ่าน")) badgeClass = "badge-success"; 
+                                if (g.status.includes("ไม่ผ่าน") || g.status.includes("รากมะม่วง")) badgeClass = "badge-danger";
+                                if (g.status.includes("รอ") || g.status.includes("พร้อมสอบ")) badgeClass = "badge-warning text-dark";
+                                %>
+                                <span class="badge rounded-pill px-3 py-2 <%= badgeClass %>" style="border: 1px solid #e3e6f0;">
                                     <%= g.status %>
                                 </span>
                             </div>
@@ -32,11 +47,31 @@
         <% }) %>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const groupCards = document.querySelectorAll('.content-group');
 
-<style>
-    /* ใส่ Hover effect ให้ดูพรีเมียม */
-    .card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    if (searchInput) {
+        searchInput.addEventListener('keyup', function() {
+            const value = this.value.toLowerCase().trim();
+
+            groupCards.forEach(card => {
+                // ค้นหาจากชื่อโครงการ (h4) และ ชื่อหัวหน้า (text-success)
+                const projectName = card.querySelector('h4').textContent.toLowerCase();
+                const leaderName = card.querySelector('.text-success').textContent.toLowerCase();
+                const statusName = card.querySelector('.badge').textContent.toLowerCase();
+
+                // ถ้าเจอคำในส่วนไหนก็ได้ ให้แสดงผล
+                if (projectName.includes(value) || 
+                    leaderName.includes(value) || 
+                    statusName.includes(value)) {
+                    card.style.display = ""; // แสดงผลปกติ (grid)
+                } else {
+                    card.style.display = "none"; // ซ่อน
+                }
+            });
+        });
     }
-</style>
+});
+</script>

@@ -268,7 +268,7 @@ function generateEventId() {
 
 // Routes
 app.get("/" ,requireLogin, async (req, res) => {
-  res.redirect("/group");
+  return res.redirect("/group");
   try {
     const newsList = await News.find().sort({ createdAt: -1 });
     const newsData = newsList.map(item => ({
@@ -519,25 +519,25 @@ app.get("/file/download/:id", requireLogin, async (req, res) => {
 
 app.get("/status", requireLogin, async (req, res) => {
   try {
-    const groups = await Group.find(); // 1. ดึงกลุ่มทั้งหมดออกมา (member1 เป็นแค่ String)
-
-    // 2. ใช้ Promise.all วนลูปหาข้อมูลจากคนละที่มา "ประกอบร่าง"
+    const groups = await Group.find().sort({ projectName: 1 });
     const groupsWithData = await Promise.all(groups.map(async (g) => {
-      // ไปค้นหาใน User Schema โดยใช้ string จาก g.member1
-      // สมมติว่าใน User Schema เก็บชื่อฟิลด์ว่า username
       const user = await User.findOne({ username: g.member1 }); 
-
       return {
-          ...g.toObject(), // คัดลอกข้อมูลเดิมในกลุ่ม
-          leaderName: user ? `${user.name} ${user.lastname}` : g.member1 // สร้างฟิลด์ใหม่ขึ้นมาเอง
+          ...g.toObject(),
+          leaderName: user ? `${user.name} ${user.lastname}` : g.member1
       };
     }));
-    renderWithLayout(res, "status", { title: "KMUTNB Project - Status", groups: groupsWithData }, req.path,req);
+
+    // ✅ ต้องมี return เพื่อป้องกัน Error Headers Sent
+    return renderWithLayout(res, "status", { title: "KMUTNB Project - Status", groups: groupsWithData }, req.path, req);
+    
   } catch (err) {
     console.error("Error fetching groups:", err);
-    res.status(500).send("Error loading status");
+    // ✅ ต้องมี return ตรงนี้ด้วย
+    return res.status(500).send("Error loading status");
   }
 });
+
 app.get("/login", checkFailModal, checkSuccessModal, (req, res) => {
   //console.log("Session failModal:", req.session.failModal);
   const inputUsername = req.session.inputUsername || "";
@@ -688,7 +688,7 @@ app.post("/login" , async (req, res) => {
     req.session.cookie.expires = false;
   }
 
-  res.redirect("/");
+  return res.redirect("/");
 });
 
 // ค้นหาผู้ใช้ (ยกเว้นตัวเอง)
@@ -2209,6 +2209,32 @@ app.post("/reset-password/:token", async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).send("เกิดข้อผิดพลาดในการบันทึกรหัสผ่าน");
+    }
+});
+
+app.post("/api/groups/mark-ready-for-exam", async (req, res) => {
+    // ตรวจสอบสิทธิ์ (ต้องเป็นอาจารย์เท่านั้น)
+    if (!req.session.user || req.session.user.role !== 'teacher') {
+        return res.status(403).json({ error: "คุณไม่มีสิทธิ์ดำเนินการนี้" });
+    }
+
+    try {
+        const { groupId } = req.body;
+        
+        // อัปเดตสถานะเฉพาะกลุ่มที่ส่ง ID มา
+        const updatedGroup = await Group.findByIdAndUpdate(
+            groupId, 
+            { status: "พร้อมสอบ" },
+            { new: true }
+        );
+
+        if (!updatedGroup) {
+            return res.status(404).json({ error: "ไม่พบข้อมูลกลุ่ม" });
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
       
