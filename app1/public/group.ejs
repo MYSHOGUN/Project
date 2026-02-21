@@ -46,18 +46,80 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   }
 
+  #group-list-section {
+    background-color: #f8f9fc !important; /* เปลี่ยนจาก grey เป็นสีขาวนวล */
+    height: 100% !important;
+    border-right: 1px solid #e3e6f0;
+    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .group-header {
+    padding: 1.5rem;
+    background: #ffffff;
+    border-bottom: 1px solid #e3e6f0;
+  }
+
+  .group-list-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 1.5rem;
+  }
+
+  /* ปรับแต่ง List Item ให้เป็น Card เล็กๆ */
   .group-item {
+    background: #ffffff !important;
+    border: 1px solid #e3e6f0 !important;
+    border-radius: 12px !important;
+    margin-bottom: 12px !important;
+    padding: 1rem !important;
+    transition: all 0.2s ease-in-out !important;
     cursor: pointer;
-    transition: all 0.2s ease;
-    border-left: 5px solid transparent;
+    border-left: 5px solid transparent !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
   }
+
   .group-item:hover {
-      background-color: #f1f3f5;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    background-color: #ffffff !important;
+    border-color: #4e73df !important;
   }
+
+  /* ✅ สถานะ Active เมื่อเลือกกลุ่ม */
   .group-item.active-group {
-      background-color: #e8f0fe !important;
-      border-left: 5px solid #00b91f;
-      font-weight: bold;
+    background-color: #f0f3ff !important;
+    border-color: #4e73df !important;
+    border-left: 5px solid #4e73df !important; /* เปลี่ยนเป็นสีน้ำเงิน Primary ให้เข้ากัน */
+    box-shadow: 0 4px 12px rgba(78, 115, 223, 0.15);
+  }
+
+  .group-item strong {
+    color: #4e73df;
+    font-size: 1.05rem;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .group-item span {
+    font-size: 0.85rem;
+    color: #858796;
+  }
+
+  /* ส่วนปุ่มกดด้านล่าง */
+  .group-actions {
+    padding: 1.5rem;
+    background: #ffffff;
+    border-top: 1px solid #e3e6f0;
+  }
+
+  .btn-group-custom {
+    border-radius: 10px !important;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    transition: all 0.2s;
   }
   .message-content {
     max-width: 85%;
@@ -88,69 +150,73 @@
   }
 </style>
 
-<div class="container-fluid" style="padding: 0; margin: 0; line-height: normal; height: calc(100vh - 150px);">
+<div class="container-fluid" style="padding: 0; margin: 0; line-height: normal;">
     <!-- Page Heading -->
+    <div class="card" style="border-radius: 20px; margin: 40px;">
+      <div class="card-body" style="height: calc(100vh - 220px);">
         <div class="row flex-column flex-sm-row" style="height: 100%;">
 
-    <!-- รายชื่อ -->
-    <div id="group-list-section" class="col-sm-4 col-12" style="background-color: lightgrey; height: 100%; width: 33.3333%;">
-      <div class="mx-4 mt-4">
-        <h2 style="color: #4e73df;">รายชื่อกลุ่ม</h2>
-        <ul class="list-group" id="group-list">
+        <!-- รายชื่อ -->
+        <div id="group-list-section" class="col-sm-4 col-12" style="background-color: lightgrey; height: 100%; width: 33.3333%;">
+          <div class="mx-4 mt-4">
+            <h2 style="color: #4e73df;">รายชื่อกลุ่ม</h2>
+            <ul class="list-group" id="group-list">
 
-          <% groups.forEach(g => { %>
-            <li class="list-group-item group-item mb-2" data-groupname="<%= g.projectName %>" data-groupid="<%= g._id %>">
-              <div class="d-flex flex-column">
-                <strong><%= g.projectName %></strong>
-                <span>Status: <%= g.status %></span>
-              </div>
-            </li>
-          <% }) %>
-          
-        </ul>
-        
-        <div class="<% if(user.role === 'teacher' || user.role === 'admin'){ %> d-none <% }else{ %> d-flex <% } %>flex-row" style="margin-bottom: 20px; justify-content: space-evenly;">
-          <button id="addMemberBtn" class="btn btn-light" style="width: 45%;">เพิ่มสมาชิก</button>
-          <button id="leaveGroupBtn" class="btn btn-danger" style="width: 45%;">ออกจากกลุ่ม</button>
-        </div>
-
-      </div>
-    </div>                     
-
-    <!-- ระบบแชท -->
-    <div id="chat-section" class="col-sm-8 col-12 d-flex flex-column " style="height: 100%; display: none; width: 66.6666%;">
-      <div class="mt-4 mx-4 d-flex align-items-center justify-content-between">
-        <h2 style="color: #4e73df;">
-          แชทกลุ่ม: <span id="chat-with">-</span>
-        </h2>
-        <button id="back-button" class="btn btn-secondary d-sm-none">
-          <i class="bi bi-arrow-bar-left"></i> ย้อนกลับ
-        </button>
-      </div>
-
-      <div style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column;" id="messages-container">
-        <!-- ข้อความแชท -->
-      </div>
-      <div id="file-preview-box" class="mx-4" style="display: flex; gap: 5px; flex-wrap: wrap;"></div>
-      <form id="chat-form" class="d-flex align-items-center mx-4 my-2" style="gap: 10px; display: flex !important;">
-        <div class="chat-input-wrapper" style="position: relative !important; flex: 1 !important; display: flex !important; align-items: center !important;">
+              <% groups.forEach(g => { %>
+                <li class="list-group-item group-item mb-2" data-groupname="<%= g.projectName %>" data-groupid="<%= g._id %>">
+                  <div class="d-flex flex-column">
+                    <strong><%= g.projectName %></strong>
+                    <span>Status: <%= g.status %></span>
+                  </div>
+                </li>
+              <% }) %>
+              
+            </ul>
             
-            <input id="message-input" autocomplete="off" placeholder="พิมพ์ข้อความ..." class="form-control" 
-                  style="padding-right: 45px !important; border-radius: 20px !important; height: 45px !important; width: 100% !important;">
-            
-            <label for="file-upload" id="file-input-label" 
-                  style="position: absolute !important; right: 15px !important; top: 50% !important; transform: translateY(-50%) !important; cursor: pointer !important; color: #4e73df !important; margin: 0 !important; z-index: 10 !important; line-height: 0 !important;">
-                <i class="fas fa-plus-circle fa-lg"></i>
-            </label>
-            
-            <input id="file-upload" type="file" hidden multiple>
-        </div>
+            <div class="<% if(user.role === 'teacher' || user.role === 'admin'){ %> d-none <% }else{ %> d-flex <% } %>flex-row" style="margin-bottom: 20px; justify-content: space-evenly;">
+              <button id="addMemberBtn" class="btn btn-light" style="width: 45%;">เพิ่มสมาชิก</button>
+              <button id="leaveGroupBtn" class="btn btn-danger" style="width: 45%;">ออกจากกลุ่ม</button>
+            </div>
 
-        <button id="message-sent" type="submit" class="btn btn-primary" 
-                style="width: 45px !important; height: 45px !important; border-radius: 50% !important; display: flex !important; justify-content: center !important; align-items: center !important; padding: 0 !important; flex-shrink: 0 !important;">
-            <i class="fas fa-paper-plane"></i>
-        </button>
-    </form>
+          </div>
+        </div>                     
+
+        <!-- ระบบแชท -->
+        <div id="chat-section" class="col-sm-8 col-12 d-flex flex-column " style="height: 100%; display: none; width: 66.6666%;">
+          <div class="mt-4 mx-4 d-flex align-items-center justify-content-between">
+            <h2 style="color: #4e73df;">
+              แชทกลุ่ม: <span id="chat-with">-</span>
+            </h2>
+            <button id="back-button" class="btn btn-secondary d-sm-none">
+              <i class="bi bi-arrow-bar-left"></i> ย้อนกลับ
+            </button>
+          </div>
+
+          <div style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column;" id="messages-container">
+            <!-- ข้อความแชท -->
+          </div>
+          <div id="file-preview-box" class="mx-4" style="display: flex; gap: 5px; flex-wrap: wrap;"></div>
+          <form id="chat-form" class="d-flex align-items-center mx-4 my-2" style="gap: 10px; display: flex !important;">
+            <div class="chat-input-wrapper" style="position: relative !important; flex: 1 !important; display: flex !important; align-items: center !important;">
+                
+                <input id="message-input" autocomplete="off" placeholder="พิมพ์ข้อความ..." class="form-control" 
+                      style="padding-right: 45px !important; border-radius: 20px !important; height: 45px !important; width: 100% !important;">
+                
+                <label for="file-upload" id="file-input-label" 
+                      style="position: absolute !important; right: 15px !important; top: 50% !important; transform: translateY(-50%) !important; cursor: pointer !important; color: #4e73df !important; margin: 0 !important; z-index: 10 !important; line-height: 0 !important;">
+                    <i class="fas fa-plus-circle fa-lg"></i>
+                </label>
+                
+                <input id="file-upload" type="file" hidden multiple>
+            </div>
+
+            <button id="message-sent" type="submit" class="btn btn-primary" 
+                    style="width: 45px !important; height: 45px !important; border-radius: 50% !important; display: flex !important; justify-content: center !important; align-items: center !important; padding: 0 !important; flex-shrink: 0 !important;">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+      </div>
+    </div>
   </div>
 </div>
 <script>
