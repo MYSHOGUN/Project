@@ -62,9 +62,10 @@
   }
 
   .group-list-container {
-    flex: 1;
-    overflow-y: auto;
+    flex-grow: 1; /* กินพื้นที่ที่เหลือทั้งหมด */
+    overflow-y: auto; /* เปิด Scroll แนวตั้ง */
     padding: 1rem 1.5rem;
+    scrollbar-width: thin; /* ปรับขนาด scrollbar (Firefox) */
   }
 
   /* ปรับแต่ง List Item ให้เป็น Card เล็กๆ */
@@ -148,12 +149,15 @@
       max-width: 95%;
     }
   }
+  #card {
+    transition: margin 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
 </style>
 
 <div class="container-fluid" style="padding: 0; margin: 0; line-height: normal;">
     <!-- Page Heading -->
-    <div class="card" style="border-radius: 20px; margin: 40px;">
-      <div class="card-body" style="height: calc(100vh - 220px);">
+    <div class="card" style="border-radius: 20px; margin: 40px; height: calc(100vh - 220px);" id="card">
+      <div class="card-body">
         <div class="row flex-column flex-sm-row" style="height: 100%;">
 
         <!-- รายชื่อ -->
@@ -230,6 +234,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const messageInput = document.getElementById('message-input');
   const chatForm = document.getElementById('chat-form');
   const backButton = document.getElementById('back-button');
+  const cardConfig = document.getElementById('card');
 
   const fileInput = document.getElementById('file-upload');
   const filePreviewBox = document.getElementById('file-preview-box');
@@ -460,16 +465,22 @@ document.addEventListener("DOMContentLoaded", () => {
         chatSection.style.display = "flex";
         groupListSection.style.width = "100%";
         chatSection.style.width = "100%";
+        cardConfig.style.setProperty('margin', '0', 'important');
+        cardConfig.style.setProperty('height', 'calc(100vh - 150px)', 'important');
       } else if(window.innerWidth >= 576 && window.innerWidth < 960){ // จอกลาง รายชื่อแสดงพร้อมแชทแต่ปรับขนาด
         groupListSection.style.display = "block";
         chatSection.style.display = "flex";
         groupListSection.style.width = "40%";
         chatSection.style.width = "60%";
+        cardConfig.style.setProperty('margin', '40px', 'important');
+        cardConfig.style.setProperty('height', 'calc(100vh - 220px)', 'important');
       } else { // จอใหญ่ รายชื่อแสดงพร้อมแชท
         groupListSection.style.display = "block";
         chatSection.style.display = "flex";
         groupListSection.style.width = "33.3333%";
         chatSection.style.width = "66.6666%";
+        cardConfig.style.setProperty('margin', '40px', 'important');
+        cardConfig.style.setProperty('height', 'calc(100vh - 220px)', 'important');
       }
   }
 
@@ -479,16 +490,22 @@ document.addEventListener("DOMContentLoaded", () => {
         groupListSection.style.width = "100%";
         chatSection.style.display = "none";
         chatSection.style.width = "100%";
+        cardConfig.style.setProperty('margin', '0', 'important');
+        cardConfig.style.setProperty('height', 'calc(100vh - 150px)', 'important');
       } else if(window.innerWidth >= 576 && window.innerWidth < 960){ // จอกลาง รายชื่อแสดงพร้อมแชทแต่ปรับขนาด
         groupListSection.style.display = "block";
         chatSection.style.display = "flex";
         groupListSection.style.width = "50%";
         chatSection.style.width = "50%";
+        cardConfig.style.setProperty('margin', '40px', 'important');
+        cardConfig.style.setProperty('height', 'calc(100vh - 220px)', 'important');
       } else { // จอใหญ่ แสดงทั้งสองฝั่ง
         groupListSection.style.display = "block";
         groupListSection.style.width = "33.3333%";
         chatSection.style.display = "flex";
         chatSection.style.width = "66.6666%";
+        cardConfig.style.setProperty('margin', '40px', 'important');
+        cardConfig.style.setProperty('height', 'calc(100vh - 220px)', 'important');
       }
   }
 

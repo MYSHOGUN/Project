@@ -16,7 +16,7 @@
     /* จัดการ Grid ของ Card */
     .paper-grid {
         display: grid !important;
-        grid-template-columns: repeat(auto-fill, minmax(500px, 1fr)) !important;
+        grid-template-columns: repeat(auto-fill, minmax(100%, 1fr)) !important;
         gap: 2rem !important;
         width: 100% !important;
     }
@@ -90,7 +90,7 @@
 
         <div class="platform-container">
             <div id="paper-platform-container" class="paper-grid">
-                <div class="text-center py-5 w-100" style="grid-column: 1 / -1;">
+                <div class="text-center py-5 " style="grid-column: 1 / -1;" style="width: 100%;">
                     <div class="spinner-border text-primary" role="status"></div>
                     <p class="mt-2 text-muted">กำลังโหลดรายการส่งเอกสาร...</p>
                 </div>
@@ -117,7 +117,7 @@
             const container = document.getElementById('paper-platform-container');
             
             if (!papers || papers.length === 0) {
-                container.innerHTML = `<div class="alert alert-info py-5 text-center w-100" style="grid-column: 1 / -1; border-radius: 15px;">ไม่มีรายการส่งเอกสารในขณะนี้</div>`;
+                container.innerHTML = `<div class="alert alert-info py-5 text-center" style="grid-column: 1 / -1; border-radius: 15px; width: 100%">ไม่มีรายการส่งเอกสารในขณะนี้</div>`;
                 return;
             }
             

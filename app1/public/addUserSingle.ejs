@@ -5,77 +5,69 @@
         flex-direction: column !important;
         align-items: center !important;
         justify-content: center !important;
-        min-height: 80vh !important;
+        min-height: 85vh !important; /* เพิ่มพื้นที่แนวตั้งเล็กน้อย */
+        padding: 2rem 0 !important;
         width: 100% !important;
     }
 
     /* กล่อง Card หลักขยายให้ใหญ่และสมดุล */
     .user-card {
-        width: 100% !important;
-        max-width: 1100px !important; /* ปรับให้กว้างขึ้นเพื่อความพรีเมียม */
+        width: 95% !important; /* ให้มีช่องว่างขอบจอเล็กน้อย */
+        max-width: 1100px !important;
         background: #ffffff !important;
         border-radius: 20px !important;
         box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
         padding: 3.5rem !important;
     }
 
-    /* หัวข้อหน้า */
-    .page-title {
-        color: #4e73df !important;
-        font-weight: 700 !important;
-        text-align: center !important;
-        margin-bottom: 2.5rem !important;
-    }
-
-    /* จัดระเบียบช่องกรอกข้อมูลให้กระจายเท่ากัน (50/50) */
+    /* ✅ แก้ไขจุดนี้: ปรับ Row ให้ขึ้นบรรทัดใหม่ได้เมื่อพื้นที่ไม่พอ */
     .input-group-row {
         display: flex !important;
-        gap: 1.5rem !important;
-        margin-bottom: 2.5rem !important;
+        flex-wrap: wrap !important; /* อนุญาตให้ขึ้นบรรทัดใหม่ */
+        gap: 1.5rem !important; /* ระยะห่างระหว่างฟิลด์ */
+        margin-bottom: 2rem !important;
         width: 100% !important;
-        align-items: flex-end !important;
+        justify-content: center !important; /* จัดกลุ่มให้อยู่กลางบรรทัด */
     }
 
+    /* ✅ ปรับความกว้างขั้นต่ำเพื่อให้สมดุลตอนขึ้นบรรทัดใหม่ */
     .input-field-container {
-        flex: 1 !important; /* บังคับให้ขยายกว้างเท่ากันทั้งสองฝั่ง */
+        flex: 1 1 300px !important; /* กว้างขั้นต่ำ 300px ถ้าไม่พอจะดีดลงมาเอง */
+        max-width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
 
-    /* ปรับแต่งสไตล์ Input ให้ใหญ่และดูดี */
-    .custom-input {
+    /* ปรับแต่งสไตล์ Input และ Select */
+    .custom-input, .custom-select {
         width: 100% !important;
-        height: 60px !important;
-        padding: 0 1.5rem !important;
-        font-size: 1.1rem !important;
-        border: 2px solid #e3e6f0 !important;
+        height: 55px !important; /* ลดความสูงเล็กน้อยให้ดูพอดี */
+        padding: 0 1.2rem !important;
+        font-size: 1.05rem !important;
+        border: 2px solid #eaecf4 !important;
         border-radius: 12px !important;
         transition: all 0.3s !important;
     }
 
-    .custom-input:focus {
+    .custom-input:focus, .custom-select:focus {
         border-color: #4e73df !important;
-        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.1) !important;
+        box-shadow: 0 0 0 0.25rem rgba(78, 115, 223, 0.1) !important;
         outline: none !important;
-    }
-
-    /* ปรับแต่ง Select ให้เหมือนกับ Input */
-    .custom-select {
-        width: 100% !important;
-        height: 60px !important;
-        font-size: 1.1rem !important;
-        border: 2px solid #e3e6f0 !important;
-        border-radius: 12px !important;
-        color: #6e707e !important;
-        cursor: pointer !important;
     }
 
     .label-text {
         font-weight: 700 !important;
         color: #4e73df !important;
-        margin-bottom: 8px !important;
-        display: block !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
+        margin-bottom: 10px !important;
         font-size: 0.9rem !important;
+        text-transform: uppercase !important;
+    }
+
+    /* จัดการปุ่มให้สมดุลบนมือถือ */
+    @media (max-width: 576px) {
+        .user-card { padding: 2rem !important; }
+        .btn-lg { width: 100% !important; margin-bottom: 10px !important; margin-right: 0 !important; }
+        .d-flex.justify-content-center { flex-direction: column !important; }
     }
 </style>
 
@@ -83,20 +75,20 @@
     <div class="add-user-wrapper">
         <div class="user-card">
             
-            <div class="page-title">
-                <h1 class="font-weight-bold"><i class="fas fa-user-edit mr-3"></i>เพิ่มข้อมูลผู้ใช้รายคน</h1>
-                <p class="text-muted mt-2">กรุณาระบุรหัสประจำตัว เลือกตำแหน่งและเลือกสาขาของผู้ใช้</p>
+            <div class="page-title text-center mb-5">
+                <h1 class="font-weight-bold text-primary"><i class="fas fa-user-plus mr-3"></i>เพิ่มข้อมูลผู้ใช้</h1>
+                <p class="text-muted">ระบุรายละเอียดรหัสประจำตัว ตำแหน่ง และสาขาวิชา</p>
             </div>
 
             <div class="input-group-row">
                 <div class="input-field-container">
                     <label class="label-text">รหัสประจำตัว</label>
-                    <input type="text" class="custom-input" id="username" name="username" placeholder="ระบุรหัสนักศึกษา/อาจารย์">
+                    <input type="text" class="custom-input" id="username" placeholder="รหัสนักศึกษา/อาจารย์">
                 </div>
 
                 <div class="input-field-container">
                     <label class="label-text">ตำแหน่งผู้ใช้</label>
-                    <select class="custom-select px-3" id="role">
+                    <select class="custom-select" id="role">
                         <option selected disabled>เลือกตำแหน่ง...</option>
                         <option value="student">นักศึกษา</option>
                         <option value="teacher">อาจารย์</option>
@@ -105,7 +97,7 @@
 
                 <div class="input-field-container">
                     <label class="label-text">สาขาผู้ใช้</label>
-                    <select class="custom-select px-3" id="branch">
+                    <select class="custom-select" id="branch">
                         <option selected disabled>เลือกสาขา...</option>
                         <option value="enet">EnET</option>
                         <option value="ect">ECT</option>
@@ -113,12 +105,12 @@
                 </div>
             </div>
 
-            <div class="d-flex justify-content-center mt-5">
-                <button type="submit" class="btn btn-success btn-lg px-5 mr-3 shadow" id="saveUser" style="border-radius: 12px; font-weight: 700;">
+            <div class="d-flex justify-content-center mt-4">
+                <button type="button" class="btn btn-success btn-lg px-5 mr-0 mr-sm-3 shadow" id="saveUser" style="border-radius: 12px; font-weight: 700;">
                     <i class="fas fa-save mr-2"></i>บันทึกข้อมูล
                 </button>
-                <button type="button" class="btn btn-danger btn-lg px-5 shadow" id="cancelBtn" onclick="history.back()" style="border-radius: 12px; font-weight: 700;">
-                    <i class="fas fa-times mr-2"></i>ยกเลิก
+                <button type="button" class="btn btn-danger btn-lg px-5 shadow border" onclick="history.back()" style="border-radius: 12px; font-weight: 700;">
+                    ยกเลิก
                 </button>
             </div>
 

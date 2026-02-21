@@ -60,7 +60,7 @@
 
     <div id="group" class="flex-column align-items-center justify-content-center" style="display: flex;  margin-top: 30vh;">
         <h1>คุณยังไม่มีกลุ่ม</h1>
-        <% if (user.role != 'teacher') { %>
+        <% if (user.role != 'teacher' && user.role != 'admin') { %>
             <button type="button" id="createGroupBtn" class="btn btn-secondary mt-3" style="width: 50%;background-color: white; color: gray;">
                 <h5 class="mt-2">สร้างกลุ่มใหม่</h5>
             </button>
