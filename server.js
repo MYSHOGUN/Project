@@ -2171,7 +2171,7 @@ app.get("/reset-password/:token", checkFailModal , async (req, res) => {
         }, req.path, req);
     } catch (err) {
         console.error(err);
-        res.status(500).send("Server Error");
+        return res.status(500).send("Server Error");
     }
 });
 
@@ -2234,7 +2234,51 @@ app.post("/api/groups/mark-ready-for-exam", async (req, res) => {
 
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: "Internal Server Error" });
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+app.get("/groupInfo/:id", async (req, res) => {
+    try {
+        const id = req.params.id;
+        
+        // 1. หาข้อมูลกลุ่ม
+        const group = await Group.findById(id).lean();
+        if (!group) return res.status(404).send("ไม่พบข้อมูลกลุ่ม");
+
+        // 2. ดึงข้อมูลชื่อ-นามสกุลสมาชิกและที่ปรึกษา
+        const memberUsernames = [group.member1, group.member2, group.advisor].filter(Boolean);
+        const users = await User.find({ username: { $in: memberUsernames } }).lean();
+        
+        const getUserFullName = (username) => {
+            const u = users.find(user => user.username === username);
+            return u ? `${u.name} ${u.lastname}` : username || "ไม่มีข้อมูล";
+        };
+
+        // 3. ดึงหัวข้อเอกสาร (Paper) ทั้งหมด และไฟล์ที่เคยส่ง (PaperFile)
+        const allPapers = await Paper.find({ groupId: id }).sort({ submittedAt: -1 }).lean();
+        const allFiles = await PaperFile.find({ groupId: id }).lean();
+
+        // นำไฟล์ไปใส่ไว้ในแต่ละ Paper
+        const papersWithFiles = allPapers.map(paper => {
+            return {
+                ...paper,
+                submittedFiles: allFiles.filter(f => f.paperId.toString() === paper._id.toString())
+            };
+        });
+
+        renderWithLayout(res, "groupInfo", { 
+            title: "รายละเอียดกลุ่ม",
+            group,
+            member1Name: getUserFullName(group.member1),
+            member2Name: getUserFullName(group.member2),
+            advisorName: getUserFullName(group.advisor),
+            papers: papersWithFiles
+        }, req.path, req);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server Error");
     }
 });
       

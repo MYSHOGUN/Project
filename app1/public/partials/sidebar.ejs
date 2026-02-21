@@ -70,7 +70,7 @@
          <% if (typeof user !== 'undefined') { %>
             <hr class="sidebar-divider my-0">
 
-            <li class="nav-item <%= currentPath === '/status' ? 'active' : '' %>">
+            <li class="nav-item <%= currentPath === '/status' || currentPath.startsWith('/groupInfo') ? 'active' : '' %>">
                 <a class="nav-link" href="/status">
                     <i class="fas fa-fw fa-table"></i>
                     <span>สถานะปริญญานิพนธ์</span></a>

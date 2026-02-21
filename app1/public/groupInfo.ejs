@@ -1,0 +1,140 @@
+<style>
+    .content-container {
+        width: 80% !important;
+        margin: 0 auto !important;
+    }
+
+    /* ตกแต่ง Card รายละเอียดส่วนบน */
+    .info-card-body {
+        display: flex !important;
+        align-items: center !important;
+        min-height: 180px !important; /* เพิ่มความสูงเพื่อให้ข้อมูลไม่เบียดกัน */
+        justify-content: center !important;
+    }
+
+    /* ปรับแต่งการกระจายข้อมูลสมาชิก */
+    .member-grid {
+        display: flex !important;
+        justify-content: space-around !important; /* กระจายสมาชิกให้ห่างเท่าๆ กัน */
+        align-items: center !important;
+        width: 100% !important;
+        text-align: center !important;
+    }
+
+    .member-item {
+        flex: 1 !important; /* บังคับให้แต่ละคนใช้พื้นที่เท่ากัน */
+        padding: 0 10px !important;
+    }
+
+    .vertical-divider {
+        border-right: 1px solid #e3e6f0 !important;
+        height: 100px !important; /* ความสูงของเส้นคั่น */
+    }
+
+    .text-label {
+        font-size: 0.85rem !important;
+        color: #4e73df !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1px !important;
+        margin-bottom: 10px !important;
+        display: block !important;
+    }
+</style>
+
+<div class="main-content-wrapper" style="min-height: 84vh;">
+    <div class="content-container">
+        
+        <div class="d-flex align-items-center justify-content-between my-4">
+            <h1 class="font-weight-bold text-gray-800" style="font-size: 2.2rem;">
+                <i class="fas fa-project-diagram mr-3 text-primary"></i>รายละเอียดโครงการ
+            </h1>
+            <span class="badge badge-pill <%= group.status === 'พร้อมสอบ' ? 'badge-success' : 'badge-warning' %> shadow-sm" style="font-size: 1.1rem; padding: 12px 25px;">
+                สถานะ: <%= group.status %>
+            </span>
+        </div>
+
+        <div class="card mb-4 border-bottom-primary">
+            <div class="card-header py-3 bg-white border-0 text-center">
+                <h5 class="m-0 font-weight-bold text-primary text-uppercase">บุคลากรในกลุ่ม</h5>
+            </div>
+            <div class="card-body info-card-body px-0"> <div class="row no-gutters align-items-center justify-content-center">
+                    
+                    <div class="col-lg-6 info-section text-center px-4">
+                        <span class="text-label">ชื่อโครงงาน</span>
+                        <h2 class="font-weight-bold text-dark mt-2 mb-2"><%= group.projectName %></h2>
+                    </div>
+
+                    <div class="col-lg-6 px-4">
+                        <div class="member-grid">
+                            <div style="border-left: 1px dashed #e3e6f0; height: 50px;"></div>
+                            <div class="member-item">
+                                <span class="text-label">หัวหน้ากลุ่ม</span>
+                                <div class="h5 font-weight-bold text-gray-800 mb-0"><%= member1Name %></div>
+                            </div>
+                            <div style="border-left: 1px dashed #e3e6f0; height: 50px;"></div>
+                            <div class="member-item">
+                                <span class="text-label">สมาชิก</span>
+                                <div class="h5 font-weight-bold text-gray-800 mb-0"><%= member2Name || '-' %></div>
+                            </div>
+                            <div style="border-left: 1px dashed #e3e6f0; height: 50px;"></div>
+                            <div class="member-item">
+                                <span class="text-label">อาจารย์ที่ปรึกษา</span>
+                                <div class="h5 font-weight-bold text-primary mb-0">อ. <%= advisorName %></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header py-3 bg-white border-0">
+                <h5 class="m-0 font-weight-bold text-primary text-uppercase">ประวัติเอกสารที่เคยส่ง</h5>
+            </div>
+            <div class="card-body px-4">
+                <% if (papers && papers.length > 0) { %>
+                    <% papers.forEach(paper => { %>
+                        <div class="paper-entry border p-4 mb-4 shadow-sm">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h4 class="font-weight-bold text-dark mb-0">
+                                    <i class="fas fa-file-alt mr-3 text-primary"></i><%= paper.mention %>
+                                </h4>
+                                <div class="text-right">
+                                    <span class="badge badge-light border px-3 py-2 mr-2">สอบครั้งที่ <%= paper.passTimes + 1 %></span>
+                                    <small class="text-muted"><i class="far fa-calendar-alt mr-1"></i><%= paper.date ? new Date(paper.date).toLocaleDateString('th-TH') : '-' %></small>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <% if (paper.submittedFiles && paper.submittedFiles.length > 0) { %>
+                                    <% paper.submittedFiles.forEach(f => { %>
+                                        <div class="col-md-6 mb-2">
+                                            <div class="d-flex justify-content-between align-items-center p-3 bg-light border rounded shadow-sm">
+                                                <div class="text-truncate mr-3" style="max-width: 80%;">
+                                                    <i class="fas fa-file-pdf text-danger mr-2 fa-lg"></i>
+                                                    <span class="font-weight-bold text-gray-700"><%= f.file.filename %></span>
+                                                </div>
+                                                <a href="/file/download/<%= f.file.fileId %>" class="btn btn-success btn-circle shadow">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    <% }) %>
+                                <% } else { %>
+                                    <div class="col-12 text-center py-3 bg-gray-100 rounded border-dashed">
+                                        <span class="text-muted small">ไม่มีไฟล์ในหัวข้อนี้</span>
+                                    </div>
+                                <% } %>
+                            </div>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <div class="text-center py-5 text-muted h5">ไม่พบรายการส่งเอกสาร</div>
+                <% } %>
+            </div>
+        </div>
+
+    </div>
+</div>

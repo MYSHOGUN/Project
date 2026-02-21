@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const resultSchema = new mongoose.Schema({
-  groupId: { type: String, required: true },
+  groupId: { type: mongoose.Schema.Types.ObjectId, ref: "Group", required: true },
   submittedAt: { type: Date, default: null}, 
   pass: { type: [String], default: [] },
   fail: { type: [String], default: [] },

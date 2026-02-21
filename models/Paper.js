@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 
 const paperSchema = new mongoose.Schema({
   eventId: { type: String, required: true }, 
-  groupId: { type: String, default: null },
+  groupId: { type: mongoose.Schema.Types.ObjectId, ref: "Group", required: true },
   mention: { type: String, required: true },
   file: {
     filename: String,
