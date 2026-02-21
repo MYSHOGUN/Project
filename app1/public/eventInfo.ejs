@@ -1,49 +1,158 @@
-<div class="container-fluid mt-4" style="min-height: 100vh;">
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">รายละเอียดกิจกรรม</h1>
-        <% if (user && user.role === 'admin') { %>
-            <button class="btn btn-danger" onclick="deleteEvent()">
-                <span class=""><i class="fas fa-trash"></i></i></span>
-                <span class="text">ลบกิจกรรม</span>
-            </button>
-        <% } %>
-    </div>
-    
-    <div class="row justify-content-center">
-        <div class="card p-4"> 
-            <div class="card-title">
-                <h2 class="text-primary font-weight-bold"><%= event.title %></h2>
+<style>
+    /* จัด Layout ให้กึ่งกลางและสมบูรณ์ */
+    .event-detail-wrapper {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-height: 85vh !important;
+        width: 100% !important;
+        padding: 2rem 0 !important;
+    }
+
+    .event-card {
+        width: 100% !important;
+        max-width: 1150px !important;
+        background: #ffffff !important;
+        border-radius: 20px !important;
+        box-shadow: 0 12px 35px rgba(0,0,0,0.1) !important;
+        border: none !important;
+        overflow: hidden !important;
+    }
+
+    .event-header {
+        background: #f8f9fc !important;
+        padding: 2.5rem !important;
+        border-bottom: 2px solid #e3e6f0 !important;
+    }
+
+    .table-responsive {
+        border-radius: 12px !important;
+        border: 1px solid #dee2e6 !important;
+    }
+
+    .table thead {
+        background-color: #4e73df !important;
+        color: white !important;
+    }
+
+    .excel-section {
+        margin-top: 2.5rem !important;
+        padding-top: 2rem !important;
+        border-top: 2px dashed #eaecf4 !important;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="event-detail-wrapper">
+        
+        <div class="d-flex align-items-center justify-content-between mb-4" style="width: 100%; max-width: 1150px;">
+            <h1 class="h3 mb-0 text-gray-800 font-weight-bold">
+                <i class="fas fa-calendar-alt mr-2 text-primary"></i>รายละเอียดกิจกรรม
+            </h1>
+            <% if (user && user.role === 'admin') { %>
+                <button class="btn btn-danger shadow-sm px-4" onclick="deleteEvent()" style="border-radius: 12px;">
+                    <i class="fas fa-trash-alt mr-2"></i> ลบกิจกรรม
+                </button>
+            <% } %>
+        </div>
+
+        <div class="event-card">
+            <div class="event-header text-center">
+                <h2 class="text-primary font-weight-bold mb-2"><%= event.title %></h2>
+                <p class="text-muted mb-0"><i class="fas fa-info-circle mr-1"></i> รายละเอียดกำหนดการสอบ</p>
             </div>
-            <hr>
-            <div class="card-body">
-                <p><strong>รายละเอียด:</strong> <%= event.description || 'ไม่มีรายละเอียด' %></p>
-                <p><strong>วันที่จัดงาน:</strong> <%= event.date ? event.date.toDateString() : 'ไม่ได้ระบุ' %></p>
+            
+            <div class="event-body p-4 p-md-5">
+                <div class="row mb-4" style="justify-content: space-evenly; align-items: center;">
+                    <div class="col-md-8">
+                        <label class="text-primary font-weight-bold small text-uppercase">รายละเอียด</label>
+                        <p class="text-dark" style="font-size: 1.1rem;"><%= event.description || 'ไม่มีรายละเอียด' %></p>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="text-primary font-weight-bold small text-uppercase">วันที่</label>
+                        <p class="h5 font-weight-bold text-gray-800">
+                            <%= event.date ? new Date(event.date).toLocaleDateString('th-TH', { dateStyle: 'long' }) : 'ไม่ระบุ' %>
+                        </p>
+                    </div>
+                </div>
+
+                <% if (typeof tableData !== 'undefined' && tableData && tableData.length > 0) { %>
+                    <div class="excel-section mt-5 pt-4 border-top">
+                        <h5 class="font-weight-bold text-dark mb-4 text-center">
+                            <i class="fas fa-table mr-2 text-primary"></i>ตารางกำหนดการสอบ
+                        </h5>
+                        <div class="table-responsive shadow-sm">
+                            <table class="table table-bordered table-hover mb-0">
+                                <thead class="bg-primary text-white text-center">
+                                    <tr>
+                                        <th style="width: 80px;">ลำดับ</th>
+                                        <th>กลุ่ม</th>
+                                        <th>วันที่</th>
+                                        <th>เวลา</th>
+                                        <th>กรรมการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% tableData.forEach((row) => { %>
+                                        <tr>
+                                            <td class="text-center text-muted"><%= row['ลำดับ'] || '-' %></td>
+                                            <td class="font-weight-bold text-gray-800">
+                                                <%= row['ชื่อกลุ่ม'] || row['Groupname'] || '-' %>
+                                            </td>
+                                            <td class="text-center">
+                                                <%= row['วันที่'] || '-' %>
+                                            </td>
+                                            <td class="text-center font-weight-bold text-primary">
+                                                <%= row['เวลา'] || '-' %>
+                                            </td>
+                                            <td class="small">
+                                                <%= row['กรรมการ'] || '-' %>
+                                            </td>
+                                        </tr>
+                                    <% }) %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                <% } %>
             </div>
+        </div>
+
+        <div class="mt-4">
+            <a href="/event" class="btn btn-link text-muted font-weight-bold text-decoration-none">
+                <i class="fas fa-chevron-left mr-2"></i>ย้อนกลับ
+            </a>
         </div>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     async function deleteEvent() {
-        if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบกิจกรรมนี้?")) {
+        const result = await Swal.fire({
+            title: 'ต้องการลบกิจกรรม?',
+            text: "ข้อมูลกิจกรรมและตารางสอบจะถูกลบถาวร",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e74a3b',
+            cancelButtonColor: '#858796',
+            confirmButtonText: 'ลบเลย',
+            cancelButtonText: 'ยกเลิก',
+            reverseButtons: true
+        });
+
+        if (result.isConfirmed) {
+            Swal.fire({ title: 'กำลังลบ...', didOpen: () => Swal.showLoading() });
             try {
-                const response = await fetch('/deleteEvent/<%= event.id %>', {
-                    method: 'DELETE', // ต้องตรงกับที่ตั้งไว้ใน Server
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-
+                const response = await fetch('/deleteEvent/<%= event.id %>', { method: 'DELETE' });
                 const data = await response.json();
-
                 if (data.success) {
-                    alert(data.message);
-                    window.location.href = '/event'; // ลบเสร็จแล้วเด้งไปหน้าแสดงกิจกรรมทั้งหมด
-                } else {
-                    alert("ลบไม่สำเร็จ: " + data.message);
+                    await Swal.fire('สำเร็จ', data.message, 'success');
+                    window.location.href = '/event';
                 }
             } catch (error) {
-                console.error('Error:', error);
-                alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+                Swal.fire('ผิดพลาด', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
             }
         }
     }

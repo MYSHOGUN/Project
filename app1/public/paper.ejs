@@ -1,160 +1,114 @@
 <style>
-    /* ตัวคลุมการ์ดทั้งหมด */
-    .paper-container {
-        display: grid;
-        /* ปรับ minmax(300px, 1fr) เพื่อกำหนดขนาดขั้นต่ำของ Card */
-        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-        gap: 1.5rem;
-        width: 100%;
+    /* จัด Layout หลักให้กึ่งกลางหน้าจอ */
+    .platform-wrapper {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        min-height: 85vh !important;
+        padding: 2rem 0 !important;
     }
 
-    /* บังคับให้ Card ภายในสูงเท่ากัน */
+    .platform-container {
+        width: 100% !important;
+        max-width: 1150px !important; /* คุมความกว้างให้ดูสมดุล */
+    }
+
+    /* จัดการ Grid ของ Card */
+    .paper-grid {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(500px, 1fr)) !important;
+        gap: 2rem !important;
+        width: 100% !important;
+    }
+
+    /* ตกแต่ง Card ให้พรีเมียม */
     .paper-card {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
+        border-radius: 20px !important;
+        border: none !important;
+        transition: all 0.3s ease !important;
+        background: #ffffff !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
     }
 
-    .paper-card .card-body {
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between; /* จัดเนื้อหาหัว-ท้าย */
+    .paper-card:hover {
+        transform: translateY(-5px) !important;
+        box-shadow: 0 12px 25px rgba(0,0,0,0.1) !important;
     }
 
-    /* Fix ความสูงของรายการไฟล์เพื่อความเท่ากัน */
+    /* ส่วนแสดงรายการไฟล์ */
     .file-scroll-area {
-        height: 150px;
-        min-height: 150px;
+        height: 180px !important;
+        min-height: 180px !important;
+        background: #fdfdfd !important;
+        border: 1px solid #edf0f5 !important;
+        border-radius: 12px !important;
         overflow-y: auto;
     }
+
+    /* Drop Zone แบบใหม่ */
+    .custom-drop-zone {
+        border: 2px dashed #4e73df !important;
+        background: #f8f9fc !important;
+        border-radius: 15px !important;
+        min-height: 180px !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .custom-drop-zone:hover {
+        background: #eff2f9 !important;
+    }
+
     .custom-check-container {
         display: inline-flex;
         align-items: center;
         background: #fff;
-        padding: 8px 15px;
-        border-radius: 10px;
-        border: 1px solid #e3e6f0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        padding: 8px 18px;
+        border-radius: 25px;
+        border: 2px solid #e3e6f0;
+        cursor: pointer;
         transition: all 0.2s;
-        cursor: pointer;
-    }
-
-    .custom-check-container:hover {
-        border-color: #4e73df;
-        background: #f8f9fc;
-    }
-
-    /* ซ่อน Checkbox จริง */
-    .hidden-check {
-        width: 20px;
-        height: 20px;
-        cursor: pointer;
-        margin-right: 10px;
-        accent-color: #4e73df; /* เปลี่ยนสีติ๊กถูกให้เป็นสีฟ้า */
-        transform: scale(1.2);
-    }
-
-    .check-label {
-        font-size: 0.85rem;
-        font-weight: 700;
-        color: #4e73df;
-        margin-bottom: 0;
-        cursor: pointer;
-    }
-
-    /* สไตล์เมื่อถูก Disable (ติ๊กไปแล้ว) */
-    .hidden-check:disabled + .check-label {
-        color: #1cc88a; /* สีเขียว */
     }
 </style>
+
 <input type="hidden" id="raw-groups-data" value='<%- JSON.stringify(groups) %>'>
 <input type="hidden" id="raw-result-data" value='<%- JSON.stringify(result) %>'>
-<div class="container-fluid" style="min-height: 84vh; height: 100%;">
-    <div class="d-flex align-items-center justify-content-between mt-4">
-        <h1 style="color: #4e73df;">แพลตฟอร์มส่งเอกสาร</h1>
-    </div>
 
-    <div class="row mt-4" style="justify-content: center !important; align-items: center !important;">
-        <div class="col-lg-12" style="width: 80%;">
-            <div id="paper-platform-container">
-                <div class="text-center p-5">
+<div class="container-fluid">
+    <div class="platform-wrapper">
+        
+        <div class="platform-container mb-5 text-center text-md-left">
+            <h1 class="font-weight-bold" style="color: #4e73df; font-size: 2.2rem;">
+                <i class="fas fa-file-export mr-3"></i>แพลตฟอร์มส่งเอกสาร
+            </h1>
+            <p class="text-muted">จัดการส่งเอกสาร ตรวจสอบความพร้อม และบันทึกผลการพิจารณาโครงงาน</p>
+        </div>
+
+        <div class="platform-container">
+            <div id="paper-platform-container" class="paper-grid">
+                <div class="text-center py-5 w-100" style="grid-column: 1 / -1;">
                     <div class="spinner-border text-primary" role="status"></div>
-                    <p class="mt-2">กำลังโหลดรายการส่งเอกสาร...</p>
+                    <p class="mt-2 text-muted">กำลังโหลดรายการส่งเอกสาร...</p>
                 </div>
             </div>
         </div>
+
     </div>
 </div>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-const rawGroups = document.getElementById('raw-groups-data')?.value;
-const groupsData = rawGroups ? JSON.parse(rawGroups) : [];
-
-const rawResult = document.getElementById('raw-result-data')?.value;
-const resultData = rawResult ? JSON.parse(rawResult) : [];
-
-    window.submitResult = function submitResult(paperId) {
-        const choices = document.getElementsByName(`choice-${paperId}`); 
-        let selectedValue = null;
-        for (const choice of choices) {
-            if (choice.checked) {
-                selectedValue = choice.value;
-                break;
-            }
-        }
-
-        const commentBox = document.getElementById(`comment-${paperId}`);
-        const commentTrim = commentBox ? commentBox.value.trim() : "";
-
-        if (!selectedValue) {
-            alert("กรุณาเลือกผลการสอบก่อนส่ง");
-            return;
-        }
-
-        if (selectedValue === "แก้ไข" && commentTrim === "") {
-            alert("กรุณาระบุสิ่งที่ต้องการให้แก้ไข");
-            return;
-        }
-
-        // เพิ่ม Confirm เพื่อป้องกันการกดพลาด
-        if(!confirm(`ยืนยันการบันทึกผล: ${selectedValue}?`)) return;
-
-        fetch('/api/submitPaperResult', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            // ส่ง paperId, result, และ comment ให้ตรงกับ API
-            body: JSON.stringify({ paperId, result: selectedValue, comment: commentTrim })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message || "ส่งผลการสอบเรียบร้อยแล้ว");
-                // ใช้ location.reload() หรือ loadPaperPlatforms() ตามที่คุณสะดวก
-                // แต่แนะนำ reload() เพื่อให้ UI เคลียร์ค่าได้สะอาดที่สุด
-                location.reload(); 
-            } else {
-                alert("เกิดข้อผิดพลาด: " + (data.error || "ไม่ทราบสาเหตุ"));
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
-        });
-    }
-
-    window.showComment = function showComment(paperId) {
-        const fixRadio = document.getElementById(`fix-${paperId}`);
-        const commentBox = document.getElementById(`comment-${paperId}`);
-        if (fixRadio.checked) {
-            commentBox.classList.remove('d-none');
-        } else {
-            commentBox.classList.add('d-none');
-            commentBox.value = "";
-        }
-    }
+    // ดึงข้อมูล Data จาก Hidden Input
+    const groupsData = JSON.parse(document.getElementById('raw-groups-data')?.value || "[]");
+    const resultData = JSON.parse(document.getElementById('raw-result-data')?.value || "[]");
     const currentUsername = "<%= user.username %>";
     const currentRole = "<%= user.role %>";
-document.addEventListener("DOMContentLoaded", function() {
-    loadPaperPlatforms();
 
     async function loadPaperPlatforms() {
         try {
@@ -163,106 +117,90 @@ document.addEventListener("DOMContentLoaded", function() {
             const container = document.getElementById('paper-platform-container');
             
             if (!papers || papers.length === 0) {
-                container.innerHTML = `<div class="alert alert-info py-5 px-5 text-center w-100">ไม่มีรายการส่งเอกสาร</div>`;
+                container.innerHTML = `<div class="alert alert-info py-5 text-center w-100" style="grid-column: 1 / -1; border-radius: 15px;">ไม่มีรายการส่งเอกสารในขณะนี้</div>`;
                 return;
             }
             
             container.innerHTML = papers.map(paper => {
-                const isSubmitted = paper.isSubmitted;
                 const paperId = paper._id;
-                const groupId = paper.groupId;
+                const targetGroup = groupsData.find(g => g._id === paper.groupId);
+                const targetResult = resultData.find(r => r.groupId === paper.groupId);
+                
+                if (!targetGroup) return '';
 
-                const targetGroup = groupsData.find(g => g._id === groupId);
-                const targetResult = resultData.find(r => r.groupId === groupId);
                 const groupName = targetGroup.projectName;
-                const groupAdvisors = targetGroup.advisor;
                 const isUserInGroup = [targetGroup.member1, targetGroup.member2, targetGroup.advisor].includes(currentUsername);
-
-                // กำหนดค่า groupMembers
-                const groupMembers = isUserInGroup ? currentUsername : null;
-
-                console.log({groupMembers});
-
                 const today = new Date().setHours(0,0,0,0);
                 const paperDate = new Date(paper.date).getTime();
-                const passTime = paper.passTimes + 1;
+                const passTime = (paper.passTimes || 0) + 1;
 
-                let htmlOutput = "";
+                let cardHtml = "";
 
+                // --- ส่วนที่ 1: สำหรับอาจารย์ส่งผลสอบ (ถ้าเข้าเงื่อนไข) ---
                 if ((currentRole === "teacher" || currentRole === "admin") && paperDate < today && (!targetResult || (!targetResult.pass.includes(currentUsername) && !targetResult.fail.includes(currentUsername)))) {
-                    htmlOutput += `
-                    <div class="card shadow mb-4 border-left-secondary" id="card-${paperId}">
-                        <div class="card-body">
-                            <div class="ml-4">
-                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">หัวข้อ: ผลการสอบ</div>
-                                <div class="h5 mb-3 font-weight-bold text-gray-800">โปรดเลือกตัวเลือกผลการสอบของกลุ่ม ${groupName}</div>
-                                
-                                <input type="radio" id="pass-${paperId}" name="choice-${paperId}" value="ผ่าน" onchange="showComment('${paperId}')">
-                                <label  for="pass-${paperId}">ผ่าน</label>
-                                
-                                <input type="radio" id="fail-${paperId}" name="choice-${paperId}" value="ไม่ผ่าน" onchange="showComment('${paperId}')">
-                                <label  for="fail-${paperId}">ไม่ผ่าน</label>
-
-                                <input type="radio" id="fix-${paperId}" name="choice-${paperId}" value="แก้ไข" onchange="showComment('${paperId}')">
-                                <label  for="fix-${paperId}">แก้ไข</label>
-
-                                <textarea class="form-control mt-3 d-none" id="comment-${paperId}" rows="3" placeholder="สิ่งที่อยากให้แก้ไข"></textarea>
-                                
-                                <br>
-                                <button type="button" class="btn btn-success btn-sm" 
-                                        onclick="submitResult('${paperId}')">ส่งผลการสอบ</button>
+                    cardHtml += `
+                    <div class="card paper-card shadow mb-4 border-left-primary" style="grid-column: 1 / -1;">
+                        <div class="card-body p-4 text-center">
+                            <h5 class="font-weight-bold text-primary mb-3">บันทึกผลการสอบ: ${groupName}</h5>
+                            <div class="d-flex justify-content-center mb-3" style="gap: 20px;">
+                                <div class="custom-control custom-radio">
+                                    <input type="radio" id="pass-${paperId}" name="choice-${paperId}" value="ผ่าน" class="custom-control-input" onchange="showComment('${paperId}')">
+                                    <label class="custom-control-label" for="pass-${paperId}">ผ่าน</label>
+                                </div>
+                                <div class="custom-control custom-radio">
+                                    <input type="radio" id="fail-${paperId}" name="choice-${paperId}" value="ไม่ผ่าน" class="custom-control-input" onchange="showComment('${paperId}')">
+                                    <label class="custom-control-label" for="fail-${paperId}">ไม่ผ่าน</label>
+                                </div>
+                                <div class="custom-control custom-radio">
+                                    <input type="radio" id="fix-${paperId}" name="choice-${paperId}" value="แก้ไข" class="custom-control-input" onchange="showComment('${paperId}')">
+                                    <label class="custom-control-label" for="fix-${paperId}">แก้ไข</label>
+                                </div>
                             </div>
+                            <textarea class="form-control mb-3 d-none mx-auto" id="comment-${paperId}" rows="2" style="max-width: 500px;" placeholder="ระบุสิ่งที่ต้องการให้แก้ไข..."></textarea>
+                            <button class="btn btn-success px-5 shadow-sm" style="border-radius: 10px;" onclick="submitResult('${paperId}')">ยืนยันส่งผลการสอบ</button>
                         </div>
                     </div>`;
                 }
-            
-                if((groupMembers && targetGroup.status !== "ผ่านการสอบปริญญานิพนธ์") || currentRole === "admin") {
-                    htmlOutput += `
-                    <div class="card shadow mb-4 border-left-${isSubmitted ? 'success' : 'warning'} h-100">
-                        <div class="card-body d-flex flex-column">
+
+                // --- ส่วนที่ 2: Card ส่งเอกสารหลัก ---
+                if (isUserInGroup || currentRole === "admin") {
+                    cardHtml += `
+                    <div class="card paper-card shadow-sm border-left-${paper.isSubmitted ? 'success' : 'warning'}">
+                        <div class="card-body p-4">
                             <div class="d-flex justify-content-between align-items-start mb-3">
                                 <div>
-                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">หัวข้อ: ${paper.mention}</div>
-                                    <div class="h6 font-weight-bold text-gray-800">📦 รายการเอกสารการสอบครั้งที่ ${passTime}</div>
+                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">${paper.mention}</div>
+                                    <h5 class="font-weight-bold text-gray-800 mb-0">${groupName} (ครั้งที่ ${passTime})</h5>
                                 </div>
-
                                 ${(currentRole === 'teacher' || currentRole === 'admin') ? `
-                                    <label class="custom-check-container ml-2" for="check-${targetGroup._id}">
-                                        <input type="checkbox" class="hidden-check" 
-                                            id="check-${targetGroup._id}" 
+                                    <label class="custom-check-container" for="check-${targetGroup._id}">
+                                        <input type="checkbox" class="mr-2" id="check-${targetGroup._id}" 
                                             onchange="updateReadyStatus(this, '${targetGroup._id}')"
-                                            ${targetGroup.status === 'พร้อมสอบ' ? 'checked disabled' : ''}> 
-                                        <span class="check-label">
-                                            ${targetGroup.status === 'พร้อมสอบ' ? '<i class="fas fa-check-circle mr-1"></i> พร้อมสอบแล้ว' : 'ยืนยันพร้อมสอบ'}
+                                            ${targetGroup.status === 'พร้อมสอบ' ? 'checked disabled' : ''}>
+                                        <span class="small font-weight-bold ${targetGroup.status === 'พร้อมสอบ' ? 'text-success' : 'text-primary'}">
+                                            ${targetGroup.status === 'พร้อมสอบ' ? 'พร้อมสอบแล้ว' : 'ยืนยันพร้อมสอบ'}
                                         </span>
                                     </label>
                                 ` : ''}
-                            </div>        
-                            <div class="d-flex flex-column flex-md-row" style="gap: 1rem;">
-                                
-                                <div id="file-list-${paperId}" class="list-group list-group-flush border rounded shadow-sm overflow-auto d-flex align-items-center justify-content-center" 
-                                    style="flex: 1; min-height: 160px; max-height: 200px;">
-                                    <div class="p-3 text-center text-muted small">กำลังโหลดรายการไฟล์...</div>
-                                </div>
+                            </div>
 
-                                <div style="flex: 1;">
+                            <div class="row">
+                                <div class="col-md-6 mb-3 mb-md-0">
+                                    <div id="file-list-${paperId}" class="file-scroll-area border">
+                                        <div class="p-4 text-center text-muted small">กำลังโหลดไฟล์...</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
                                     ${paperDate < today ? `
-                                        <div class="drop-zone p-3 text-center d-flex flex-column justify-content-center align-items-center h-100" 
-                                            id="drop-zone-${paperId}" 
-                                            style="border: 2px dashed #ccc; border-radius: 15px; cursor: pointer; background: #f8f9fc; min-height: 160px;"
-                                            onclick="document.getElementById('file-input-${paperId}').click()">
-                                            <i class="fas fa-sync-alt fa-2x mb-2 text-primary"></i>
-                                            <p class="mb-0 small" style="line-height: 1.2;">ลากไฟล์ใหม่มาวาง<br>เพื่อ <b>ส่งทับของเดิม</b></p>
-                                            <input type="file" id="file-input-${paperId}" style="display:none" multiple onchange="handleUpload('${paperId}', this.files)">
-                                            
-                                            <div class="progress mt-2 w-100" id="progress-container-${paperId}" style="display:none; height: 8px;">
-                                                <div class="progress-bar progress-bar-striped progress-bar-animated" id="bar-${paperId}" style="width: 0%"></div>
-                                            </div>
+                                        <div class="custom-drop-zone" id="drop-zone-${paperId}" onclick="document.getElementById('file-input-${paperId}').click()">
+                                            <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
+                                            <p class="small text-muted mb-0">คลิกหรือลากไฟล์มาที่นี่</p>
+                                            <input type="file" id="file-input-${paperId}" class="d-none" multiple onchange="handleUpload('${paperId}', this.files)">
                                         </div>
                                     ` : `
-                                        <div class="d-flex flex-column justify-content-center align-items-center border rounded text-muted bg-light" style="min-height: 160px;">
+                                        <div class="custom-drop-zone border-0 bg-light text-muted" style="cursor: default;">
                                             <i class="fas fa-lock mb-2"></i>
-                                            <span class="small">ปิดรับการส่งเอกสาร</span>
+                                            <span class="small">ปิดการส่งเอกสาร</span>
                                         </div>
                                     `}
                                 </div>
@@ -270,134 +208,46 @@ document.addEventListener("DOMContentLoaded", function() {
                         </div>
                     </div>`;
                 }
-                return htmlOutput;
+                return cardHtml;
             }).join('');
 
-            papers.forEach(paper => {
-                initDragAndDrop(paper._id);
-                fetchFileList(paper._id); // ดึงพรีวิวไฟล์มาโชว์
+            // Init ฟังชันก์หลัง Render
+            papers.forEach(p => {
+                initDragAndDrop(p._id);
+                fetchFileList(p._id);
             });
+
         } catch (err) { console.error(err); }
     }
 
-    // ฟังก์ชันดึงรายการไฟล์และพรีวิว
-    async function fetchFileList(paperId) {
-        try {
-            const res = await fetch(`/api/getPaperFiles/${paperId}`);
-            const files = await res.json();
-            const listContainer = document.getElementById(`file-list-${paperId}`);
-            
-            if (files.length === 0) {
-                listContainer.innerHTML = `<div class="p-3 text-center text-muted small">ยังไม่มีไฟล์ในระบบ</div>`;
-                return;
-            }
+    // --- ส่วนเสริม Logic เดิมของคุณ (ลบ alert เปลี่ยนเป็น Swal) ---
+    window.submitResult = async function(paperId) {
+        const selected = document.querySelector(`input[name="choice-${paperId}"]:checked`)?.value;
+        const comment = document.getElementById(`comment-${paperId}`).value;
 
-            /*<a href="/image/${f.file.fileId}" target="_blank" class="btn btn-sm btn-outline-info border-0 mr-1" title="Preview">
-                <i class="fas fa-eye"></i>
-            </a>*/
+        if (!selected) return Swal.fire('คำเตือน', 'กรุณาเลือกผลการสอบ', 'warning');
 
-            listContainer.innerHTML = files.map(f => `
-                <div class="list-group-item d-flex justify-content-between align-items-center py-2 bg-white">
-                    <span class="small text-truncate" title="${f.file.filename}">
-                        <i class="fas fa-file-pdf mr-2 text-danger"></i>${f.file.filename}
-                    </span>
-                    <div>
-                        <a href="/file/download/${f.file.fileId}" class="btn btn-sm btn-outline-success border-0" title="Download">
-                            <i class="fas fa-download"></i>
-                        </a>
-                    </div>
-                </div>
-            `).join('');
-        } catch (e) { console.error(e); }
-    }
-
-    function initDragAndDrop(id) {
-        const zone = document.getElementById(`drop-zone-${id}`);
-        if (!zone) return;
-        ['dragover', 'dragleave', 'drop'].forEach(e => zone.addEventListener(e, (ev) => ev.preventDefault()));
-        zone.addEventListener('drop', (e) => {
-            if (confirm("การส่งใหม่จะลบไฟล์เก่าทั้งหมดในหัวข้อนี้ ยืนยันหรือไม่?")) {
-                handleUpload(id, e.dataTransfer.files);
-            }
+        const confirm = await Swal.fire({
+            title: 'ยืนยันการบันทึก?',
+            text: `ผลการสอบ: ${selected}`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'ตกลง',
+            cancelButtonText: 'ยกเลิก'
         });
-    }
 
-    
-
-    window.handleUpload = async function(paperId, files) {
-        if (files.length === 0) return;
-        const textElem = document.getElementById(`text-${paperId}`);
-        const bar = document.getElementById(`bar-${paperId}`);
-        const progressContainer = document.getElementById(`progress-container-${paperId}`);
-        
-        progressContainer.style.display = 'block';
-        let filesData = [];
-
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            textElem.innerHTML = `กำลังอัปโหลดไฟล์ที่ ${i + 1}...`;
-            const formData = new FormData();
-            formData.append('files', file);
-
-            const uploadRes = await fetch(`/upload-file/${paperId}`, { method: 'POST', body: formData });
-            const result = await uploadRes.json();
-            const fileInfo = result.find(item => item.type === 'file');
-            if (fileInfo) filesData.push({ id: fileInfo.file.fileId, filename: fileInfo.file.filename });
-        }
-
-        if (filesData.length > 0) {
-            await fetch('/api/PaperUploadFile', {
+        if (confirm.isConfirmed) {
+            const res = await fetch('/api/submitPaperResult', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ paperId, filesData })
+                body: JSON.stringify({ paperId, result: selected, comment })
             });
-            loadPaperPlatforms(); // รีเฟรชทั้ง Card เพื่อเคลียร์ไฟล์เก่าและโชว์ไฟล์ใหม่
-        }
-    };
-});
-
-async function updateReadyStatus(checkbox, groupId) {
-    if (!checkbox.checked) return;
-
-    // แสดง Modal ยืนยัน (SweetAlert2 หรือ confirm ปกติ)
-    if (!confirm("คุณต้องการเปลี่ยนสถานะกลุ่มนี้เป็น 'พร้อมสอบ' ใช่หรือไม่?")) {
-        checkbox.checked = false;
-        return;
-    }
-
-    try {
-        const response = await fetch("/api/groups/mark-ready-for-exam", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ groupId: groupId }) // ส่งเฉพาะ ID ของกลุ่มนั้นๆ
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            // อัปเดต UI ทันทีโดยไม่รีโหลดหน้า (Optional)
-            const card = checkbox.closest('.card');
-            card.classList.remove('border-left-warning');
-            card.classList.add('border-left-success');
-            
-            // หา Badge สถานะใน Card นั้นแล้วเปลี่ยนข้อความ
-            const badge = card.querySelector('.badge');
-            if (badge) {
-                badge.textContent = 'พร้อมสอบ';
-                badge.className = 'badge rounded-pill px-3 py-2 badge-success';
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire('สำเร็จ', 'บันทึกผลเรียบร้อย', 'success').then(() => location.reload());
             }
-            
-            checkbox.disabled = true; // ติ๊กแล้วล็อคเลย
-            alert("อัปเดตสถานะกลุ่มสำเร็จแล้ว");
-        } else {
-            alert("เกิดข้อผิดพลาด: " + result.error);
-            checkbox.checked = false;
         }
-    } catch (err) {
-        console.error("Error:", err);
-        alert("เซิร์ฟเวอร์ขัดข้อง กรุณาลองใหม่");
-        checkbox.checked = false;
     }
-}
 
+    document.addEventListener("DOMContentLoaded", loadPaperPlatforms);
 </script>

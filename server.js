@@ -18,6 +18,8 @@ const NotificationRead = require("./models/NotificationRead");
 
 const nodemailer = require("nodemailer");
 
+const streamifier = require('streamifier');
+
 const crypto = require('crypto');
 
 const userSockets = new Map();
@@ -114,16 +116,16 @@ async function saveUsersFromExcel(dataArray) {
 
     for (const row of dataArray) {
         // 3. ดึงเฉพาะ username จาก Excel
-        const usernameFromExcel = row.username || row.Username || row.USERNAME; 
+        const usernameFromExcel = row.username || row.Username || row.USERNAME || row.รหัสประจำตัว; 
         
         if (!usernameFromExcel) {
             console.warn(`Skipping row due to invalid or missing username:`, row);
             continue;
         }
 
-        const branch = row.branch || row.Branch || row.BRANCH || "EnET";
+        const branch = row.branch || row.Branch || row.BRANCH || row.สาขา ||"EnET";
 
-        const role = row.role || row.Role || row.ROLE || 'user';
+        const role = row.role || row.Role || row.ROLE || row.ตำแหน่ง || 'user';
 
         const trimedBranch = String(branch).trim();
         const trimmedUsername = String(usernameFromExcel).trim();
@@ -1402,9 +1404,6 @@ app.get("/addUserSingle",requireLogin,(req, res) => {
   renderWithLayout(res, "addUserSingle", { title: "KMUTNB Project - Add User Single" }, req.path,req);
 });
 
-const bcrypt = require('bcrypt'); // สำหรับเข้ารหัสผ่าน
-const User = require('./models/User'); // นำเข้า Model
-
 // API สำหรับเพิ่มผู้ใช้รายคน
 app.post("/api/addUserSingle", async (req, res) => {
     try {
@@ -1661,21 +1660,35 @@ app.post("/api/addEvent", requireLogin, upload.single("file"), async (req, res) 
     try {
         const { title, date, toDate, description } = req.body;
         const file = req.file;
-        
-        // ตรวจสอบว่าส่งค่ามาจริงไหม
+
         if (!title || !date) {
-            console.log("Missing required fields:", { title, date });
             return res.status(400).json({ error: "ข้อมูลไม่ครบถ้วน" });
         }
-        
-        const eventId = generateEventId();
 
+        const eventId = generateEventId();
         const date1 = new Date(date);
         const date2 = toDate ? new Date(toDate) : null;
-
         const expire = toDate ? new Date(toDate) : new Date(date);
+        expire.setHours(23, 59, 59, 999);
 
-        expire.setHours(23, 59, 59, 999); // ตั้งเวลาเป็นสิ้นวันของวันที่กำหนด
+        // --- ส่วนที่แก้ไข: จัดการไฟล์ Excel เข้า GridFS ---
+        let uploadedFileId = null;
+        if (file) {
+            const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
+            
+            // สร้าง Stream เพื่ออัปโหลดไฟล์จาก Buffer
+            const uploadStream = bucket.openUploadStream(file.originalname, {
+                contentType: file.mimetype
+            });
+
+            uploadedFileId = uploadStream.id; // ดึง ID มาเตรียมไว้
+
+            await new Promise((resolve, reject) => {
+                streamifier.createReadStream(file.buffer).pipe(uploadStream)
+                    .on('error', reject)
+                    .on('finish', resolve);
+            });
+        }
 
         const newEvent = new Event({
             id: eventId,
@@ -1684,9 +1697,9 @@ app.post("/api/addEvent", requireLogin, upload.single("file"), async (req, res) 
             testTable: file ? {
                 filename: file.originalname,
                 contentType: file.mimetype,
-                fileId: null // จะอัปเดตหลังจากอัปโหลดไฟล์เสร็จ
+                fileId: uploadedFileId // ✅ ตอนนี้มี fileId แล้ว!
             } : null,
-            date: date1, // มั่นใจว่าเป็น Date Object
+            date: date1,
             toDate: date2,
             expireAt: expire
         });
@@ -1786,8 +1799,18 @@ app.post("/api/addEvent", requireLogin, upload.single("file"), async (req, res) 
                 date: expire,
                 director: directors // ในอาเรย์นี้จะมีทั้ง [กรรมการจาก Excel + Advisor]
               });
+              const mem1 = await User.findOne({ username: group.member1 });
+              const mem2 = await User.findOne({ username: group.member2 });
 
-              group.status = "รอสอบ";
+              if(group.passTimes === 0){
+                group.status = "รอนำเสนอหัวข้อ"
+              }else if (group.passTimes >= 1){
+                if(mem1.branch === "ECT" || mem2.branch === "ECT"){
+                  group.status = "รอสอบก้าวหน้า";
+                }else{
+                  group.status = "รอสอบปริญญานิพนธ์";
+                }
+              }
               await group.save();
                 
             }
@@ -1822,19 +1845,48 @@ app.get("/api/getEvents", requireLogin, async (req, res) => {
 
 app.get("/eventInfo/:id", requireLogin, async (req, res) => {
     try {
-        // ค้นหาด้วยฟิลด์ id (UUID String) แทนการใช้ _id
         const event = await Event.findOne({ id: req.params.id }); 
         
         if (!event) {
             return res.status(404).send("ไม่พบกิจกรรมนี้ในระบบ");
         }
-        renderWithLayout(res, "eventInfo", { title: "KMUTNB Project - Event Info", event }, req.path, req);
+
+        let tableData = [];
+        const excelFileId = event.testTable?.fileId;
+
+        if (excelFileId) {
+            try {
+                const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
+                const downloadStream = bucket.openDownloadStream(new mongoose.Types.ObjectId(excelFileId));
+                
+                let chunks = [];
+                const buffer = await new Promise((resolve, reject) => {
+                    downloadStream.on('data', chunk => chunks.push(chunk));
+                    downloadStream.on('error', reject);
+                    downloadStream.on('end', () => resolve(Buffer.concat(chunks)));
+                });
+
+                const workbook = XLSX.read(buffer, { type: 'buffer' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                tableData = XLSX.utils.sheet_to_json(sheet);
+                // console.log(tableData); // เปิดดูเพื่อเช็คชื่อคอลัมน์ที่อ่านได้จริงใน Console
+            } catch (err) {
+                console.error("❌ Error reading Excel:", err);
+            }
+        }
+
+        // ส่ง tableData เข้าไปด้วย
+        renderWithLayout(res, "eventInfo", { 
+            title: "KMUTNB Project - Event Info", 
+            event,
+            tableData // ข้อมูลตารางที่จะเอาไป Loop ใน EJS
+        }, req.path, req);
+
     } catch (err) {
         console.error("❌ Error fetching event info:", err);
         res.status(500).send("เกิดข้อผิดพลาดในการดึงข้อมูลกิจกรรม");
     }
 });
-
 
 
 app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
@@ -1887,9 +1939,15 @@ app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
             await g.save();
           }
         }else if (event.title === "วันสอบ") {
-          const groupExamDone = group.filter(g => g.status === "รอสอบปริญญานิพนธ์" || g.status === "รอสอบก้าวหน้า");
+          const groupExamDone = group.filter(g => g.status === "รอสอบปริญญานิพนธ์" || g.status === "รอสอบก้าวหน้า" || g.status === "รอนำเสนอหัวข้อ");
           for (const g of groupExamDone) {
-            g.status = "ส่งเอกสารเรียบร้อย";
+            if(g.status === "รอสอบปริญญานิพนธ์"){
+              g.status = "พร้อมสอบปริญญานิพนธ์";
+            }else if(g.status === "รอสอบก้าวหน้า"){
+              g.status = "พร้อมสอบก้าวหน้า";
+            }else if(g.status === "รอนำเสนอหัวข้อ"){
+              g.status = "พร้อมสอบนำเสนอหัวข้อ";
+            }
             await g.save();
           }
         }
@@ -2284,11 +2342,28 @@ app.post("/api/groups/mark-ready-for-exam", async (req, res) => {
 
     try {
         const { groupId } = req.body;
+
+        const group = await Group.findById(groupId);
+
+        const mem1 = await User.findOne({username: group.member1})
+        const mem2 = await User.findOne({username: group.member2})
+        let statusCheck;
+
+        if (group.passTimes === 0) {
+          statusCheck = "พร้อมสอบนำเสนอหัวข้อ";
+        } else if(g.passTimes >= 1) {
+          if(mem1.branch === "EnET" || mem2.branch === "EnET"){
+            statusCheck = "พร้อมสอบปริญญานิพนธ์";
+          }else{
+            statusCheck = "พร้อมสอบก้าวหน้า";
+          }
+        }
+
         
         // อัปเดตสถานะเฉพาะกลุ่มที่ส่ง ID มา
         const updatedGroup = await Group.findByIdAndUpdate(
             groupId, 
-            { status: "พร้อมสอบ" },
+            { status: statusCheck },
             { new: true }
         );
 
