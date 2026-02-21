@@ -1,133 +1,200 @@
 <style>
+    /* จัดการ Container หลักให้กึ่งกลางหน้าจอ */
+    .admin-grant-wrapper {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-height: 80vh !important;
+        width: 100% !important;
+    }
+
+    /* กล่อง Card หลักขยายให้ใหญ่และสมดุล */
+    .admin-card {
+        width: 100% !important;
+        max-width: 850px !important;
+        background: #ffffff !important;
+        border-radius: 20px !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+        padding: 3.5rem !important;
+        text-align: center !important;
+    }
+
+    /* ปรับแต่งช่องค้นหา */
     #searchAdvisorContainer {
         position: relative;
-        width: 80%;
+        width: 100% !important;
+        margin-bottom: 1.5rem !important;
     }
+
+    #searchAdvisor {
+        height: 60px !important;
+        font-size: 1.25rem !important;
+        border-radius: 12px !important;
+        border: 2px solid #e3e6f0 !important;
+    }
+
+    /* ผลลัพธ์การค้นหา */
     #searchAdvisorResults {
         position: absolute;
         top: 100%;
         left: 0;
         right: 0;
         z-index: 1050;
-        max-height: 200px;
+        max-height: 250px;
         overflow-y: auto;
         background: white;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1) !important;
+        border-radius: 0 0 12px 12px !important;
     }
-    #searchAdvisor{
-        height: 50px;
-        width: 100%;
-    }
-    #searchAdvisor,input::placeholder{
-        font-size: 1.5rem;
-    }
-    #searchAdvisor,input{
-        font-size: 1.5rem;
+
+    /* ส่วนแสดงผลเมื่อเลือกอาจารย์แล้ว */
+    #selectedAdvisorContainer {
+        background: #f8f9fc !important;
+        border: 2px solid #4e73df !important;
+        border-radius: 15px !important;
+        padding: 1.5rem !important;
+        margin-bottom: 2rem !important;
+        width: 100% !important;
     }
 </style>
-<div class="container-fluid mt-4" style="min-height: 100vh;">
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 style="color: #4e73df;">มอบสิทธิ์อาจารย์หัวหน้าแขนง</h1>
-    </div>
 
-    <div class="row justify-content-center">
+<div class="container-fluid">
+    <div class="admin-grant-wrapper">
+        <div class="admin-card">
+            
+            <div class="mb-5">
+                <h1 class="font-weight-bold" style="color: #4e73df;">
+                    <i class="fas fa-user-shield mr-3"></i>มอบสิทธิ์อาจารย์หัวหน้าแขนง
+                </h1>
+                <p class="text-muted">ค้นหารายชื่ออาจารย์เพื่อทำการมอบสิทธิ์ระดับสาขา</p>
+            </div>
+
             <div id="searchAdvisorContainer">
-                <div class="d-flex flex-row">
-                    <input type="text" id="searchAdvisor" class="form-control mb-3" placeholder="ค้นหาอาจารย์ที่ปรึกษา">
+                <input type="text" id="searchAdvisor" class="form-control" placeholder="ค้นหาชื่ออาจารย์ที่ปรึกษา...">
+                <ul id="searchAdvisorResults" class="list-group text-left"></ul>
+            </div>
+
+            <div id="selectedAdvisorContainer" style="display:none;">
+                <div class="d-flex align-items-center justify-content-between">
+                    <h3 id="selectedAdvisor" class="font-weight-bold text-dark mb-0"></h3>
+                    <button id="clearAdvisorSelection" class="btn btn-danger btn-circle shadow-sm">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-                <ul id="searchAdvisorResults" class="list-group"></ul>
             </div>
-            <div class="d-flex flex-row align-items-center" id="selectedAdvisorContainer" style="display:none;">
-                <h3 id="selectedAdvisor" style="margin-right: 20px;"></h3>
-                <button id="clearAdvisorSelection" class="btn btn-danger" style="display: none;margin-bottom: 10px;">ยกเลิก</button>
+
+            <div class="mt-4">
+                <button type="button" id="updateAdminRole" class="btn btn-success btn-lg px-5 shadow" disabled style="border-radius: 12px; font-weight: 700;">
+                    <i class="fas fa-save mr-2"></i>บันทึกการมอบสิทธิ์
+                </button>
             </div>
-    </div>
-    <div class="justify-content-center align-items-center d-flex">
-        <button type="submit" id="updateAdminRole" class="btn btn-success" disabled>
-            <h5 class="mt-2">บันทึก</h5>
-        </button>
+
+        </div>
     </div>
 </div>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
     let chosenAdvisor = null;
+    
+    // Logic การค้นหาเดิมของคุณ
     $("#searchAdvisor").on("keyup", function() {
-                const keyword = $(this).val().trim();
-                const $results = $("#searchAdvisorResults");
+        const keyword = $(this).val().trim();
+        const $results = $("#searchAdvisorResults");
+        $results.empty();
+        
+        if (keyword.length > 0) {
+            $.get("/search-advisor?keyword=" + encodeURIComponent(keyword), function(data) {
                 $results.empty();
-                if (keyword.length > 0) {
-                    $.get("/search-advisor?keyword=" + encodeURIComponent(keyword), function(data) {
-                        $results.empty();
-                        if (data && data.length > 0) {
-                            data.forEach(function(user) {
-                                const $li = $(`<li class="list-group-item list-group-item-action" style="cursor:pointer;">${user.name} ${user.lastname} (${user.username})</li>`);
-                                $li.on("click", function() {
-                                    chosenAdvisor = user.username;
-                                    $("#selectedAdvisor").text(`Advisor: ${user.name} ${user.lastname}`);
-                                    $("#searchAdvisorContainer").hide();
-                                    $("#selectedAdvisorContainer").show();
-                                    $("#clearAdvisorSelection").show();
-                                    $("#addAdvisorBtn").addClass("d-none");
-                                    updateButtonState();
-                                    $results.empty();
-                                });
-                                $results.append($li);
-                            });
-                        } else {
-                            $results.append(`<li class="list-group-item text-muted">ไม่พบผู้ใช้</li>`);
-                        }
+                if (data && data.length > 0) {
+                    data.forEach(function(user) {
+                        const $li = $(`<li class="list-group-item list-group-item-action p-3" style="cursor:pointer;">
+                            <i class="fas fa-user-tie mr-2 text-primary"></i> ${user.name} ${user.lastname} (${user.username})
+                        </li>`);
+                        $li.on("click", function() {
+                            chosenAdvisor = user.username;
+                            $("#selectedAdvisor").text(`อาจารย์: ${user.name} ${user.lastname}`);
+                            $("#searchAdvisorContainer").hide();
+                            $("#selectedAdvisorContainer").fadeIn();
+                            updateButtonState();
+                            $results.empty();
+                        });
+                        $results.append($li);
                     });
-                }
-    });
-    $("#clearAdvisorSelection").on("click", function() {
-        chosenAdvisor = null;
-        $("#selectedAdvisor").text('');
-        $("#selectedAdvisorContainer").hide();
-        $("#searchAdvisorContainer").show();
-        $("#searchAdvisor").val('');
-        $("#searchAdvisorResults").empty();
-        $("#clearAdvisorSelection").hide();
-        updateButtonState();
-    });
-    function updateButtonState() {
-        if (!chosenAdvisor) {
-            $("#updateAdminRole").prop("disabled", true);
-            console.log('No advisor selected, disabling update button');
-        } else {
-            $("#updateAdminRole").prop("disabled", false);
-            console.log('Advisor selected, enabling update button');
-        }
-    }
-    $("#updateAdminRole").on("click", function() {
-        // 1. ตรวจสอบว่ามีการเลือกอาจารย์หรือยัง
-        if (!chosenAdvisor) return;
-
-        // 2. แสดงกล่องข้อความยืนยัน (Confirm Confirmation)
-        const isConfirmed = confirm(`คุณแน่ใจหรือไม่ว่าต้องการมอบสิทธิ์ "อาจารย์หัวหน้าแขนง" ให้แก่ ${chosenAdvisor}?`);
-
-        // 3. ถ้าผู้ใช้กด "ตกลง" (OK) ถึงจะเริ่มทำงาน
-        if (isConfirmed) {
-            // เตรียมข้อมูลที่จะส่ง (เปลี่ยนจาก groupData เดิมที่ไม่ได้ประกาศไว้)
-            const payload = {
-                username: chosenAdvisor
-            };
-
-            $.ajax({
-                url: "/api/admin",
-                method: "POST",
-                contentType: "application/json",
-                data: JSON.stringify(payload), // ส่ง payload ที่สร้างขึ้น
-                success: function(res) {
-                    alert("อัปเดตสิทธิ์เรียบร้อยแล้ว!");
-                    window.location.reload(); 
-                },
-                error: function(err) {
-                    alert("เกิดข้อผิดพลาด: " + (err.responseText || "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้"));
+                } else {
+                    $results.append(`<li class="list-group-item text-muted p-3">ไม่พบข้อมูลผู้ใช้</li>`);
                 }
             });
-        } else {
-            // ถ้าผู้ใช้กด "ยกเลิก" (Cancel)
-            console.log("User cancelled role update");
+        }
+    });
+
+    $("#clearAdvisorSelection").on("click", function() {
+        chosenAdvisor = null;
+        $("#selectedAdvisorContainer").hide();
+        $("#searchAdvisorContainer").fadeIn();
+        $("#searchAdvisor").val('').focus();
+        updateButtonState();
+    });
+
+    function updateButtonState() {
+        $("#updateAdminRole").prop("disabled", !chosenAdvisor);
+    }
+
+    // ✅ ปรับปรุงส่วนบันทึกด้วย SweetAlert2
+    $("#updateAdminRole").on("click", async function() {
+        if (!chosenAdvisor) return;
+        
+        const advisorName = $("#selectedAdvisor").text();
+
+        // 1. ถามเพื่อยืนยัน
+        const result = await Swal.fire({
+            title: 'ยืนยันการมอบสิทธิ์?',
+            text: `คุณกำลังจะมอบสิทธิ์ "อาจารย์หัวหน้าแขนง" ให้แก่ ${advisorName}`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#1cc88a',
+            cancelButtonColor: '#e74a3b',
+            confirmButtonText: 'ยืนยันมอบสิทธิ์',
+            cancelButtonText: 'ยกเลิก',
+            reverseButtons: true
+        });
+
+        // 2. ถ้ากดยืนยัน
+        if (result.isConfirmed) {
+            // แสดงสถานะ Loading
+            Swal.fire({
+                title: 'กำลังบันทึกข้อมูล...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            $.ajax({
+                url: "/api/admin", // Backend API ของคุณ
+                method: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ username: chosenAdvisor }),
+                success: function(res) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'อัปเดตสำเร็จ!',
+                        text: 'มอบสิทธิ์อาจารย์หัวหน้าแขนงเรียบร้อยแล้ว',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload(); 
+                    });
+                },
+                error: function(err) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: err.responseText || "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้"
+                    });
+                }
+            });
         }
     });
 </script>

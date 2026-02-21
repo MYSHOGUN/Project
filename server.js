@@ -139,7 +139,6 @@ async function saveUsersFromExcel(dataArray) {
             // ใช้ค่า Default สำหรับ non-required fields
             role: role, 
             phone: null, 
-            email: emailExel,
             group: null,
             branch: trimedBranch // สามารถนำเข้า group ได้ถ้ามีใน Excel
         };
@@ -1382,11 +1381,76 @@ app.post("/profile/update", requireLogin, upload.single("profileImage"), async (
     }
 });
 
-app.get("/addExcel",requireLogin,(req, res) => {
+app.get("/addUser",requireLogin,(req, res) => {
   if(req.session.user.role !== "admin"){
     return res.redirect("/");
   }
-  renderWithLayout(res, "addExcel", { title: "KMUTNB Project - Add Excel" }, req.path,req);
+  renderWithLayout(res, "addUser", { title: "KMUTNB Project - Add User" }, req.path,req);
+});
+
+app.get("/addUserExcel",requireLogin,(req, res) => {
+  if(req.session.user.role !== "admin"){
+    return res.redirect("/");
+  }
+  renderWithLayout(res, "addUserExcel", { title: "KMUTNB Project - Add User Excel" }, req.path,req);
+});
+
+app.get("/addUserSingle",requireLogin,(req, res) => {
+  if(req.session.user.role !== "admin"){
+    return res.redirect("/");
+  }
+  renderWithLayout(res, "addUserSingle", { title: "KMUTNB Project - Add User Single" }, req.path,req);
+});
+
+const bcrypt = require('bcrypt'); // สำหรับเข้ารหัสผ่าน
+const User = require('./models/User'); // นำเข้า Model
+
+// API สำหรับเพิ่มผู้ใช้รายคน
+app.post("/api/addUserSingle", async (req, res) => {
+    try {
+        const { username , role , branch} = req.body;
+
+        // 1. ตรวจสอบว่ามีข้อมูลส่งมาครบหรือไม่
+        if (!username || !role || !branch) {
+            return res.status(400).json({ success: false, error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
+        }
+
+        // 2. ตรวจสอบว่ามี User นี้ในระบบแล้วหรือยัง
+        const existingUser = await User.findOne({ username });
+        if (existingUser) {
+            return res.status(400).json({ success: false, error: "รหัสผู้ใช้ี้มีอยู่ในระบบแล้ว" });
+        }
+
+        const PENDING_PASS_STRING = 'PENDING_REGISTRATION_FOR_SIGNUP'; 
+        const PENDING_NAME = 'Pending';
+        const PENDING_LASTNAME = 'Registration';
+
+        // 2. Hash สตริง Placeholder นี้เพื่อใช้เป็นรหัสผ่านชั่วคราว
+        const pendingHashedPassword = await bcrypt.hash(PENDING_PASS_STRING, saltRounds);
+        const trimedBranch = String(branch).trim();
+        const trimmedUsername = String(usernameFromExcel).trim();
+        const emailExel = "s"+trimmedUsername+"@kmutnb.ac.th";
+
+        const newUser = new User({
+            username: trimmedUsername,
+            email: emailExel,
+            password: pendingHashedPassword, // ⬅️ Hashed Placeholder
+            name: PENDING_NAME,             // ⬅️ Placeholder
+            lastname: PENDING_LASTNAME,     // ⬅️ Placeholder
+            role: role, 
+            phone: null, 
+            group: null,
+            branch: trimedBranch // สามารถนำเข้า group ได้ถ้ามีใน Excel
+        });
+
+        await newUser.save();
+
+        res.json({ success: true, message: "เพิ่มผู้ใช้เรียบร้อยแล้ว" });
+
+    } catch (err) {
+        console.error("❌ Add User Error:", err);
+        res.status(500).json({ success: false, error: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
+    }
 });
 
 app.post('/api/excel-upload', requireLogin, upload.single('file'), async (req, res) => {

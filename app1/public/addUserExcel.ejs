@@ -1,0 +1,177 @@
+<style>
+    /* จัดการ Container หลักให้กึ่งกลางหน้าจอ */
+    .excel-upload-wrapper {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-height: 80vh !important;
+        width: 100% !important;
+    }
+
+    /* กล่อง Card หลักขยายให้ใหญ่และสมดุล */
+    .excel-card {
+        width: 100% !important;
+        max-width: 800px !important;
+        background: #ffffff !important;
+        border-radius: 20px !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+        padding: 3.5rem !important;
+        text-align: center !important;
+    }
+
+    /* ตกแต่งพื้นที่ Drop Area ให้ดูน่าใช้งาน */
+    #drop-area {
+        border: 3px dashed #4e73df !important;
+        border-radius: 15px !important;
+        padding: 4rem 2rem !important;
+        background-color: #f8f9fc !important;
+        cursor: pointer !important;
+        transition: all 0.3s ease !important;
+        width: 100% !important;
+        margin-bottom: 2rem !important;
+    }
+
+    #drop-area.highlight {
+        border-color: #1cc88a !important;
+        background-color: #e6ffe6 !important;
+    }
+
+    #drop-area i {
+        font-size: 4rem !important;
+        color: #4e73df !important;
+        margin-bottom: 1.5rem !important;
+    }
+
+    #defaultDropText {
+        font-size: 1.2rem !important;
+        color: #5a5c69 !important;
+        margin-bottom: 0 !important;
+        font-weight: 600 !important;
+    }
+
+    /* ปรับแต่งปุ่มให้ดูใหญ่และกดง่าย */
+    .btn-action {
+        padding: 0.75rem 2.5rem !important;
+        font-size: 1.1rem !important;
+        font-weight: 700 !important;
+        border-radius: 12px !important;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="excel-upload-wrapper">
+        <div class="excel-card">
+            
+            <div class="mb-5">
+                <h1 class="font-weight-bold" style="color: #4e73df;">
+                    <i class="fas fa-file-excel mr-3"></i>เพิ่มข้อมูลจาก Excel
+                </h1>
+                <p class="text-muted">เลือกไฟล์ Excel (.xlsx, .xls) เพื่อนำเข้าข้อมูลผู้ใช้จำนวนมาก</p>
+            </div>
+
+            <div id="drop-area">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p id="defaultDropText">ลากไฟล์ Excel มาวางที่นี่ หรือ คลิกเพื่อเลือกไฟล์</p>
+                <input type="file" id="file-input" style="display:none;" accept=".xlsx, .xls">
+            </div>
+
+            <div id="addExcelBtn" class="d-flex justify-content-center mt-4">
+                <button type="submit" class="btn btn-success btn-action mr-3 shadow" id="saveExcel">
+                    <i class="fas fa-save mr-2"></i>บันทึกข้อมูล
+                </button>
+                <button type="button" class="btn btn-danger btn-action shadow" id="returnExcel">
+                    <i class="fas fa-times mr-2"></i>ยกเลิก
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    let selectedFile = null;
+    const dropArea = document.getElementById('drop-area');
+    const defaultDropText = document.getElementById('defaultDropText');
+    const fileInput = document.getElementById('file-input');
+
+    // จัดการ Drag & Drop Effects
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            dropArea.classList.add('highlight');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            dropArea.classList.remove('highlight');
+        }, false);
+    });
+
+    dropArea.addEventListener('drop', (e) => {
+        handleFiles(e.dataTransfer.files);
+    });
+
+    dropArea.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+    function handleFiles(files) {
+        const file = files[0];
+        if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+            selectedFile = file;
+            defaultDropText.innerHTML = `
+                <div class="text-success">
+                    <i class="fas fa-check-circle mb-2"></i><br>
+                    <strong>เลือกไฟล์สำเร็จ:</strong> ${file.name}
+                </div>`;
+            dropArea.style.border = '3px solid #1cc88a';
+        } else {
+            Swal.fire('รูปแบบไฟล์ไม่ถูกต้อง', 'กรุณาเลือกไฟล์ .xlsx หรือ .xls เท่านั้น', 'error');
+            fileInput.value = '';
+        }
+    }
+
+    $('#saveExcel').on('click', async function() {
+        if (!selectedFile) {
+            Swal.fire('แจ้งเตือน', 'กรุณาเลือกไฟล์ก่อนบันทึก', 'warning');
+            return;
+        }
+
+        const result = await Swal.fire({
+            title: 'ยืนยันการนำเข้า?',
+            text: `คุณต้องการนำเข้าข้อมูลจากไฟล์ ${selectedFile.name} ใช่หรือไม่?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#1cc88a',
+            confirmButtonText: 'ตกลง',
+            cancelButtonText: 'ยกเลิก'
+        });
+
+        if (result.isConfirmed) {
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            Swal.fire({ title: 'กำลังประมวลผล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            fetch('/api/excel-upload', { method: 'POST', body: formData })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('สำเร็จ', `นำเข้าข้อมูลเรียบร้อย ${data.insertedCount} รายการ`, 'success')
+                            .then(() => window.location.href = '/group');
+                    } else {
+                        Swal.fire('เกิดข้อผิดพลาด', data.error || 'ไม่สามารถนำเข้าข้อมูลได้', 'error');
+                    }
+                })
+                .catch(err => Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error'))
+                .finally(() => $('#saveExcel').prop('disabled', false));
+        }
+    });
+
+    $('#returnExcel').on('click', () => window.location.reload());
+</script>

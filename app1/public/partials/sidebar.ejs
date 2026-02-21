@@ -32,10 +32,10 @@
         <% if (typeof user !== 'undefined' && user.role == 'admin') { %>
             <hr class="sidebar-divider my-0">
 
-            <li class="nav-item <%= currentPath === '/addExcel' ? 'active' : '' %>">
-                <a class="nav-link" href="/addExcel">
+            <li class="nav-item <%= currentPath === '/addUser' || currentPath === '/addUserExcel' || currentPath === '/addUserSingle'? 'active' : '' %>">
+                <a class="nav-link" href="/addUser">
                     <i class="fas fa-file-excel"></i>
-                    <span>เพิ่มข้อมูล Excel</span></a>
+                    <span>เพิ่มข้อมูลผู้ใช้</span></a>
             </li>
         <% } %>
         
@@ -84,7 +84,7 @@
             <li class="nav-item <%= currentPath === '/paper' ? 'active' : '' %>">
                 <a class="nav-link" href="/paper">
                     <i class="fas fa-file-alt"></i></i>
-                    <span>เอกสารก่อนสอบ</span></a>
+                    <span>ส่งเอกสาร</span></a>
             </li>
         <% } %>
 

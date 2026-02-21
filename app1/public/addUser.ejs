@@ -1,0 +1,88 @@
+<style>
+    /* จัดการ Container หลักให้กึ่งกลางหน้าจอ */
+    .add-user-wrapper {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-height: 80vh !important;
+        width: 100% !important;
+    }
+
+    /* กล่องควบคุมความกว้างของ Card */
+    .selection-container {
+        width: 100% !important;
+        max-width: 1000px !important; /* ปรับขนาดความกว้างตามชอบ */
+    }
+
+    /* ปรับแต่งปุ่มให้เป็น Card ที่น่ากด */
+    .selection-card {
+        background: #ffffff !important;
+        border-radius: 20px !important;
+        border: 2px solid #e3e6f0 !important;
+        padding: 3rem 2rem !important;
+        text-align: center !important;
+        transition: all 0.3s ease !important;
+        text-decoration: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        height: 100% !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important;
+    }
+
+    .selection-card:hover {
+        border-color: #4e73df !important;
+        transform: translateY(-10px) !important;
+        box-shadow: 0 15px 30px rgba(78, 115, 223, 0.15) !important;
+    }
+
+    .selection-card i {
+        font-size: 4rem !important;
+        color: #4e73df !important;
+        margin-bottom: 1.5rem !important;
+    }
+
+    .selection-card h3 {
+        font-weight: 700 !important;
+        color: #4e73df !important;
+        margin-bottom: 1rem !important;
+    }
+
+    .selection-card p {
+        color: #858796 !important;
+        font-size: 1rem !important;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="add-user-wrapper">
+        
+        <div class="text-center mb-5">
+            <h1 class="font-weight-bold" style="color: #4e73df; font-size: 2.5rem;">
+                <i class="fas fa-user-plus mr-3"></i>เพิ่มข้อมูลผู้ใช้
+            </h1>
+            <p class="text-muted">เลือกวิธีการเพิ่มข้อมูลผู้ใช้เข้าสู่ระบบ</p>
+        </div>
+
+        <div class="selection-container">
+            <div class="row" style="align-items: center; justify-content: space-evenly;">
+                <div class="col-md-6 mb-4">
+                    <a href="/addUserSingle" class="selection-card">
+                        <i class="fas fa-user-edit"></i>
+                        <h3>เพิ่มรายคน</h3>
+                        <p>กรอกรายละเอียดผู้ใช้ทีละรายผ่านฟอร์มในระบบ</p>
+                    </a>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <a href="/addUserExcel" class="selection-card">
+                        <i class="fas fa-file-excel"></i>
+                        <h3>เพิ่มโดยใช้ Excel</h3>
+                        <p>อัปโหลดไฟล์ Excel (.xlsx) เพื่อเพิ่มข้อมูลผู้ใช้พร้อมกันหลายคน</p>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
