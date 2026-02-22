@@ -191,7 +191,7 @@
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    ${paperDate > today ? `
+                                    ${paperDate >= today ? `
                                         <div class="custom-drop-zone" id="drop-zone-${paperId}" onclick="document.getElementById('file-input-${paperId}').click()">
                                             <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
                                             <p class="small text-muted mb-0">คลิกหรือลากไฟล์มาที่นี่</p>
