@@ -177,7 +177,7 @@ let bucket;
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({
-  secret: "your-very-strong-secret", // ควรใช้สตริงที่ยาวและเดายาก
+  secret: process.env.SESSION_SECRET || "fallback-for-local-dev", // ควรใช้สตริงที่ยาวและเดายาก
   resave: false,
   saveUninitialized: false, // เปลี่ยนเป็น false เพื่อไม่ให้สร้าง session ว่างๆ ถ้ายังไม่ login
   cookie: {
