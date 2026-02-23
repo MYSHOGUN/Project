@@ -13,7 +13,6 @@
         max-width: 1150px !important;
     }
 
-    /* จัดการ Grid ของ Card */
     .paper-grid {
         display: grid !important;
         grid-template-columns: repeat(auto-fill, minmax(100%, 1fr)) !important;
@@ -66,6 +65,7 @@
         border-radius: 25px;
         border: 2px solid #e3e6f0;
         cursor: pointer;
+        transition: all 0.2s;
     }
 </style>
 
@@ -120,7 +120,7 @@
                 const groupName = targetGroup.projectName;
                 const isUserInGroup = [targetGroup.member1, targetGroup.member2, targetGroup.advisor].includes(currentUsername);
                 
-                // ✅ แก้ไข Logic วันที่: ล้างเวลาทิ้งเพื่อเทียบแค่วันที่
+                // ✅ ปรับแก้ Logic วันที่ให้เทียบเฉพาะ วัน/เดือน/ปี
                 const today = new Date();
                 today.setHours(0,0,0,0);
                 const paperDate = new Date(paper.date);
@@ -129,8 +129,8 @@
                 const passTime = (paper.passTimes || 0) + 1;
                 let cardHtml = "";
 
-                // ส่วนที่ 1: บันทึกผลสอบ (สำหรับอาจารย์ เมื่อเลยกำหนด)
-                if ((currentRole === "teacher" || currentRole === "admin") && paperDate.getTime() <= today.getTime() && (!targetResult || (!targetResult.pass.includes(currentUsername) && !targetResult.fail.includes(currentUsername)))) {
+                // ส่วนที่ 1: สำหรับอาจารย์ส่งผลสอบ
+                if ((currentRole === "teacher" || currentRole === "admin") && paperDate.getTime() < today.getTime() && (!targetResult || (!targetResult.pass.includes(currentUsername) && !targetResult.fail.includes(currentUsername)))) {
                     cardHtml += `
                     <div class="card paper-card shadow mb-4 border-left-primary" style="grid-column: 1 / -1;">
                         <div class="card-body p-4 text-center">
@@ -155,7 +155,7 @@
                     </div>`;
                 }
 
-                // ส่วนที่ 2: Card หลัก (อัปโหลดไฟล์)
+                // ส่วนที่ 2: Card หลัก (ส่งไฟล์และ Checkbox อาจารย์)
                 if (isUserInGroup || currentRole === "admin") {
                     cardHtml += `
                     <div class="card paper-card shadow-sm border-left-${paper.isSubmitted ? 'success' : 'warning'}">
@@ -165,6 +165,16 @@
                                     <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">${paper.mention}</div>
                                     <h5 class="font-weight-bold text-gray-800 mb-0">${groupName} (ครั้งที่ ${passTime})</h5>
                                 </div>
+                                ${(currentRole === 'teacher' || currentRole === 'admin') ? `
+                                    <label class="custom-check-container" for="check-${targetGroup._id}">
+                                        <input type="checkbox" class="mr-2" id="check-${targetGroup._id}" 
+                                            onchange="updateReadyStatus(this, '${targetGroup._id}')"
+                                            ${targetGroup.status.includes('พร้อมสอบ') ? 'checked disabled' : ''}>
+                                        <span class="small font-weight-bold ${targetGroup.status.includes('พร้อมสอบ') ? 'text-success' : 'text-primary'}">
+                                            ${targetGroup.status.includes('พร้อมสอบ') ? 'พร้อมสอบแล้ว' : 'ยืนยันพร้อมสอบ'}
+                                        </span>
+                                    </label>
+                                ` : ''}
                             </div>
 
                             <div class="row">
@@ -183,7 +193,7 @@
                                     ` : `
                                         <div class="custom-drop-zone border-0 bg-light text-muted" style="cursor: default;">
                                             <i class="fas fa-lock mb-2"></i>
-                                            <span class="small">เลยกำหนดส่งเอกสารแล้ว</span>
+                                            <span class="small">ปิดการส่งเอกสาร (หมดเขตแล้ว)</span>
                                         </div>
                                     `}
                                 </div>
@@ -194,7 +204,7 @@
                 return cardHtml;
             }).join('');
 
-            // เรียกใช้ฟังก์ชันจัดการไฟล์หลัง Render เสร็จ
+            // เริ่มต้นฟังก์ชันหลัง Render
             papers.forEach(p => {
                 initDragAndDrop(p._id);
                 fetchFileList(p._id);
@@ -203,14 +213,14 @@
         } catch (err) { console.error(err); }
     }
 
-    // ✅ เพิ่มฟังก์ชันจัดการไฟล์ (Logic)
+    // ✅ เพิ่มฟังก์ชัน Logic ทั้งหมด
     async function fetchFileList(paperId) {
         try {
             const res = await fetch(`/api/getPaperFiles/${paperId}`);
             const files = await res.json();
             const listContainer = document.getElementById(`file-list-${paperId}`);
             if (!files || files.length === 0) {
-                listContainer.innerHTML = '<div class="p-4 text-center text-muted small">ยังไม่มีไฟล์ที่ส่ง</div>';
+                listContainer.innerHTML = '<div class="p-4 text-center text-muted small">ไม่มีไฟล์ที่ถูกอัปโหลด</div>';
                 return;
             }
             listContainer.innerHTML = files.map(f => `
@@ -225,7 +235,7 @@
     window.handleUpload = async function(paperId, files) {
         if (!files.length) return;
         const formData = new FormData();
-        for (let f of files) formData.append('files', f); // ชื่อ 'files' ต้องตรงกับ server.js
+        for (let f of files) formData.append('files', f);
 
         Swal.fire({ title: 'กำลังอัปโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
@@ -255,6 +265,34 @@
             zone.addEventListener(eName, e => { e.preventDefault(); e.stopPropagation(); }, false);
         });
         zone.addEventListener('drop', e => handleUpload(paperId, e.dataTransfer.files));
+    }
+
+    // ✅ ฟังก์ชันอัปเดตสถานะพร้อมสอบ (สำหรับอาจารย์ที่ปรึกษา)
+    window.updateReadyStatus = async function(checkbox, groupId) {
+        const confirm = await Swal.fire({
+            title: 'ยืนยันความพร้อมสอบ?',
+            text: "คุณตรวจสอบเอกสารและอนุญาตให้เข้าสอบแล้วใช่หรือไม่?",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'ยืนยัน',
+            cancelButtonText: 'ยกเลิก'
+        });
+
+        if (confirm.isConfirmed) {
+            try {
+                const res = await fetch('/api/groups/mark-ready-for-exam', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ groupId })
+                });
+                if (res.ok) {
+                    Swal.fire('สำเร็จ', 'อัปเดตสถานะพร้อมสอบแล้ว', 'success').then(() => location.reload());
+                }
+            } catch (err) {
+                Swal.fire('ผิดพลาด', 'ไม่สามารถอัปเดตได้', 'error');
+                checkbox.checked = false;
+            }
+        } else { checkbox.checked = false; }
     }
 
     window.showComment = (pId) => {
