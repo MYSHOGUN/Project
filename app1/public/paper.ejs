@@ -10,7 +10,7 @@
 
     .platform-container {
         width: 100% !important;
-        max-width: 1150px !important; /* คุมความกว้างให้ดูสมดุล */
+        max-width: 1150px !important;
     }
 
     /* จัดการ Grid ของ Card */
@@ -21,7 +21,6 @@
         width: 100% !important;
     }
 
-    /* ตกแต่ง Card ให้พรีเมียม */
     .paper-card {
         border-radius: 20px !important;
         border: none !important;
@@ -35,7 +34,6 @@
         box-shadow: 0 12px 25px rgba(0,0,0,0.1) !important;
     }
 
-    /* ส่วนแสดงรายการไฟล์ */
     .file-scroll-area {
         height: 180px !important;
         min-height: 180px !important;
@@ -45,7 +43,6 @@
         overflow-y: auto;
     }
 
-    /* Drop Zone แบบใหม่ */
     .custom-drop-zone {
         border: 2px dashed #4e73df !important;
         background: #f8f9fc !important;
@@ -59,9 +56,7 @@
         transition: all 0.2s;
     }
 
-    .custom-drop-zone:hover {
-        background: #eff2f9 !important;
-    }
+    .custom-drop-zone:hover { background: #eff2f9 !important; }
 
     .custom-check-container {
         display: inline-flex;
@@ -71,7 +66,6 @@
         border-radius: 25px;
         border: 2px solid #e3e6f0;
         cursor: pointer;
-        transition: all 0.2s;
     }
 </style>
 
@@ -80,7 +74,6 @@
 
 <div class="container-fluid">
     <div class="platform-wrapper">
-        
         <div class="platform-container mb-5 text-center text-md-left">
             <h1 class="font-weight-bold" style="color: #4e73df; font-size: 2.2rem;">
                 <i class="fas fa-file-export mr-3"></i>แพลตฟอร์มส่งเอกสาร
@@ -90,21 +83,17 @@
 
         <div class="platform-container">
             <div id="paper-platform-container" class="paper-grid">
-                <div class="text-center py-5 " style="grid-column: 1 / -1;" style="width: 100%;">
+                <div class="text-center py-5" style="grid-column: 1 / -1; width: 100%;">
                     <div class="spinner-border text-primary" role="status"></div>
                     <p class="mt-2 text-muted">กำลังโหลดรายการส่งเอกสาร...</p>
                 </div>
             </div>
         </div>
-
     </div>
 </div>
 
-
-
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    // ดึงข้อมูล Data จาก Hidden Input
     const groupsData = JSON.parse(document.getElementById('raw-groups-data')?.value || "[]");
     const resultData = JSON.parse(document.getElementById('raw-result-data')?.value || "[]");
     const currentUsername = "<%= user.username %>";
@@ -130,14 +119,18 @@
 
                 const groupName = targetGroup.projectName;
                 const isUserInGroup = [targetGroup.member1, targetGroup.member2, targetGroup.advisor].includes(currentUsername);
-                const today = new Date().setHours(0,0,0,0);
-                const paperDate = new Date(paper.date).getTime();
-                const passTime = (paper.passTimes || 0) + 1;
+                
+                // ✅ แก้ไข Logic วันที่: ล้างเวลาทิ้งเพื่อเทียบแค่วันที่
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const paperDate = new Date(paper.date);
+                paperDate.setHours(0,0,0,0);
 
+                const passTime = (paper.passTimes || 0) + 1;
                 let cardHtml = "";
 
-                // --- ส่วนที่ 1: สำหรับอาจารย์ส่งผลสอบ (ถ้าเข้าเงื่อนไข) ---
-                if ((currentRole === "teacher" || currentRole === "admin") && paperDate < today && (!targetResult || (!targetResult.pass.includes(currentUsername) && !targetResult.fail.includes(currentUsername)))) {
+                // ส่วนที่ 1: บันทึกผลสอบ (สำหรับอาจารย์ เมื่อเลยกำหนด)
+                if ((currentRole === "teacher" || currentRole === "admin") && paperDate.getTime() <= today.getTime() && (!targetResult || (!targetResult.pass.includes(currentUsername) && !targetResult.fail.includes(currentUsername)))) {
                     cardHtml += `
                     <div class="card paper-card shadow mb-4 border-left-primary" style="grid-column: 1 / -1;">
                         <div class="card-body p-4 text-center">
@@ -162,7 +155,7 @@
                     </div>`;
                 }
 
-                // --- ส่วนที่ 2: Card ส่งเอกสารหลัก ---
+                // ส่วนที่ 2: Card หลัก (อัปโหลดไฟล์)
                 if (isUserInGroup || currentRole === "admin") {
                     cardHtml += `
                     <div class="card paper-card shadow-sm border-left-${paper.isSubmitted ? 'success' : 'warning'}">
@@ -172,26 +165,16 @@
                                     <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">${paper.mention}</div>
                                     <h5 class="font-weight-bold text-gray-800 mb-0">${groupName} (ครั้งที่ ${passTime})</h5>
                                 </div>
-                                ${(currentRole === 'teacher' || currentRole === 'admin') ? `
-                                    <label class="custom-check-container" for="check-${targetGroup._id}">
-                                        <input type="checkbox" class="mr-2" id="check-${targetGroup._id}" 
-                                            onchange="updateReadyStatus(this, '${targetGroup._id}')"
-                                            ${targetGroup.status === 'พร้อมสอบ' ? 'checked disabled' : ''}>
-                                        <span class="small font-weight-bold ${targetGroup.status === 'พร้อมสอบ' ? 'text-success' : 'text-primary'}">
-                                            ${targetGroup.status === 'พร้อมสอบ' ? 'พร้อมสอบแล้ว' : 'ยืนยันพร้อมสอบ'}
-                                        </span>
-                                    </label>
-                                ` : ''}
                             </div>
 
                             <div class="row">
                                 <div class="col-md-6 mb-3 mb-md-0">
                                     <div id="file-list-${paperId}" class="file-scroll-area border">
-                                        <div class="p-4 text-center text-muted small">กำลังโหลดไฟล์...</div>
+                                        <div class="p-4 text-center text-muted small">กำลังโหลดรายการไฟล์...</div>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    ${paperDate >= today ? `
+                                    ${paperDate.getTime() >= today.getTime() ? `
                                         <div class="custom-drop-zone" id="drop-zone-${paperId}" onclick="document.getElementById('file-input-${paperId}').click()">
                                             <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
                                             <p class="small text-muted mb-0">คลิกหรือลากไฟล์มาที่นี่</p>
@@ -200,7 +183,7 @@
                                     ` : `
                                         <div class="custom-drop-zone border-0 bg-light text-muted" style="cursor: default;">
                                             <i class="fas fa-lock mb-2"></i>
-                                            <span class="small">ปิดการส่งเอกสาร</span>
+                                            <span class="small">เลยกำหนดส่งเอกสารแล้ว</span>
                                         </div>
                                     `}
                                 </div>
@@ -211,7 +194,7 @@
                 return cardHtml;
             }).join('');
 
-            // Init ฟังชันก์หลัง Render
+            // เรียกใช้ฟังก์ชันจัดการไฟล์หลัง Render เสร็จ
             papers.forEach(p => {
                 initDragAndDrop(p._id);
                 fetchFileList(p._id);
@@ -220,31 +203,79 @@
         } catch (err) { console.error(err); }
     }
 
-    // --- ส่วนเสริม Logic เดิมของคุณ (ลบ alert เปลี่ยนเป็น Swal) ---
+    // ✅ เพิ่มฟังก์ชันจัดการไฟล์ (Logic)
+    async function fetchFileList(paperId) {
+        try {
+            const res = await fetch(`/api/getPaperFiles/${paperId}`);
+            const files = await res.json();
+            const listContainer = document.getElementById(`file-list-${paperId}`);
+            if (!files || files.length === 0) {
+                listContainer.innerHTML = '<div class="p-4 text-center text-muted small">ยังไม่มีไฟล์ที่ส่ง</div>';
+                return;
+            }
+            listContainer.innerHTML = files.map(f => `
+                <div class="d-flex align-items-center justify-content-between p-2 border-bottom">
+                    <span class="small text-truncate mr-2"><i class="fas fa-file-alt mr-2"></i>${f.file.filename}</span>
+                    <a href="/file/download/${f.file.fileId}" class="btn btn-sm btn-light border"><i class="fas fa-download"></i></a>
+                </div>
+            `).join('');
+        } catch (err) { console.error(err); }
+    }
+
+    window.handleUpload = async function(paperId, files) {
+        if (!files.length) return;
+        const formData = new FormData();
+        for (let f of files) formData.append('files', f); // ชื่อ 'files' ต้องตรงกับ server.js
+
+        Swal.fire({ title: 'กำลังอัปโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            const uploadRes = await fetch(`/upload-file/${paperId}`, { method: 'POST', body: formData });
+            const uploadedData = await uploadRes.json();
+            
+            if (uploadRes.ok) {
+                const filesData = uploadedData.map(m => ({ id: m.file.fileId, filename: m.file.filename }));
+                const saveRes = await fetch('/api/PaperUploadFile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paperId, filesData })
+                });
+                if (saveRes.ok) {
+                    Swal.fire('สำเร็จ', 'อัปโหลดเรียบร้อย', 'success');
+                    fetchFileList(paperId);
+                }
+            }
+        } catch (err) { Swal.fire('ผิดพลาด', 'อัปโหลดไม่สำเร็จ', 'error'); }
+    }
+
+    function initDragAndDrop(paperId) {
+        const zone = document.getElementById(`drop-zone-${paperId}`);
+        if (!zone) return;
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eName => {
+            zone.addEventListener(eName, e => { e.preventDefault(); e.stopPropagation(); }, false);
+        });
+        zone.addEventListener('drop', e => handleUpload(paperId, e.dataTransfer.files));
+    }
+
+    window.showComment = (pId) => {
+        const fixChecked = document.getElementById(`fix-${pId}`).checked;
+        document.getElementById(`comment-${pId}`).classList.toggle('d-none', !fixChecked);
+    }
+
     window.submitResult = async function(paperId) {
         const selected = document.querySelector(`input[name="choice-${paperId}"]:checked`)?.value;
         const comment = document.getElementById(`comment-${paperId}`).value;
+        if (!selected) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกผลการสอบ', 'warning');
 
-        if (!selected) return Swal.fire('คำเตือน', 'กรุณาเลือกผลการสอบ', 'warning');
-
-        const confirm = await Swal.fire({
-            title: 'ยืนยันการบันทึก?',
-            text: `ผลการสอบ: ${selected}`,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'ตกลง',
-            cancelButtonText: 'ยกเลิก'
-        });
-
+        const confirm = await Swal.fire({ title: 'ยืนยัน?', text: `บันทึกผล: ${selected}`, icon: 'question', showCancelButton: true });
         if (confirm.isConfirmed) {
             const res = await fetch('/api/submitPaperResult', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ paperId, result: selected, comment })
             });
-            const data = await res.json();
-            if (data.success) {
-                Swal.fire('สำเร็จ', 'บันทึกผลเรียบร้อย', 'success').then(() => location.reload());
+            if ((await res.json()).success) {
+                Swal.fire('สำเร็จ', 'บันทึกเรียบร้อย', 'success').then(() => location.reload());
             }
         }
     }
