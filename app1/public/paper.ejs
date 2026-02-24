@@ -67,6 +67,31 @@
         cursor: pointer;
         transition: all 0.2s;
     }
+
+    /* ✅ จัดการเนื้อหาภายใน Card ด้วย Grid */
+    .paper-content-grid {
+        display: grid !important;
+        /* จอใหญ่แบ่ง 2 คอลัมน์เท่ากัน, จอเล็ก (ต่ำกว่า 768px) เหลือ 1 คอลัมน์ */
+        grid-template-columns: 1fr 1fr !important;
+        gap: 1.5rem !important;
+        width: 100% !important;
+    }
+
+    @media (max-width: 768px) {
+        .paper-content-grid {
+            grid-template-columns: 1fr !important; /* จอเล็กซ้อนบรรทัดกัน */
+        }
+    }
+
+    /* ปรับให้ Drop Zone มีความสูงเต็มพื้นที่คอลัมน์ */
+    .custom-drop-zone {
+        height: 100% !important;
+        min-height: 180px !important;
+    }
+
+    .file-scroll-area {
+        width: 100% !important; /* ป้องกันการเบียดซ้าย */
+    }
 </style>
 
 <input type="hidden" id="raw-groups-data" value='<%- JSON.stringify(groups) %>'>
@@ -157,49 +182,52 @@
 
                 // ส่วนที่ 2: Card หลัก (ส่งไฟล์และ Checkbox อาจารย์)
                 if (isUserInGroup || currentRole === "admin") {
-                    cardHtml += `
-                    <div class="card paper-card shadow-sm border-left-${paper.isSubmitted ? 'success' : 'warning'}">
-                        <div class="card-body p-4">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div>
-                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">${paper.mention}</div>
-                                    <h5 class="font-weight-bold text-gray-800 mb-0">${groupName} (ครั้งที่ ${passTime})</h5>
-                                </div>
-                                ${(currentRole === 'teacher' || currentRole === 'admin') ? `
-                                    <label class="custom-check-container" for="check-${targetGroup._id}">
-                                        <input type="checkbox" class="mr-2" id="check-${targetGroup._id}" 
-                                            onchange="updateReadyStatus(this, '${targetGroup._id}')"
-                                            ${targetGroup.status.includes('พร้อมสอบ') ? 'checked disabled' : ''}>
-                                        <span class="small font-weight-bold ${targetGroup.status.includes('พร้อมสอบ') ? 'text-success' : 'text-primary'}">
-                                            ${targetGroup.status.includes('พร้อมสอบ') ? 'พร้อมสอบแล้ว' : 'ยืนยันพร้อมสอบ'}
-                                        </span>
-                                    </label>
-                                ` : ''}
+                    // แก้ไขโครงสร้างในส่วน cardHtml (จุดที่ส่งไฟล์) ให้เป็นตามนี้ครับ
+                // เปลี่ยนโครงสร้างภายใน cardHtml ช่วงที่มีการส่งไฟล์
+                cardHtml += `
+                <div class="card paper-card shadow-sm border-left-${paper.isSubmitted ? 'success' : 'warning'} mb-4">
+                    <div class="card-body p-4">
+                        
+                        <div class="d-flex justify-content-between align-items-start mb-4">
+                            <div>
+                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">${paper.mention}</div>
+                                <h5 class="font-weight-bold text-gray-800 mb-0">${groupName} (ครั้งที่ ${passTime})</h5>
                             </div>
+                            ${(currentRole === 'teacher' || currentRole === 'admin') ? `
+                                <label class="custom-check-container" for="check-${targetGroup._id}">
+                                    <input type="checkbox" class="mr-2" id="check-${targetGroup._id}" 
+                                        onchange="updateReadyStatus(this, '${targetGroup._id}')"
+                                        ${targetGroup.status.includes('พร้อมสอบ') ? 'checked disabled' : ''}>
+                                    <span class="small font-weight-bold ${targetGroup.status.includes('พร้อมสอบ') ? 'text-success' : 'text-primary'}">
+                                        ${targetGroup.status.includes('พร้อมสอบ') ? 'พร้อมสอบแล้ว' : 'ยืนยันพร้อมสอบ'}
+                                    </span>
+                                </label>
+                            ` : ''}
+                        </div>
 
-                            <div class="row">
-                                <div class="col-md-6 mb-3 mb-md-0">
-                                    <div id="file-list-${paperId}" class="file-scroll-area border">
-                                        <div class="p-4 text-center text-muted small">กำลังโหลดรายการไฟล์...</div>
+                        <div class="paper-content-grid">
+                            <div id="file-list-${paperId}" class="file-scroll-area border">
+                                <div class="p-4 text-center text-muted small">กำลังโหลดรายการไฟล์...</div>
+                            </div>
+                            
+                            <div>
+                                ${paperDate.getTime() >= today.getTime() ? `
+                                    <div class="custom-drop-zone" id="drop-zone-${paperId}" onclick="document.getElementById('file-input-${paperId}').click()">
+                                        <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
+                                        <p class="small text-muted mb-0">คลิกหรือลากไฟล์มาที่นี่</p>
+                                        <input type="file" id="file-input-${paperId}" class="d-none" multiple onchange="handleUpload('${paperId}', this.files)">
                                     </div>
-                                </div>
-                                <div class="col-md-6">
-                                    ${paperDate.getTime() >= today.getTime() ? `
-                                        <div class="custom-drop-zone" id="drop-zone-${paperId}" onclick="document.getElementById('file-input-${paperId}').click()">
-                                            <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
-                                            <p class="small text-muted mb-0">คลิกหรือลากไฟล์มาที่นี่</p>
-                                            <input type="file" id="file-input-${paperId}" class="d-none" multiple onchange="handleUpload('${paperId}', this.files)">
-                                        </div>
-                                    ` : `
-                                        <div class="custom-drop-zone border-0 bg-light text-muted" style="cursor: default;">
-                                            <i class="fas fa-lock mb-2"></i>
-                                            <span class="small">ปิดการส่งเอกสาร (หมดเขตแล้ว)</span>
-                                        </div>
-                                    `}
-                                </div>
+                                ` : `
+                                    <div class="custom-drop-zone border-0 bg-light text-muted" style="cursor: default;">
+                                        <i class="fas fa-lock mb-2"></i>
+                                        <span class="small">ปิดการส่งเอกสาร (หมดเขตแล้ว)</span>
+                                    </div>
+                                `}
                             </div>
                         </div>
-                    </div>`;
+
+                    </div>
+                </div>`;
                 }
                 return cardHtml;
             }).join('');

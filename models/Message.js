@@ -25,6 +25,7 @@ const messageSchema = new mongoose.Schema({
             id: mongoose.Schema.Types.ObjectId
         },
   timestamp: { type: Date, default: Date.now },
+  groupMember:{ type: [String], required: true}
 });
 
 module.exports = mongoose.model("Message", messageSchema);

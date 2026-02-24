@@ -291,8 +291,26 @@ app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (re
     const messages = [];
 
     const groupId = req.params.groupId;
+    const group = await Group.findById(groupId);
 
     let hasMovement = false;
+
+    let mem1 = null;
+    let mem2 = null;
+    let adv = null;
+
+    if(group.member1 && !group.member1.includes("(Pending)")){
+      const cleanMem1 = group.member1.replace(" (Pending)","");
+      mem1 = cleanMem1;
+    }
+    if(group.member2 && !group.member2.includes("(Pending)")){
+      const cleanMem2 = group.member2.replace(" (Pending)","");
+      mem2 = cleanMem2;
+    }
+    if(group.advisor && !group.advisor.includes("(Pending)")){
+      const cleanAdv = group.advisor.replace(" (Pending)","");
+      adv = cleanAdv;
+    }
 
     // ถ้ามีข้อความ
     if(req.body.text && req.body.text.trim() !== ""){
@@ -303,7 +321,8 @@ app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (re
         type: "text",
         text: req.body.text.trim(),
         senderPic: req.session.user.picture,
-        timestamp: new Date()
+        timestamp: new Date(),
+        groupMember: [mem1,mem2,adv]
       });
       await textMessage.save();
       messages.push(textMessage);
@@ -341,7 +360,8 @@ app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (re
             fileId: fileId
           },
           senderPic: req.session.user.picture || null,
-          timestamp: new Date()
+          timestamp: new Date(),
+          groupMember: [mem1,mem2,adv]
         });
 
         await fileMessage.save();
@@ -570,24 +590,18 @@ app.get("/group", requireLogin, async (req, res) => {
     if(req.session.user.role === "admin"){
       groups = await Group.find().sort({ lastUpdatedTime: -1 });
     }else{   
-      groups = await Group.find({
-        $or: [
-          { member1: username },
-          { member2: username },
-          { advisor: username }
-        ]
-      }).sort({ lastUpdatedTime: -1 });
+      groups = await Group.find({ allMember: { $in: [username] } }).sort({ lastUpdatedTime: -1 });
     }
 
     let userInfo = [];
-
     if (groups.length > 0) {
-      const mem1 = await User.findOne({username: groups[0].member1});
-      const mem2 = await User.findOne({username: groups[0].member2});
-      const adv = await User.findOne({username: groups[0].advisor});
+      const [mem1, mem2, adv] = await Promise.all([
+        User.findOne({ username: groups[0].member1 }),
+        groups[0].member2 ? User.findOne({ username: groups[0].member2 }) : null,
+        groups[0].advisor ? User.findOne({ username: groups[0].advisor }) : null
+      ]);
       userInfo = [mem1, mem2, adv];
     }
-
     renderWithLayout(res, "group", { 
       title: "KMUTNB Project - Group",
       userInfo, 
@@ -781,18 +795,18 @@ app.post("/groups", requireLogin, async (req, res) => {
     const adv = advisor === null || advisor === "" || advisor === "undefined" ? null : `${advisor} (Pending)`;
 
     // บันทึกกลุ่มใหม่
-    const newGroup = new Group({ projectName, member1: member1, member2: mem2 , advisor : adv,status});
+    const newGroup = new Group({ projectName, member1: member1, member2: mem2 , advisor : adv,status , allMember: [member1]});
     await newGroup.save();
 
     sendGroupNotification("addGroup", newGroup._id, "ระบบ", "ระบบ", `คุณถูกเพิ่มเข้ากลุ่มโดย ${mem1.name}`, null, null , undefined , null ,  member2 , advisor)
 
     await User.findOneAndUpdate(
       { username: member1 }, // หรือฟิลด์สำหรับค้นหาผู้ใช้ เช่น { username: member1 }
-      { $set: { group: newGroup._id } }
+      { $set: { group: [newGroup._id] } }
     );
 
     // อัปเดต session.user.group = "true"
-    req.session.user.group = projectName;
+    req.session.user.group = [newGroup._id];
 
     res.status(201).send("บันทึกกลุ่มสำเร็จ");
   } catch (err) {
@@ -818,32 +832,40 @@ app.post("/group/accept-invitation/:groupId/:notiId", requireLogin, async (req, 
     }
     
     // 1. อัปเดตข้อมูลกลุ่ม
-    const user = await User.findOne({ username: username }); // ดึงข้อมูลผู้ใช้จาก DB เพื่อความแน่นอน
+    let user = await User.findOne({ username: username }); // ดึงข้อมูลผู้ใช้จาก DB เพื่อความแน่นอน
     if(user.role === "teacher"){
       group.advisor = username;
+      if (!group.allMember.includes(username)) {
+          group.allMember.push(username);
+      }
     }else{
       group.member2 = username;
+      if (!group.allMember.includes(username)) {
+          group.allMember.push(username);
+      }
     }
     await group.save();
 
     // 2. ลบแจ้งเตือนทิ้ง
     await Notification.findByIdAndDelete(notiId);
 
-    // 3. อัปเดตข้อมูล User ใน DB
+    let updatedUser;
     if (req.session.user.role !== "teacher") {
-      await User.findOneAndUpdate(
-        { username: username },
-        { $set: { group: group._id } }
-      );
-    }else{
-      await User.findOneAndUpdate(
-        { username: username },
-        { $push: { group: group._id } } // สำหรับ teacher อนุญาตให้มีหลายกลุ่มได้ (เก็บเป็น Array)
-      );
+        updatedUser = await User.findOneAndUpdate(
+            { username: username },
+            { $set: { group: group._id } },
+            { new: true } // ✅ คืนค่าที่อัปเดตแล้วกลับมา
+        );
+    } else {
+        updatedUser = await User.findOneAndUpdate(
+            { username: username },
+            { $push: { group: group._id } },
+            { new: true } // ✅ คืนค่าที่เพิ่มกลุ่มใหม่เข้าไปแล้วกลับมา
+        );
     }
 
     // 4. อัปเดต Session และบันทึกให้เสร็จก่อนตอบกลับ
-    req.session.user.group = group._id;
+    req.session.user.group = updatedUser.group;
     
     req.session.save((err) => {
       if (err) {
@@ -964,7 +986,9 @@ app.post("/groups/leave/:groupId", async (req, res) => {
       group.member2 = null; // ล้าง member2
     } else if (group.member2 === username) {
       group.member2 = null;
-    }  else {
+    }  else if (group.advisor === username) {
+      group.advisor = null;
+    } else {
       return res.status(400).send("คุณไม่ได้อยู่ในกลุ่มนี้");
     }
 
@@ -1064,13 +1088,24 @@ app.get("/updateGroup", requireLogin, async (req, res) => {
         const user2 = await User.findOne({ username: cleanM2Username });
         
         if (targetGroup.member2.includes("(Pending)")) {
-            mem2 = user2 ? { ...user2.toObject(), name: `${user2.name} (Pending)` } : null;
+            mem2 = user2 ? { ...user2.toObject(), lastname: `${user2.lastname} (Pending)` } : null;
         } else {
             mem2 = user2;
         }
     }
 
-    const adv = await User.findOne({ username: targetGroup.advisor?.replace(" (Pending)", "") });
+    let adv = null;
+    if (targetGroup.advisor) {
+        // ลบคำว่า (Pending) ออกก่อนค้นหาใน DB ถ้ามีการเก็บแบบต่อท้าย string
+        const cleanAdUsername = targetGroup.advisor.replace(" (Pending)", "");
+        const advisor = await User.findOne({ username: cleanAdUsername });
+        
+        if (targetGroup.advisor.includes("(Pending)")) {
+            adv = advisor ? { ...advisor.toObject(), lastname: `${advisor.lastname} (Pending)` } : null;
+        } else {
+            adv = advisor;
+        }
+    }
 
     userInfo = [mem1, mem2, adv];
 

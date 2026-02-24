@@ -156,7 +156,7 @@
 
 <div class="container-fluid" style="padding: 0; margin: 0; line-height: normal;">
     <!-- Page Heading -->
-    <div class="card" style="border-radius: 20px; margin: 40px; height: calc(100vh - 220px);" id="card">
+    <div class="card" style="border-radius: 20px; margin: 40px; height: 78;" id="card">
       <div class="card-body">
         <div class="row flex-column flex-sm-row" style="height: 100%;">
 
@@ -172,6 +172,9 @@
                     <strong><%= g.projectName %></strong>
                     <span>Status: <%= g.status %></span>
                   </div>
+                  <% if (user.role === 'teacher') { %>
+                    <button id="leaveGroupBtn" class="btn btn-danger" style="width: 45%;" value="<%= g._id %>">ออกจากกลุ่ม</button>
+                  <% } %> 
                 </li>
               <% }) %>
               
@@ -179,7 +182,7 @@
             
             <div class="<% if(user.role === 'teacher' || user.role === 'admin'){ %> d-none <% }else{ %> d-flex <% } %>flex-row" style="margin-bottom: 20px; justify-content: space-evenly;">
               <button id="addMemberBtn" class="btn btn-light" style="width: 45%;">เพิ่มสมาชิก</button>
-              <button id="leaveGroupBtn" class="btn btn-danger" style="width: 45%;">ออกจากกลุ่ม</button>
+              <button id="leaveGroupBtn" class="btn btn-danger" style="width: 45%;" value="<%= groups.length > 0 ? groups[0]._id : '' %>">ออกจากกลุ่ม</button>
             </div>
 
           </div>
@@ -222,6 +225,7 @@
       </div>
     </div>
   </div>
+</div>
 </div>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -352,34 +356,64 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function addMessage(msg) {
-    const div = document.createElement('div');
     const currentUser = "<%= user.username %>".trim();
-    const sender = (msg.senderUsername || "").trim();
+    // ตรวจสอบว่าผู้ใช้มีสิทธิ์เห็นข้อความนี้หรือไม่
+    if (currentUser && msg.groupMember && msg.groupMember.includes(currentUser)) {
+        const sender = (msg.senderUsername || "").trim();
+        const div = document.createElement('div');
+        div.classList.add(sender === currentUser ? 'chat-messages-sent' : 'chat-messages-received');
 
-    div.classList.add(sender === currentUser ? 'chat-messages-sent' : 'chat-messages-received');
+        // ฟังก์ชันช่วยจัดการ Text ให้ปลอดภัย (Escape HTML)
+        const safeText = (text) => {
+            const tmp = document.createElement('div');
+            tmp.textContent = text;
+            return tmp.innerHTML;
+        };
 
-    if (msg.type === "file" && msg.file && msg.file.fileId) {
-        const fileId = msg.file.fileId;
-        const fileName = msg.file.filename;
-        const mimeType = msg.file.contentType;
+        const sName = safeText(msg.senderName);
+        
+        if (msg.type === "file" && msg.file && msg.file.fileId) {
+            const { fileId, filename, contentType } = msg.file;
+            const fName = safeText(filename);
 
-        // 1. พรีวิวรูปภาพ (Responsive)
-        if (mimeType && mimeType.startsWith('image/')) {
-            div.innerHTML = `<div class="d-block my-2">${msg.senderName}:</div><a href="/image/${fileId}" target="_blank"><img src="/image/${fileId}" alt="${fileName}" class="chat-image-preview"></a><div class="mt-1 small"><a href="/file/download/${fileId}" class="${sender === currentUser ? 'text-white-50' : 'text-primary'} mb-2"><i class="fas fa-download"></i> โหลดรูป</a></div>`;
-        } 
-        // 2. พรีวิว PDF (Responsive)
-        else if (mimeType === 'application/pdf') {
-            div.innerHTML = `<div class="d-block my-2">${msg.senderName}: ${fileName}</div><div class="pdf-preview-box p-2 rounded d-flex align-items-center justify-content-center mb-2" style="color: #333;"><a href="/image/${fileId}" target="_blank" class="font-weight-bold d-block text-truncate" style="color: #4e73df; text-decoration: none;"><i class="fas fa-file-pdf text-danger fa-6x"></i></a></div>`;
-        } 
-        // 3. ไฟล์อื่นๆ
-        else {
-            div.innerHTML = `<div class="d-block my-2">${msg.senderName}: ${fileName}</div><div class="p-2 mb-2 rounded text-dark d-flex align-items-center justify-content-center"><a href="/file/download/${fileId}" download="${fileName}" class="text-truncate" style="max-width: 150px;"><i class="fas fa-file-alt fa-6x"></i></a></div>`;
+            if (contentType && contentType.startsWith('image/')) {
+                div.innerHTML = `
+                    <div class="d-block my-1 small font-weight-bold">${sName}:</div>
+                    <a href="/image/${fileId}" target="_blank">
+                        <img src="/image/${fileId}" alt="${fName}" class="chat-image-preview rounded shadow-sm" style="max-width: 200px; height: auto;">
+                    </a>
+                    <div class="mt-1 small">
+                        <a href="/file/download/${fileId}" class="${sender === currentUser ? 'text-white-50' : 'text-primary'}">
+                            <i class="fas fa-download"></i> โหลดรูป
+                        </a>
+                    </div>`;
+            } else if (contentType === 'application/pdf') {
+                div.innerHTML = `
+                    <div class="d-block my-1 small font-weight-bold">${sName}: ${fName}</div>
+                    <div class="pdf-preview-box p-2 rounded bg-light text-center border">
+                        <a href="/image/${fileId}" target="_blank">
+                            <i class="fas fa-file-pdf text-danger fa-4x"></i>
+                            <span class="d-block small mt-1 text-primary">เปิดดู PDF</span>
+                        </a>
+                    </div>`;
+            } else {
+                div.innerHTML = `
+                    <div class="d-block my-1 small font-weight-bold">${sName}: ${fName}</div>
+                    <div class="p-3 rounded bg-white border text-center">
+                        <a href="/file/download/${fileId}" download="${fName}">
+                            <i class="fas fa-file-alt text-secondary fa-4x"></i>
+                            <span class="d-block small mt-1">ดาวน์โหลดไฟล์</span>
+                        </a>
+                    </div>`;
+            }
+        } else {
+            // ป้องกัน XSS ด้วยการจัดการ Text ให้ปลอดภัย
+            div.innerHTML = `<div class="d-block my-1 small font-weight-bold">${sName}:</div><div>${safeText(msg.text)}</div>`;
         }
-    } else {
-        div.innerHTML = `<div class="d-block my-2">${msg.senderName}: ${msg.text}</div>`;
-    }
 
-    messagesContainer.appendChild(div);
+        messagesContainer.appendChild(div);
+    }
+    // เลื่อนลงล่างสุดเมื่อมีข้อความใหม่
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
@@ -466,21 +500,24 @@ document.addEventListener("DOMContentLoaded", () => {
         groupListSection.style.width = "100%";
         chatSection.style.width = "100%";
         cardConfig.style.setProperty('margin', '0', 'important');
-        cardConfig.style.setProperty('height', 'calc(100vh - 150px)', 'important');
+        cardConfig.style.setProperty('height', '85vh', 'important');
+        cardConfig.style.setProperty('border-radius', '0', 'important');
       } else if(window.innerWidth >= 576 && window.innerWidth < 960){ // จอกลาง รายชื่อแสดงพร้อมแชทแต่ปรับขนาด
         groupListSection.style.display = "block";
         chatSection.style.display = "flex";
         groupListSection.style.width = "40%";
         chatSection.style.width = "60%";
         cardConfig.style.setProperty('margin', '40px', 'important');
-        cardConfig.style.setProperty('height', 'calc(100vh - 220px)', 'important');
+        cardConfig.style.setProperty('height', '78vh', 'important');
+        cardConfig.style.setProperty('border-radius', '20px', 'important');
       } else { // จอใหญ่ รายชื่อแสดงพร้อมแชท
         groupListSection.style.display = "block";
         chatSection.style.display = "flex";
         groupListSection.style.width = "33.3333%";
         chatSection.style.width = "66.6666%";
         cardConfig.style.setProperty('margin', '40px', 'important');
-        cardConfig.style.setProperty('height', 'calc(100vh - 220px)', 'important');
+        cardConfig.style.setProperty('height', '78vh', 'important');
+        cardConfig.style.setProperty('border-radius', '20px', 'important');
       }
   }
 
@@ -491,21 +528,24 @@ document.addEventListener("DOMContentLoaded", () => {
         chatSection.style.display = "none";
         chatSection.style.width = "100%";
         cardConfig.style.setProperty('margin', '0', 'important');
-        cardConfig.style.setProperty('height', 'calc(100vh - 150px)', 'important');
+        cardConfig.style.setProperty('height', '85vh', 'important');
+        cardConfig.style.setProperty('border-radius', '0', 'important');
       } else if(window.innerWidth >= 576 && window.innerWidth < 960){ // จอกลาง รายชื่อแสดงพร้อมแชทแต่ปรับขนาด
         groupListSection.style.display = "block";
         chatSection.style.display = "flex";
         groupListSection.style.width = "50%";
         chatSection.style.width = "50%";
         cardConfig.style.setProperty('margin', '40px', 'important');
-        cardConfig.style.setProperty('height', 'calc(100vh - 220px)', 'important');
+        cardConfig.style.setProperty('height', '78vh', 'important');
+        cardConfig.style.setProperty('border-radius', '20px', 'important');
       } else { // จอใหญ่ แสดงทั้งสองฝั่ง
         groupListSection.style.display = "block";
         groupListSection.style.width = "33.3333%";
         chatSection.style.display = "flex";
         chatSection.style.width = "66.6666%";
         cardConfig.style.setProperty('margin', '40px', 'important');
-        cardConfig.style.setProperty('height', 'calc(100vh - 220px)', 'important');
+        cardConfig.style.setProperty('height', '78vh', 'important');
+        cardConfig.style.setProperty('border-radius', '20px', 'important');
       }
   }
 
@@ -560,4 +600,4 @@ setTimeout(initializeChat, 1000);
   });
 });
 </script>
-</div>
+
