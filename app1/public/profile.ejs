@@ -1,59 +1,129 @@
+<style>
+    /* 1. Profile Page Styling */
+    .profile-card {
+        border: none; border-radius: 20px;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+        overflow: hidden; background: white;
+    }
 
-<div class="container-fluid" style="min-height: 84vh; height: 100%;">
-    <div id="profile">
-        <div class="d-flex align-items-center justify-content-between mt-4">
-            <h1>โปรไฟล์</h1>
-            <button type="button" id="updateProfileBtn" class="btn btn-primary"><i class="fas fa-wrench"></i> แก้ไขโปรไฟล์</button>
+    .profile-header-bg {
+        height: 120px; background: linear-gradient(90deg, #4e73df 0%, #224abe 100%);
+    }
+
+    .avatar-wrapper {
+        margin-top: -60px; position: relative; display: inline-block;
+    }
+
+    .avatar-img {
+        width: 150px; height: 150px; object-fit: cover;
+        border-radius: 50%; border: 5px solid white;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    /* 2. Update Form Styling */
+    #drop-area {
+        width: 100%; max-width: 400px; padding: 30px;
+        border: 2px dashed #d1d3e2; border-radius: 15px;
+        background: #f8f9fc; cursor: pointer; transition: 0.3s;
+        text-align: center; margin: 0 auto;
+    }
+    #drop-area:hover { background: #f0f3ff; border-color: #4e73df; }
+    #drop-area i { font-size: 2.5rem; color: #4e73df; margin-bottom: 15px; }
+
+    #image-preview {
+        display: none; width: 150px; height: 150px;
+        object-fit: cover; border-radius: 50%; margin: 0 auto;
+    }
+
+    .form-label { font-weight: bold; color: #4e73df; font-size: 0.9rem; }
+    .input-readonly { background-color: #f8f9fc !important; border-color: #eaecf4; color: #858796; }
+</style>
+
+<div class="container-fluid py-4" style="min-height: 84vh; background: #f4f7f6;">
+    
+    <div id="profile" class="fade-in">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <h1 class="h3 mb-0 text-gray-800">โปรไฟล์ผู้ใช้งาน</h1>
+            <button type="button" id="updateProfileBtn" class="btn btn-primary shadow-sm">
+                <i class="fas fa-user-edit mr-2"></i> แก้ไขโปรไฟล์
+            </button>
         </div>
-        <div class="d-flex align-items-center justify-content-center  mt-4">
-            <div class="card" style="width: 600px;">
-                <div class="card-header" style="background-color: white;font-weight: bold;">
-                    ข้อมูลโปรไฟล์
-                </div>
-                <div class="card-body" style="font-size: large;">
-                    <p>ชื่อ: <%= user.name %> <%= user.lastname %></p>
-                    <p>อีเมล: <%= user.email || '-' %></p>
-                    <p>รหัสนักศึกษา: <%= (user.username) %></p>
-                    <p>เบอร์โทรศัพท์: <%= user.phone || '-' %></p>
-                    <div class="text-center mt-4">
-                        <% if (user.picture && user.picture !== "null" && user.picture !== "") { %>
-                            <img src="/image/<%= user.picture %>" alt="Profile Picture" style="max-width: 200px; max-height: 200px; border-radius: 50%; border: 2px solid #ccc;">
-                        <% } else { %>
-                            <img src="/img/undraw_profile.svg" alt="Profile Picture" style="max-width: 200px; max-height: 200px; border-radius: 50%; border: 2px solid #ccc;">
-                        <% } %>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card profile-card">
+                    <div class="profile-header-bg"></div>
+                    <div class="card-body text-center">
+                        <div class="avatar-wrapper">
+                            <% if (user.picture && user.picture !== "null" && user.picture !== "") { %>
+                                <img src="/image/<%= user.picture %>" class="avatar-img" alt="Profile">
+                            <% } else { %>
+                                <img src="/img/undraw_profile.svg" class="avatar-img" alt="Default Profile">
+                            <% } %>
+                        </div>
+                        
+                        <h3 class="mt-3 font-weight-bold text-gray-800"><%= user.name %> <%= user.lastname %></h3>
+                        <p class="text-muted"><i class="fas fa-id-card mr-2"></i> รหัสนักศึกษา: <%= user.username %></p>
+
+                        <div class="row text-left mt-5 px-lg-5">
+                            <div class="col-md-6 mb-4 mr-3">
+                                <label class="form-label">อีเมล</label>
+                                <div class="h6 text-gray-800 border-bottom pb-2"><%= user.email || '-' %></div>
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label">เบอร์โทรศัพท์</label>
+                                <div class="h6 text-gray-800 border-bottom pb-2"><%= user.phone || '-' %></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
     <div id="updateProfile" class="d-none">
-        <div class="d-flex align-items-center justify-content-between mt-4">
-            <h1>แก้ไขโปรไฟล์</h1>
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <h1 class="h3 mb-0 text-gray-800">ตั้งค่าข้อมูลส่วนตัว</h1>
         </div>
-        <div class="d-flex align-items-center justify-content-center  mt-4">
-            <div class="card" style="width: 600px;">
-                <div class="card-header" style="background-color: white;font-weight: bold;">
-                    แก้ไขโปรไฟล์
-                </div>
-                <div class="card-body" style="font-size: large;">
-                    <p>ชื่อ: </p>
-                    <input class="form-control mb-3" id="updateName" value="<%= user.name %> <%= user.lastname %>" style="width: 100%; display: inline-block;" disabled>
-                    <p>อีเมล: </p>
-                    <input class="form-control mb-3" id="updateEmail" value="<%= user.email %>" style="width: 100%; display: inline-block;" <%= user.role !== 'teacher' ? 'disabled' : '' %>>
-                    <p>รหัสนักศึกษา: </p>
-                    <input class="form-control mb-3" id="updateId" value="<%= user.username %>" style="width: 100%; display: inline-block;" disabled>
-                    <p>เบอร์โทรศัพท์: </p>
-                    <input class="form-control mb-4" id="updatePhone" value="<%= user.phone %>" style="width: 100%; display: inline-block;">
-                    <div class="justify-content-center align-items-center text-center mb-4 d-flex">
-                        <div id="drop-area" class="" >
-                            <p id="defaultDropText">ลากไฟล์รูปภาพมาวางที่นี่ หรือ คลิกเพื่อเลือกไฟล์</p>
-                            <input type="file" name="profileImage" id="pic-input" style="display:none;" accept="image/*">
-                            <img id="image-preview" src="" alt="">
+
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card profile-card shadow p-4">
+                    <div class="row">
+                        <div class="col-md-5 text-center mr-3">
+                            <label class="form-label d-block mb-3">รูปโปรไฟล์</label>
+                            <div id="drop-area">
+                                <i class="fas fa-cloud-upload-alt" id="image-icon"></i>&nbsp;
+                                <p id="defaultDropText" class="small mb-0">ลากรูปมาวางที่นี่ หรือคลิกเพื่อเลือก</p>
+                                <img id="image-preview" src="" alt="Preview">
+                                <input type="file" name="profileImage" id="pic-input" hidden accept="image/*">
+                            </div>
+                            <p class="small text-muted mt-2">แนะนำ: รูปทรงจัตุรัส ขนาดไม่เกิน 2MB</p>
                         </div>
-                    </div>
-                    <div class="d-flex justify-content-center">
-                        <button type="button" id="saveProfileBtn" class="btn btn-success"><i class="fas fa-save"></i> บันทึก</button>
-                        <button type="button" id="cancelProfileBtn" class="btn btn-danger ml-2"><i class="fas fa-times"></i> ยกเลิก</button>
+
+                        <div class="col-md-7">
+                            <div class="form-group">
+                                <label class="form-label">ชื่อ-นามสกุล (แก้ไขไม่ได้)</label>
+                                <input class="form-control input-readonly" value="<%= user.name %> <%= user.lastname %>" disabled>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">อีเมล</label>
+                                <input class="form-control" id="updateEmail" value="<%= user.email %>" <%= user.role !== 'teacher' ? 'disabled' : '' %> placeholder="example@email.com">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">เบอร์โทรศัพท์</label>
+                                <input class="form-control" id="updatePhone" value="<%= user.phone %>" placeholder="08x-xxx-xxxx">
+                            </div>
+
+                            <div class="mt-5 d-flex">
+                                <button type="button" id="saveProfileBtn" class="btn btn-success btn-block py-2 mr-2 shadow-sm">
+                                    <i class="fas fa-save mr-2"></i> บันทึกข้อมูล
+                                </button>
+                                <button type="button" id="cancelProfileBtn" class="btn btn-light border py-2 flex-shrink-1 px-4">
+                                    ยกเลิก
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -69,6 +139,7 @@
     const updatePhone = document.getElementById('updatePhone');
     
     const dropArea = document.getElementById('drop-area');
+    const picIcon = document.getElementById('image-icon')
     const picText = document.getElementById('defaultDropText');
     const picInput = document.getElementById('pic-input'); // ใช้ ID pic-input ตาม HTML
     const imagePreview = document.getElementById('image-preview');
@@ -86,6 +157,7 @@
         dropArea.style.border = 'none';
         imagePreview.src = "/image/" + initialPic;
         picText.style.display = "none";
+        picIcon.style.display = "none";
         imagePreview.style.display = "block";
         imagePreview.style.border = "2px solid #ccc";
         imagePreview.style.maxWidth = "200px";
@@ -131,6 +203,7 @@
                     imagePreview.style.maxWidth = "200px";
                     imagePreview.style.borderRadius = "50%";
                     picText.style.display = 'none'; 
+                    picIcon.style.display = 'none';
                 }
                 reader.readAsDataURL(file);
                 dropArea.style.border = 'none';

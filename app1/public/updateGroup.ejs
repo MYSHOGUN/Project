@@ -1,281 +1,262 @@
 <style>
-    #searchContainer, #searchAdvisorContainer {
-        position: relative;
-        width: 100%;
-        max-width: 400px;
+    /* 1. Layout & Containers */
+    .update-group-card {
+        background: white; padding: 2.5rem; border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        max-width: 650px; width: 95%; margin: 40px auto;
     }
+
+    #searchContainer, #searchAdvisorContainer { position: relative; width: 100%; }
+
     #searchMemberResults, #searchAdvisorResults {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        z-index: 1050;
-        max-height: 200px;
-        overflow-y: auto;
-        background: white;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        position: absolute; top: 100%; left: 0; right: 0; z-index: 1050;
+        max-height: 200px; overflow-y: auto; background: white;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        border: 1px solid #e3e6f0; border-radius: 10px; margin-top: 5px; display: none;
     }
+
+    /* 2. Visual Elements */
+    .project-title-box {
+        background: #f8f9fc; border-left: 5px solid #4e73df;
+        padding: 15px 20px; border-radius: 8px; margin-bottom: 25px;
+    }
+
+    .member-item {
+        display: flex; align-items: center; padding: 12px 18px;
+        background: #fff; border: 1px solid #e3e6f0;
+        border-radius: 12px; margin-bottom: 12px; transition: 0.3s;
+    }
+
+    .btn-add-member {
+        border: 2px dashed #d1d3e2; background: transparent; color: #858796;
+        border-radius: 12px; padding: 15px; width: 100%; transition: 0.3s;
+    }
+    .btn-add-member:hover { border-color: #4e73df; color: #4e73df; background: #f0f3ff; }
+
+    .badge-role { font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; margin-left: auto; }
 </style>
-<div class="container-fluid" style="padding: 0; margin: 0; height: 85vh; line-height: normal;">
+
+<div class="container-fluid d-flex align-items-start justify-content-center" style="min-height: 100vh; background: #f4f7f6; padding-top: 20px;">
     <div id="server-data" data-groups='<%- JSON.stringify(groups || []) %>' hidden></div>
-    <div id="grouping" class="d-flex flex-column align-items-center justify-content-center mt-4">
-    <h2>เพิ่มสมาชิกกลุ่ม</h2>
-            <div class="d-flex flex-row">
-                <h3 style="white-space: nowrap; margin-right: 10px;">ชื่อปริญญานิพนธ์:</h3>
-                <h3><%= groups[0].projectName %></h3>
-            </div>
-            <h3><%= userInfo[0].name %> <%= userInfo[0].lastname %></h3>
-            <% if (userInfo[1]) { %>
-              <h3><%= userInfo[1].name %> <%= userInfo[1].lastname %></h3>
-            <% }else{ %>
-            <button type="button" id="addMemberBtn" class="btn btn-secondary" style="width: 50%;background-color: white; color: gray;">
-                <h5 class="mt-2"><i class="fas fa-plus"></i> เพิ่มสมาชิก</h5>
-            </button>
 
-            <div id="searchContainer" class="d-none">
-                <div class="d-flex flex-row mt-3">
-                    <h3 class="mt-1" style="margin-right: 10px;">2.</h3>
-                    <input type="text" id="searchUser" class="form-control mb-3" style="margin-right: 20px;" placeholder="ค้นหาสมาชิกคนที่ 2">
-                    <button id="clearAddMemberBtn" class="btn btn-danger" style="display: none;margin-bottom: 20px;">ยกเลิก</button>
+    <div id="grouping" class="update-group-card d-flex flex-column">
+        <div class="text-center mb-4">
+            <h2 class="font-weight-bold text-primary">จัดการสมาชิกกลุ่ม</h2>
+            <p class="text-muted">ตรวจสอบและเพิ่มรายชื่อสมาชิกในโปรเจกต์ของคุณ</p>
+        </div>
+
+        <div class="project-title-box">
+            <small class="text-primary font-weight-bold uppercase">ชื่อปริญญานิพนธ์</small>
+            <h4 class="mb-0 mt-1 font-weight-bold text-gray-800"><%= groups[0].projectName %></h4>
+        </div>
+
+        <div class="mb-4">
+            <label class="font-weight-bold text-gray-700 mb-3"><i class="fas fa-users mr-2"></i> สมาชิกนักศึกษา</label>
+            
+            <div class="member-item border-left-primary">
+                <i class="fas fa-user-circle fa-2x text-gray-300 mr-3"></i>
+                <div>
+                    <h6 class="mb-0 font-weight-bold"><%= userInfo[0].name %> <%= userInfo[0].lastname %></h6>
+                    <small class="text-muted"><%= userInfo[0].username %></small>
                 </div>
-                <ul id="searchMemberResults" class="list-group"></ul>
+                <span class="badge-role bg-primary text-white ml-auto">หัวหน้ากลุ่ม</span>
             </div>
 
-            <div class="d-flex flex-row align-items-center" id="selectedContainer" style="display:none;">
-                <h3 id="selectedUser" style="margin-right: 20px;"></h3>
-                <button id="clearSelection" class="btn btn-danger" style="display: none;margin-bottom: 10px;">ยกเลิก</button>
-            </div>
+            <% if (userInfo[1]) { %>
+                <div class="member-item border-left-success">
+                    <i class="fas fa-user-circle fa-2x text-gray-300 mr-3"></i>
+                    <div>
+                        <h6 class="mb-0 font-weight-bold"><%= userInfo[1].name %> <%= userInfo[1].lastname %></h6>
+                        <small class="text-muted"><%= userInfo[1].username %></small>
+                    </div>
+                    <span class="badge-role bg-success text-white ml-auto">สมาชิก</span>
+                </div>
+            <% } else { %>
+                <button type="button" id="addMemberBtn" class="btn-add-member mt-2">
+                    <i class="fas fa-user-plus mr-2"></i> เพิ่มสมาชิกคนที่ 2
+                </button>
+
+                <div id="searchContainer" class="d-none mt-2">
+                    <div class="input-group shadow-sm">
+                        <input type="text" id="searchUser" class="form-control" placeholder="ค้นหาชื่อหรือรหัสนักศึกษา...">
+                        <div class="input-group-append">
+                            <button id="clearAddMemberBtn" class="btn btn-outline-danger">ยกเลิก</button>
+                        </div>
+                    </div>
+                    <ul id="searchMemberResults" class="list-group"></ul>
+                </div>
+
+                <div class="member-item border-left-info mt-2" id="selectedContainer" style="display:none; background: #f0faff;">
+                    <i class="fas fa-check-circle text-info mr-3"></i>
+                    <strong id="selectedUser" class="text-info"></strong>
+                    <button id="clearSelection" class="btn btn-sm btn-link text-danger ml-auto">แก้ไข</button>
+                </div>
             <% } %>
+        </div>
+
+        <div class="mb-4">
+            <label class="font-weight-bold text-gray-700 mb-3"><i class="fas fa-chalkboard-teacher mr-2"></i> อาจารย์ที่ปรึกษา</label>
             
             <% if (userInfo[2]) { %>
-              <h3>Advisor: <%= userInfo[2].name %> <%= userInfo[2].lastname %></h3>
-            <% }else{ %>
-            <button type="button" id="addAdvisorBtn" class="btn btn-secondary" style="width: 50%;background-color: white; color: gray;">
-                <h5 class="mt-2"><i class="fas fa-plus"></i> เพิ่มอาจารย์ที่ปรึกษา</h5>
-            </button>
-
-            <div id="searchAdvisorContainer" class="d-none">
-                <div class="d-flex flex-row">
-                    <h3 class="mt-1" style="margin-right: 10px;">Advisor:</h3>
-                    <input type="text" id="searchAdvisor" class="form-control mb-3" style="margin-right: 20px;" placeholder="ค้นหาอาจารย์ที่ปรึกษา">
-                    <button id="clearAddAdvisorBtn" class="btn btn-danger" style="display: none;margin-bottom: 20px;">ยกเลิก</button>
+                <div class="member-item" style="border-left: 5px solid #f6c23e; background: #fffdf5;">
+                    <i class="fas fa-user-tie fa-2x text-warning mr-3"></i>
+                    <div>
+                        <h6 class="mb-0 font-weight-bold">อ. <%= userInfo[2].name %> <%= userInfo[2].lastname %></h6>
+                        <small class="text-muted">Advisor</small>
+                    </div>
                 </div>
-                <ul id="searchAdvisorResults" class="list-group"></ul>
-            </div>
+            <% } else { %>
+                <button type="button" id="addAdvisorBtn" class="btn-add-member">
+                    <i class="fas fa-plus mr-2"></i> เพิ่มอาจารย์ที่ปรึกษา
+                </button>
 
-            <div class="d-flex flex-row align-items-center" id="selectedAdvisorContainer" style="display:none;">
-                <h3 id="selectedAdvisor" style="margin-right: 20px;"></h3>
-                <button id="clearAdvisorSelection" class="btn btn-danger" style="display: none;margin-bottom: 10px;">ยกเลิก</button>
-            </div>
+                <div id="searchAdvisorContainer" class="d-none mt-2">
+                    <div class="input-group shadow-sm">
+                        <input type="text" id="searchAdvisor" class="form-control" placeholder="ค้นหาชื่ออาจารย์...">
+                        <div class="input-group-append">
+                            <button id="clearAddAdvisorBtn" class="btn btn-outline-danger">ยกเลิก</button>
+                        </div>
+                    </div>
+                    <ul id="searchAdvisorResults" class="list-group"></ul>
+                </div>
+
+                <div class="member-item mt-2" id="selectedAdvisorContainer" style="display:none; border-left: 5px solid #f6c23e; background: #fffdf5;">
+                    <i class="fas fa-check-circle text-warning mr-3"></i>
+                    <strong id="selectedAdvisor" class="text-warning"></strong>
+                    <button id="clearAdvisorSelection" class="btn btn-sm btn-link text-danger ml-auto">แก้ไข</button>
+                </div>
             <% } %>
-            <div class="justify-content-evenly">
-              <button type="submit" id="updateGroupBtn" class="btn btn-success" disabled>
-                  <h5 class="mt-2">อัปเดตข้อมูล</h5>
-              </button>
-              <button type="reset" id="cancelGroupBtn" class="btn btn-danger" onclick="window.location.href = '/group';">
-                  <h5 class="mt-2">ยกเลิก</h5>
-              </button>
-            </div>
-            </div>
+        </div>
+
+        <div class="mt-4 d-flex" style="gap: 15px;">
+            <button type="submit" id="updateGroupBtn" class="btn btn-success flex-grow-1 py-3 font-weight-bold shadow-sm" style="border-radius: 12px;" disabled>
+                <i class="fas fa-save mr-2"></i> บันทึกการเปลี่ยนแปลง
+            </button>
+            <button class="btn btn-light border px-4 py-3" onclick="window.location.href='/group'" style="border-radius: 12px; color: #e74a3b;">
+                ยกเลิก
+            </button>
+        </div>
+    </div>
 </div>
- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-        <script>
-        $(function() {
-            let chosenUser = null;
-            let chosenAdvisor = null;
-            const $grouping = $("#grouping");
-            const $addGroup = $("#add-group");
 
-            
-            const serverData = document.getElementById('server-data');
-            if (!serverData) {
-              console.error('❌ server-data element not found in DOM');
-              return;
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(function() {
+        let chosenUser = null;
+        let chosenAdvisor = null;
+        const serverData = document.getElementById('server-data');
+        const groups = JSON.parse(serverData.dataset.groups || '[]');
+
+        function updateButtonState() {
+            if (chosenUser !== null || chosenAdvisor !== null) {
+                $("#updateGroupBtn").prop("disabled", false).addClass("shadow");
+            } else {
+                $("#updateGroupBtn").prop("disabled", true).removeClass("shadow");
             }
+        }
 
-            const groups = JSON.parse(serverData.dataset.groups || '[]');
-            console.log('📥 Groups from server:', groups);
+        // --- Search Student ---
+        $("#addMemberBtn").on("click", function() {
+            $(this).hide();
+            $("#searchContainer").removeClass("d-none").fadeIn();
+        });
 
+        $("#clearAddMemberBtn").on("click", function() {
+            $("#searchContainer").addClass("d-none");
+            $("#addMemberBtn").fadeIn();
+            $("#searchUser").val('');
+            $("#searchMemberResults").empty();
+        });
 
-            // ฟังก์ชันแสดง add-group และ group
-            function showGrouping() {
-                $grouping.removeClass("d-none").addClass("d-flex");
-                $addGroup.removeClass("d-flex").addClass("d-none");
-            }
-
-            if (groups.length > 0) {
-                showGrouping();
-            }
-
-            $("#showGroupBtn").on("click", showGrouping);
-
-            // ฟังก์ชันแสดง add-member
-            function showAddMember() {
-                $("#searchContainer").removeClass("d-none");
-                $("#addMemberBtn").addClass("d-none");
-                $("#clearAddMemberBtn").css("display", "inline-block");
-            }
-            $("#addMemberBtn").on("click", showAddMember);
-
-            // ปุ่มยกเลิกการเพิ่มสมาชิก
-            function clearAddMember() {
-                $("#searchContainer").addClass("d-none");
-                $("#addMemberBtn").removeClass("d-none");
-                $("#clearAddMemberBtn").css("display", "none");
-
-                chosenUser = null;
-                $("#searchUser").val('');
-                $("#searchMemberResults").empty();
-                $("#selectedUser").text('');
-                $("#selectedContainer").hide();
-                $("#clearSelection").hide();
-            }
-            $("#clearAddMemberBtn").on("click", clearAddMember);
-
-            // Search live สมาชิก
-            $("#searchUser").on("keyup", function() {
-                const keyword = $(this).val().trim();
-                const $results = $("#searchMemberResults");
-                $results.empty();
-                if (keyword.length > 0) {
-                    $.get("/search-users?keyword=" + encodeURIComponent(keyword), function(data) {
-                        $results.empty();
-                        if (data && data.length > 0) {
-                            data.forEach(function(user) {
-                                const $li = $(`<li class="list-group-item list-group-item-action" style="cursor:pointer;">${user.name} ${user.lastname} (${user.username})</li>`);
-                                $li.on("click", function() {
-                                    chosenUser = user.username;
-                                    $("#selectedUser").text(`2. ${user.name} ${user.lastname}`);
-                                    $("#searchContainer").hide();
-                                    $("#selectedContainer").show();
-                                    $("#clearSelection").show();
-                                    $("#addMemberBtn").addClass("d-none");
-                                    updateButtonState();
-                                    $results.empty();
-                                });
-                                $results.append($li);
-                            });
-                        } else {
-                            $results.append(`<li class="list-group-item text-muted">ไม่พบผู้ใช้</li>`);
-                        }
-                    });
-                }
-            });
-
-            // ปุ่มยกเลิก selection สมาชิก
-            $("#clearSelection").on("click", function() {
-                chosenUser = null;
-                $("#selectedUser").text('');
-                $("#selectedContainer").hide();
-                $("#searchContainer").show();
-                $("#searchUser").val('');
-                $("#searchMemberResults").empty();
-                $("#clearSelection").hide();
-                updateButtonState();
-            });
-
-            // ฟังก์ชันแสดง add-advisor
-            function showAddAdvisor() {
-                $("#searchAdvisorContainer").removeClass("d-none");
-                $("#addAdvisorBtn").addClass("d-none");
-                $("#clearAddAdvisorBtn").css("display", "inline-block");
-            }
-            $("#addAdvisorBtn").on("click", showAddAdvisor);
-
-            // ปุ่มยกเลิกการเพิ่มอาจารย์ที่ปรึกษา
-            function clearAddAdvisor() {
-                $("#searchAdvisorContainer").addClass("d-none");
-                $("#addAdvisorBtn").removeClass("d-none");
-                $("#clearAddAdvisorBtn").css("display", "none");
-
-                chosenAdvisor = null;
-                $("#searchAdvisor").val('');
-                $("#searchAdvisorResults").empty();
-                $("#selectedAdvisor").text('');
-                $("#selectedAdvisorContainer").hide();
-                $("#clearAdvisorSelection").hide();
-            }
-            $("#clearAddAdvisorBtn").on("click", clearAddAdvisor);
-
-            // Search live อาจารย์
-            $("#searchAdvisor").on("keyup", function() {
-                const keyword = $(this).val().trim();
-                const $results = $("#searchAdvisorResults");
-                $results.empty();
-                if (keyword.length > 0) {
-                    $.get("/search-advisor?keyword=" + encodeURIComponent(keyword), function(data) {
-                        $results.empty();
-                        if (data && data.length > 0) {
-                            data.forEach(function(user) {
-                                const $li = $(`<li class="list-group-item list-group-item-action" style="cursor:pointer;">${user.name} ${user.lastname} (${user.username})</li>`);
-                                $li.on("click", function() {
-                                    chosenAdvisor = user.username;
-                                    $("#selectedAdvisor").text(`Advisor: ${user.name} ${user.lastname}`);
-                                    $("#searchAdvisorContainer").hide();
-                                    $("#selectedAdvisorContainer").show();
-                                    $("#clearAdvisorSelection").show();
-                                    $("#addAdvisorBtn").addClass("d-none");
-                                    updateButtonState();
-                                    $results.empty();
-                                });
-                                $results.append($li);
-                            });
-                        } else {
-                            $results.append(`<li class="list-group-item text-muted">ไม่พบผู้ใช้</li>`);
-                        }
-                    });
-                }
-            });
-
-            // ปุ่มยกเลิก selection อาจารย์
-            $("#clearAdvisorSelection").on("click", function() {
-                chosenAdvisor = null;
-                $("#selectedAdvisor").text('');
-                $("#selectedAdvisorContainer").hide();
-                $("#searchAdvisorContainer").show();
-                $("#searchAdvisor").val('');
-                $("#searchAdvisorResults").empty();
-                $("#clearAdvisorSelection").hide();
-                updateButtonState();
-            });
-            
-
-            function updateButtonState() {
-                // เช็คว่ามีการเลือกสมาชิกใหม่ หรือ อาจารย์ใหม่ หรือไม่
-                const hasChosenNewMember = chosenUser !== null;
-                const hasChosenNewAdvisor = chosenAdvisor !== null;
-
-                // ถ้ามีการเลือกอย่างใดอย่างหนึ่ง ให้เปิดปุ่มอัปเดต
-                if (hasChosenNewMember || hasChosenNewAdvisor) {
-                    $("#updateGroupBtn").prop("disabled", false);
-                    console.log('🔄 Change detected, enabling update button');
-                } else {
-                    $("#updateGroupBtn").prop("disabled", true);
-                    console.log('✔️ No changes, disabling update button');
-                }
-            }
-
-            $("#updateGroupBtn").on("click", function() {
-                const mem2 = groups[0].member2 || chosenUser || null;
-                const adv = groups[0].advisor || chosenAdvisor || null;
-                const groupData = {
-                    member2: mem2,
-                    advisor: adv,
-                };
-
-                $.ajax({
-                    url: "/groups-update/<%= groups.length > 0 ? groups[0]._id : 'no-id' %>",
-                    method: "POST",
-                    contentType: "application/json",
-                    data: JSON.stringify(groupData),
-                    success: function(res) {
-                        alert("อัปเดตสำเร็จ!");
-                        window.location.reload(); // โหลดหน้าใหม่เพื่ออัปเดต
-                    },
-                    error: function(err) {
-                        alert("เกิดข้อผิดพลาด: " + err.responseText);
+        $("#searchUser").on("keyup", function() {
+            const keyword = $(this).val().trim();
+            const $results = $("#searchMemberResults");
+            if (keyword.length > 1) {
+                $.get("/search-users?keyword=" + encodeURIComponent(keyword), function(data) {
+                    $results.empty().show();
+                    if (data && data.length > 0) {
+                        data.forEach(user => {
+                            $results.append(`<li class="list-group-item list-group-item-action search-li" data-username="${user.username}" data-fullname="${user.name} ${user.lastname}">
+                                <strong>${user.name} ${user.lastname}</strong> <small class="text-muted">(${user.username})</small>
+                            </li>`);
+                        });
+                    } else {
+                        $results.append(`<li class="list-group-item text-muted">ไม่พบข้อมูล</li>`);
                     }
                 });
+            } else { $results.hide(); }
+        });
+
+        $(document).on("click", ".search-li", function() {
+            const username = $(this).data("username");
+            const fullname = $(this).data("fullname");
+            chosenUser = username;
+            $("#selectedUser").text(fullname);
+            $("#searchContainer").hide();
+            $("#selectedContainer").fadeIn().css("display", "flex");
+            updateButtonState();
+        });
+
+        $("#clearSelection").on("click", function() {
+            chosenUser = null;
+            $("#selectedContainer").hide();
+            $("#searchContainer").show();
+            updateButtonState();
+        });
+
+        // --- Search Advisor (Logic เดียวกับด้านบน) ---
+        $("#addAdvisorBtn").on("click", function() {
+            $(this).hide();
+            $("#searchAdvisorContainer").removeClass("d-none").fadeIn();
+        });
+
+        $("#searchAdvisor").on("keyup", function() {
+            const keyword = $(this).val().trim();
+            const $results = $("#searchAdvisorResults");
+            if (keyword.length > 1) {
+                $.get("/search-advisor?keyword=" + encodeURIComponent(keyword), function(data) {
+                    $results.empty().show();
+                    data.forEach(user => {
+                        $results.append(`<li class="list-group-item list-group-item-action adv-li" data-username="${user.username}" data-fullname="${user.name} ${user.lastname}">
+                            <strong>อ. ${user.name} ${user.lastname}</strong>
+                        </li>`);
+                    });
+                });
+            }
+        });
+
+        $(document).on("click", ".adv-li", function() {
+            chosenAdvisor = $(this).data("username");
+            $("#selectedAdvisor").text("อ. " + $(this).data("fullname"));
+            $("#searchAdvisorContainer").hide();
+            $("#selectedAdvisorContainer").fadeIn().css("display", "flex");
+            updateButtonState();
+        });
+
+        $("#clearAdvisorSelection").on("click", function() {
+            chosenAdvisor = null;
+            $("#selectedAdvisorContainer").hide();
+            $("#searchAdvisorContainer").show();
+            updateButtonState();
+        });
+
+        $("#updateGroupBtn").on("click", function() {
+            const groupData = {
+                member2: chosenUser || groups[0].member2,
+                advisor: chosenAdvisor || groups[0].advisor
+            };
+
+            $.ajax({
+                url: "/groups-update/<%= groups.length > 0 ? groups[0]._id : '' %>",
+                method: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(groupData),
+                success: function() {
+                    alert("อัปเดตข้อมูลกลุ่มสำเร็จ!");
+                    window.location.href = "/group";
+                },
+                error: function(err) { alert("เกิดข้อผิดพลาด: " + err.responseText); }
             });
         });
-        </script>
+    });
+</script>
