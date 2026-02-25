@@ -1,157 +1,89 @@
 <style>
-  /* Wrapper คลุม Input และปุ่มบวก */
-  .chat-input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    flex: 1; /* ให้ขยายเต็มพื้นที่ที่เหลือ */
-  }
-
-  /* ช่องกรอกข้อความ */
-  #message-input {
-    padding-right: 45px !important; /* เว้นที่ด้านขวาไม่ให้ตัวหนังสือทับปุ่ม */
-    border-radius: 25px !important;
-    height: 45px;
-    border: 1px solid #d1d3e2;
-  }
-
-  /* ปุ่มบวกที่ลอยอยู่ในช่องแชท */
-  #file-input-label {
-    position: absolute;
-    right: 15px; /* ห่างจากขอบขวาของ input */
-    top: 50%;
-    transform: translateY(-50%); /* จัดให้อยู่กึ่งกลางแนวตั้ง */
-    cursor: pointer;
-    color: #4e73df;
-    margin-bottom: 0;
-    z-index: 10;
-    line-height: 0;
-  }
-
-  #file-input-label:hover {
-    color: #2e59d9;
-    transform: translateY(-50%) scale(1.1);
-  }
-
-  /* ปุ่มส่งข้อความแบบวงกลม */
-  #message-sent {
-    width: 45px;
-    height: 45px;
-    border-radius: 50% !important;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 0;
-    flex-shrink: 0; /* ไม่ให้ปุ่มเบี้ยว */
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-
-  #group-list-section {
-    background-color: #f8f9fc !important; /* เปลี่ยนจาก grey เป็นสีขาวนวล */
-    height: 100% !important;
-    border-right: 1px solid #e3e6f0;
-    padding: 0 !important;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .group-header {
-    padding: 1.5rem;
-    background: #ffffff;
-    border-bottom: 1px solid #e3e6f0;
-  }
-
-  .group-list-container {
-    flex-grow: 1; /* กินพื้นที่ที่เหลือทั้งหมด */
-    overflow-y: auto; /* เปิด Scroll แนวตั้ง */
-    padding: 1rem 1.5rem;
-    scrollbar-width: thin; /* ปรับขนาด scrollbar (Firefox) */
-  }
-
-  /* ปรับแต่ง List Item ให้เป็น Card เล็กๆ */
+  /* --- ส่วนสไตล์เดิมของคุณ (รักษาไว้) --- */
+  .chat-input-wrapper { position: relative; display: flex; align-items: center; flex: 1; }
+  #message-input { padding-right: 45px !important; border-radius: 25px !important; height: 45px; border: 1px solid #d1d3e2; }
+  #file-input-label { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #4e73df; z-index: 10; line-height: 0; }
+  #message-sent { width: 45px; height: 45px; border-radius: 50% !important; display: flex; justify-content: center; align-items: center; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+  #group-list-section { background-color: #f8f9fc !important; height: 100% !important; border-right: 1px solid #e3e6f0; padding: 0 !important; display: flex; flex-direction: column; }
+  
+  /* --- ปรับปรุงส่วน Group Item เพื่อให้ "ดัน" บรรทัดล่าง --- */
   .group-item {
     background: #ffffff !important;
     border: 1px solid #e3e6f0 !important;
     border-radius: 12px !important;
     margin-bottom: 12px !important;
     padding: 1rem !important;
-    transition: all 0.2s ease-in-out !important;
     cursor: pointer;
     border-left: 5px solid transparent !important;
     box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    /* ✅ บังคับแนวตั้งเพื่อให้ส่วนที่กางออกดันตัวล่างลงไป */
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    transition: all 0.2s ease-in-out !important;
   }
 
-  .group-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    background-color: #ffffff !important;
-    border-color: #4e73df !important;
-  }
-
-  /* ✅ สถานะ Active เมื่อเลือกกลุ่ม */
   .group-item.active-group {
     background-color: #f0f3ff !important;
     border-color: #4e73df !important;
-    border-left: 5px solid #4e73df !important; /* เปลี่ยนเป็นสีน้ำเงิน Primary ให้เข้ากัน */
-    box-shadow: 0 4px 12px rgba(78, 115, 223, 0.15);
+    border-left: 5px solid #4e73df !important;
   }
 
-  .group-item strong {
-    color: #4e73df;
-    font-size: 1.05rem;
-    display: block;
-    margin-bottom: 4px;
-  }
-
-  .group-item span {
-    font-size: 0.85rem;
-    color: #858796;
-  }
-
-  /* ส่วนปุ่มกดด้านล่าง */
-  .group-actions {
-    padding: 1.5rem;
-    background: #ffffff;
-    border-top: 1px solid #e3e6f0;
-  }
-
-  .btn-group-custom {
-    border-radius: 10px !important;
-    font-weight: 600;
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-    transition: all 0.2s;
-  }
-  .message-content {
-    max-width: 85%;
-    word-wrap: break-word;
-  }
-  .chat-image-preview {
+  .group-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     width: 100%;
-    max-width: 230px;
-    height: auto;
-    border-radius: 12px;
-    display: block;
-    transition: transform 0.2s;
   }
-  .chat-image-preview:hover {
-    transform: scale(1.02);
-  }
-  .pdf-preview-box {
+
+  /* ✅ เมนูที่กางออกมา (ใช้ max-height เพื่อให้มี Transition ตอนหุบ) */
+  .custom-expand-menu {
+    max-height: 0;
+    opacity: 0;
+    visibility: hidden; /* กันการจองพื้นที่ตอนปิด */
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0, 1, 0, 1), opacity 0.2s ease, visibility 0.2s; 
     width: 100%;
-    max-width: 280px;
+    background-color: #fdfdfd;
+    border-radius: 8px;
+}
+
+  /* เมื่อมีการเพิ่มคลาส show */
+  .custom-expand-menu.show {
+    max-height: 500px; /* ใส่เผื่อไว้เยอะๆ ได้เลย */
+    opacity: 1;
+    visibility: visible;
+    margin-top: 10px;
+    border: 1px solid #d1d3e2;
+    transition: max-height 0.4s cubic-bezier(0.9, 0, 0.1, 1), opacity 0.4s ease;
+}
+
+  .expand-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    color: #e74a3b;
+    text-decoration: none !important;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
   }
-  @media (max-width: 576px) {
-    .chat-image-preview {
-      max-width: 100%;
-    }
-    .message-content {
-      max-width: 95%;
-    }
+  .expand-item:hover { background-color: #fff1f0; }
+
+  /* ✅ ปรับแต่งลูกศร: ลบ Border และตั้งค่าหมุน */
+  .btn-link, .expand-trigger-btn {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    text-decoration: none !important;
   }
-  #card {
-    transition: margin 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+
+  .rotate-180 {
+    transform: rotate(180deg);
+    transition: transform 0.3s ease;
   }
+
+  #card { transition: margin 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important; }
 </style>
 
 <div class="container-fluid" style="padding: 0; margin: 0; line-height: normal;">
@@ -165,25 +97,51 @@
           <div class="mx-4 mt-4">
             <h2 style="color: #4e73df;">รายชื่อกลุ่ม</h2>
             <ul class="list-group" id="group-list">
-
-              <% groups.forEach(g => { %>
-                <li class="list-group-item group-item mb-2" data-groupname="<%= g.projectName %>" data-groupid="<%= g._id %>">
-                  <div class="d-flex flex-column">
+            <% activeGroups.forEach(g => { %>
+              <li class="list-group-item group-item mb-2" data-groupname="<%= g.projectName %>" data-groupid="<%= g._id %>">
+                <div class="group-item-header">
+                  <div class="d-flex flex-column" style="pointer-events: none;">
                     <strong><%= g.projectName %></strong>
                     <span>Status: <%= g.status %></span>
                   </div>
-                  <% if (user.role === 'teacher') { %>
-                    <button id="leaveGroupBtn" class="btn btn-danger" style="width: 45%;" value="<%= g._id %>">ออกจากกลุ่ม</button>
-                  <% } %> 
-                </li>
-              <% }) %>
-              
-            </ul>
-            
-            <div class="<% if(user.role === 'teacher' || user.role === 'admin'){ %> d-none <% }else{ %> d-flex <% } %>flex-row" style="margin-bottom: 20px; justify-content: space-evenly;">
-              <button id="addMemberBtn" class="btn btn-light" style="width: 45%;">เพิ่มสมาชิก</button>
-              <button id="leaveGroupBtn" class="btn btn-danger" style="width: 45%;" value="<%= groups.length > 0 ? groups[0]._id : '' %>">ออกจากกลุ่ม</button>
-            </div>
+                  <% if(g.advisor === user.username) { %>
+                    <button type="button" class="btn btn-link p-0 text-gray-400" onclick="toggleExpand(event, this)">
+                      <i class="fas fa-chevron-down"></i>
+                    </button>
+                  <% } %>
+                </div>
+                <div class="custom-expand-menu">
+                  <div class="expand-item" onclick="confirmLeaveGroup(event, '<%= g._id %>')">
+                    <i class="fas fa-sign-out-alt mr-2"></i> ออกจากกลุ่มนี้
+                  </div>
+                </div>
+              </li>
+              <div class="<% if(user.role === 'teacher' || user.role === 'admin'){ %> d-none <% }else{ %> d-flex <% } %>flex-row" style="margin-bottom: 20px; justify-content: space-evenly;">
+                <button id="addMemberBtn" class="btn btn-primary" style="width: 45%; border: 1px; border-style: solid;">เพิ่มสมาชิก</button>
+                <button id="leaveGroupBtn" class="btn btn-danger" style="width: 45%; border: 1px; border-style: solid;" onclick="confirmLeaveGroup(event, '<%= g._id %>')">ออกจากกลุ่ม</button>
+              </div>
+            <% }) %>
+            <% if(pastGroups.length > 0) { %>
+              <div class="d-flex align-items-center my-4">
+                <div style="flex: 1; height: 1px; background-color: #e3e6f0;"></div>
+                <span class="mx-3 small text-muted font-weight-bold" style="white-space: nowrap;">
+                  ประวัติการเข้าร่วม
+                </span>
+                <div style="flex: 1; height: 1px; background-color: #e3e6f0;"></div>
+              </div>
+            <% } %>
+            <% pastGroups.forEach(g => { %>
+              <li class="list-group-item group-item mb-2" data-groupname="<%= g.projectName %>" data-groupid="<%= g._id %>">
+                <div class="group-item-header">
+                  <div class="d-flex flex-column" style="pointer-events: none;">
+                    <strong><%= g.projectName %></strong>
+                    <span>Status: <%= g.status %></span>
+                  </div>
+                </div>
+              </li>
+            <% }) %>
+          </ul>
+
 
           </div>
         </div>                     
@@ -227,6 +185,7 @@
   </div>
 </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const socket = io({ query: { username: "<%= user.username %>" } });
@@ -245,8 +204,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // ในส่วนประกาศตัวแปรใน <script> ให้แก้บรรทัดนี้เล็กน้อยเพื่อให้ตรงกับ ID ใหม่
   const fileInputLabel = document.getElementById('file-input-label'); // ถ้าคุณมีการเรียกใช้ในส่วนอื่น
 
-  let currentGroupId = "<%= groups.length > 0 ? groups[0]._id : '' %>";
-  let currentGroupName = "<%= groups.length > 0 ? groups[0].projectName : '' %>";
+  let currentGroupId = "<%= activeGroups.length > 0 ? activeGroups[0]._id : '' %>";
+  let currentGroupName = "<%= activeGroups.length > 0 ? activeGroups[0].projectName : '' %>";
 
   let selectedFiles = [];
 
@@ -473,7 +432,7 @@ document.addEventListener("DOMContentLoaded", () => {
     showGroupListSection();
   });
   // ปุ่มออกจากกลุ่ม
-  leaveGroupBtn.addEventListener('click', () => {
+  /*leaveGroupBtn.addEventListener('click', () => {
     if(confirm("คุณแน่ใจหรือไม่ว่าต้องการออกจากกลุ่มนี้?")){
       fetch(`/groups/leave/${currentGroupId}`, { method: 'POST' })
         .then(res => {
@@ -486,7 +445,7 @@ document.addEventListener("DOMContentLoaded", () => {
         })
         .catch(err => alert("เกิดข้อผิดพลาด: " + err.message));
     }
-  });
+  });*/
   // ปุ่มเพิ่มสมาชิก
   addMemberBtn.addEventListener('click', () => {
       window.location.href = '/updateGroup';
@@ -599,5 +558,67 @@ setTimeout(initializeChat, 1000);
     }
   });
 });
+
+// ✅ เติม: ฟังก์ชันสลับการ "ดัน" บรรทัดล่าง
+window.toggleExpand = (e, btn) => {
+    e.stopPropagation();
+    const li = btn.closest('.group-item');
+    const menu = li.querySelector('.custom-expand-menu');
+    const icon = btn.querySelector('i');
+    
+    // ✅ 1. ปิดอันอื่น (ใช้ classList.remove แทนการสั่ง display)
+    document.querySelectorAll('.custom-expand-menu').forEach(m => {
+        if (m !== menu && m.classList.contains('show')) {
+            m.classList.remove('show');
+            m.closest('.group-item').querySelector('i').classList.remove('rotate-180');
+        }
+    });
+
+    // ✅ 2. สลับคลาส show ของตัวที่กด
+    const isShowing = menu.classList.toggle('show');
+    
+    if (isShowing) {
+        icon.classList.add('rotate-180');
+    } else {
+        icon.classList.remove('rotate-180');
+    }
+};
+window.confirmLeaveGroup = async (e, groupId) => {
+    e.stopPropagation();
+    if (!groupId) return;
+
+    const result = await Swal.fire({
+      title: 'ยืนยันการออกจากกลุ่ม?',
+      text: "คุณแน่ใจใช่ไหมที่จะออกจากกลุ่มนี้?",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      confirmButtonText: 'ยืนยันการออก',
+      cancelButtonText: 'ยกเลิก'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`/groups/leave/${groupId}`, { method: 'POST' });
+        if (res.ok) {
+          await Swal.fire('สำเร็จ', 'ออกจากกลุ่มเรียบร้อยแล้ว', 'success');
+          window.location.reload();
+        } else {
+          throw new Error('Server Error');
+        }
+      } catch (err) {
+        Swal.fire('ผิดพลาด', 'ไม่สามารถออกจากกลุ่มได้', 'error');
+      }
+    }
+  };
+
+  // ✅ เติม: แก้ไข Logic การเลือกกลุ่ม (ห้ามคลิกทะลุปุ่มลูกศร)
+  groupList.addEventListener("click", (e) => {
+    if (e.target.closest('button') || e.target.closest('.custom-expand-menu')) {
+      return; 
+    }
+    const li = e.target.closest('.group-item');
+    if (li) joinGroup(li.dataset.groupid, li.dataset.groupname);
+  });
 </script>
 

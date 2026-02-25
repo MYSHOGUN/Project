@@ -593,19 +593,35 @@ app.get("/group", requireLogin, async (req, res) => {
       groups = await Group.find({ allMember: { $in: [username] } }).sort({ lastUpdatedTime: -1 });
     }
 
-    let userInfo = [];
-    if (groups.length > 0) {
-      const [mem1, mem2, adv] = await Promise.all([
-        User.findOne({ username: groups[0].member1 }),
-        groups[0].member2 ? User.findOne({ username: groups[0].member2 }) : null,
-        groups[0].advisor ? User.findOne({ username: groups[0].advisor }) : null
-      ]);
-      userInfo = [mem1, mem2, adv];
+    let userInfo = []; // เก็บข้อมูลสมาชิกแยกตามกลุ่ม
+
+    const activeGroups = groups.filter(g => g.member1 === username || g.member2 === username || g.advisor === username); // ปรับเงื่อนไขตามฟิลด์ status ของคุณ
+    const pastGroups = groups.filter(g => g.member1 != username && g.member2 != username && g.advisor != username);
+
+    if (activeGroups && activeGroups.length > 0) {
+        const myUsername = username; // username ของคุณ
+
+        for (const group of activeGroups) {
+            // 1. เช็คว่ากลุ่มนี้เราเป็น member1 หรือ member2 หรือไม่
+            if (group.member1 === myUsername || group.member2 === myUsername) {
+                
+                // 2. ถ้าใช่ ดึงข้อมูล User ของกลุ่มนี้ออกมา
+                const [mem1, mem2, adv] = await Promise.all([
+                    User.findOne({ username: group.member1 }),
+                    group.member2 ? User.findOne({ username: group.member2 }) : null,
+                    group.advisor ? User.findOne({ username: group.advisor }) : null
+                ]);
+
+                // 3. เก็บข้อมูลเข้า Array (อาจจะเก็บคู่กับ Group ID เพื่อให้นำไปใช้ง่าย)
+                userInfo = [mem1, mem2, adv]
+            }
+        }
     }
     renderWithLayout(res, "group", { 
       title: "KMUTNB Project - Group",
       userInfo, 
-      groups,
+      activeGroups,
+      pastGroups,
       user: req.session.user
     }, req.path,req);
   }catch(err){
