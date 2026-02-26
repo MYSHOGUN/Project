@@ -83,7 +83,7 @@ const processExcelFile = (buffer) => {
         const worksheet = workbook.Sheets[sheetName];
 
         // แปลงข้อมูลชีทเป็น JSON Array
-        const data = XLSX.utils.sheet_to_json(worksheet); 
+        const data = XLSX.utils.sheet_to_json(worksheet, { range: 8 });
         
         if (data.length === 0) {
             throw new Error("Excel file is empty or data format is incorrect.");
@@ -98,73 +98,58 @@ const processExcelFile = (buffer) => {
 
 // 3. ฟังก์ชันสำหรับบันทึกข้อมูล JSON ลง MongoDB
 async function saveUsersFromExcel(dataArray) {
-    if (dataArray.length === 0) {
+    if (!dataArray || dataArray.length === 0) {
         return { insertedCount: 0 };
     }
 
     const bulkOps = [];
     const saltRounds = 10;
-    
-    // 1. กำหนดค่า Placeholder ที่ไม่ซ้ำกันสำหรับ Field ที่จำเป็นแต่ยังไม่ได้ตั้งค่า
-    // ⚠️ ต้องใช้สตริงที่ไม่น่าจะซ้ำกับรหัสผ่านจริงเพื่อระบุว่าเป็นบัญชีที่รอการลงทะเบียน
     const PENDING_PASS_STRING = 'PENDING_REGISTRATION_FOR_SIGNUP'; 
-    const PENDING_NAME = 'Pending';
-    const PENDING_LASTNAME = 'Registration';
-
-    // 2. Hash สตริง Placeholder นี้เพื่อใช้เป็นรหัสผ่านชั่วคราว
     const pendingHashedPassword = await bcrypt.hash(PENDING_PASS_STRING, saltRounds); 
 
     for (const row of dataArray) {
-        // 3. ดึงเฉพาะ username จาก Excel
-        const usernameFromExcel = row.username || row.Username || row.USERNAME || row.รหัสประจำตัว; 
-        
-        if (!usernameFromExcel) {
-            console.warn(`Skipping row due to invalid or missing username:`, row);
-            continue;
-        }
+        // 1. ดึงเลขประจำตัว
+        const rawUsername = row['เลขประจำตัว']; 
+        if (!rawUsername || isNaN(rawUsername)) continue; 
 
-        const branch = row.branch || row.Branch || row.BRANCH || row.สาขา ||"EnET";
+        const trimmedUsername = String(rawUsername).trim();
+        const emailExel = `s${trimmedUsername}@kmutnb.ac.th`.toLowerCase();
 
-        const role = row.role || row.Role || row.ROLE || row.ตำแหน่ง || 'user';
+        // 2. จัดการเรื่องชื่อ (เอา คำนำหน้า + ชื่อ)
+        const title = (row['คำนำหน้าชื่อ'] || '').trim();
+        const firstName = (row['ชื่อ'] || 'Pending').trim();
+        const lastName = (row['นามสกุล'] || 'Registration').trim();
 
-        const trimedBranch = String(branch).trim();
-        const trimmedUsername = String(usernameFromExcel).trim();
-        const emailExel = "s"+trimmedUsername+"@kmutnb.ac.th";
 
-        // 4. จัดเตรียมข้อมูลผู้ใช้: ใช้ Hashed Placeholder Password และค่า Default อื่นๆ
         const userData = {
             username: trimmedUsername,
             email: emailExel,
-            password: pendingHashedPassword, // ⬅️ Hashed Placeholder
-            name: PENDING_NAME,             // ⬅️ Placeholder
-            lastname: PENDING_LASTNAME,     // ⬅️ Placeholder
-            // ใช้ค่า Default สำหรับ non-required fields
-            role: role, 
-            phone: null, 
-            group: null,
-            branch: trimedBranch // สามารถนำเข้า group ได้ถ้ามีใน Excel
+            password: pendingHashedPassword,
+            title: title,
+            name: firstName, 
+            lastname: lastName,
+            role: 'user',
+            branch: "EnET",
+            picture: "",
+            createdAt: new Date()
         };
         
-        // 5. ใช้ bulkWrite เพื่อเพิ่มผู้ใช้ใหม่ (ถ้า username ไม่ซ้ำ)
         bulkOps.push({
             updateOne: {
-                filter: { username: userData.username },
-                // $setOnInsert: ทำการ Insert เฉพาะเมื่อไม่พบ username ใน DB เท่านั้น
+                filter: { username: trimmedUsername },
                 update: { $setOnInsert: userData }, 
                 upsert: true 
             }
         });
     }
 
-    // ดำเนินการ bulk write
-    const result = await User.bulkWrite(bulkOps);
-
-    console.log(`✅ Bulk Write Complete: ${result.upsertedCount} items inserted, ${result.matchedCount} items matched (skipped).`);
-    
-    // คืนค่าจำนวนรายการที่ถูกเพิ่มใหม่
-    return { 
-        insertedCount: result.upsertedCount 
-    };
+    try {
+        const result = await User.bulkWrite(bulkOps, { ordered: false });
+        return { insertedCount: result.upsertedCount };
+    } catch (error) {
+        console.error("❌ Bulk Write Error:", error);
+        throw error;
+    }
 }
 
 let bucket;
@@ -700,6 +685,7 @@ app.post("/login" , async (req, res) => {
   
     req.session.user = {
       username: user.username,
+      title: user.title,
       name: user.name,
       lastname: user.lastname,
       role: user.role,
@@ -1578,7 +1564,7 @@ app.post("/register", upload.single("profileImage"), async (req, res) => {
     }
 
     
-    if (existingUser && existingUser.email && existingUser.phone === null && existingUser.name === "Pending" && existingUser.lastname === "Registration") {
+    if (existingUser && existingUser.email && existingUser.phone === null && existingUser.name === name && existingUser.lastname === lastname) {
       const hashedPassword = await bcrypt.hash(password, 10);
       await User.findOneAndUpdate(
         { username: username },
