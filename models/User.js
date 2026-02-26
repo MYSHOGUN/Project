@@ -17,7 +17,8 @@ const userSchema = new mongoose.Schema({
           contentType: String,
           id: mongoose.Schema.Types.ObjectId
       }
-  ,branch: { type: String, default: "EnET" }
+  ,branch: { type: String, default: "EnET" },
+  status: { type: String,default: "ยังไม่จบ"}
 });
 
 module.exports = mongoose.model("User", userSchema);

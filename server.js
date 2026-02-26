@@ -159,6 +159,25 @@ let bucket;
   console.log("✅ GridFSBucket initialized");
 });*/
 
+async (req, res) => {
+    try {
+        // ดึงเฉพาะคนที่เป็น user และเรียงลำดับรหัส
+        const students = await User.find({ role: 'user' }).sort({ username: 1 });
+
+        // Logic การจัดกลุ่ม (Group by Prefix)
+        const groupedData = students.reduce((acc, student) => {
+            const prefix = student.username.substring(0, 2); // ดึง 63, 64...
+            if (!acc[prefix]) acc[prefix] = [];
+            acc[prefix].push(student);
+            return acc;
+        }, {});
+
+        res.render('admin/user-list', { groupedData });
+    } catch (err) {
+        res.status(500).send("Error fetching users");
+    }
+}
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({
@@ -254,6 +273,7 @@ function generateEventId() {
 
 // Routes
 app.get("/" ,requireLogin, async (req, res) => {
+  if(req.session.user.role === "admin") return res.redirect("/userInfo")
   return res.redirect("/group");
   try {
     const newsList = await News.find().sort({ createdAt: -1 });
@@ -563,6 +583,7 @@ app.get("/file", requireLogin, (req, res) => {
   renderWithLayout(res, "file", { title: "KMUTNB Project - File" }, req.path,req);
 });
 app.get("/group", requireLogin, async (req, res) => {
+  if(req.session.user.role === "admin") return res.redirect("/userInfo")
   try{
 
     if (req.session.user && Array.isArray(req.session.user.group) && req.session.user.group.length === 0 && req.session.user.role !== "teacher") {
@@ -2190,6 +2211,7 @@ app.post("/api/submitPaperResult", requireLogin, async (req, res) => {
             const student = await User.findOne({ username: group.member1 });
             const isEnET = student && student.branch === "EnET";
 
+
             if (examResult.fail.length > 0) {
                 // มีคนให้ตกแม้แต่คนเดียว = ตก
                 group.status = group.passTimes === 0 ? "ไม่ผ่านการสอบหัวข้อ" : (isEnET ? "ไม่ผ่านการสอบปริญญานิพนธ์" : "ไม่ผ่านการสอบก้าวหน้า");
@@ -2201,6 +2223,20 @@ app.post("/api/submitPaperResult", requireLogin, async (req, res) => {
                 } else if (group.passTimes === 1) {
                     group.status = isEnET ? "ผ่านการสอบปริญญานิพนธ์" : "ผ่านการสอบก้าวหน้า";
                     group.passTimes = 2;
+                    await User.findOneAndUpdate(
+                        { username: group.member1 }, 
+                        { status: "จบแล้ว" }, 
+                        { new: true }
+                    );
+
+                    // ✅ 2. เช็คสมาชิกคนที่ 2
+                    if (group.member2 != null) {
+                        await User.findOneAndUpdate(
+                            { username: group.member2 }, 
+                            { status: "จบแล้ว" }, 
+                            { new: true }
+                        );
+                    }
                 }
             }
             await group.save();
@@ -2455,6 +2491,39 @@ app.get("/groupInfo/:id", async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).send("Server Error");
+    }
+});
+
+app.get("/userInfo", requireLogin, async (req, res) => {
+    // 1. ตรวจสอบสิทธิ์ Admin
+    if (req.session.user.role !== "admin") {
+        return res.redirect("/group");
+    }
+
+    try {
+        // 2. ดึงเฉพาะคนที่เป็น user และเรียงลำดับรหัส
+        const students = await User.find({ role: 'user' }).sort({ username: 1 });
+
+        // 3. Logic การจัดกลุ่ม (Group by Prefix 2 ตัวหน้าของ username)
+        const groupedData = students.reduce((acc, student) => {
+            // ตรวจสอบว่ามี username และมีความยาวพอไหม เพื่อกัน Error
+            if (student.username && student.username.length >= 2) {
+                const prefix = student.username.substring(0, 2); // ดึง 63, 64...
+                if (!acc[prefix]) acc[prefix] = [];
+                acc[prefix].push(student);
+            }
+            return acc;
+        }, {});
+
+        // 4. ส่งข้อมูลไปที่หน้า userInfo.ejs ผ่าน Layout
+        renderWithLayout(res, "userInfo", { 
+            title: "KMUTNB Project - User Info", 
+            groupedData // ส่งก้อนข้อมูลที่จัดกลุ่มแล้วไปให้ EJS
+        }, req.path, req);
+
+    } catch (err) {
+        console.error("❌ Error fetching users:", err);
+        res.status(500).send("Error fetching users");
     }
 });
       

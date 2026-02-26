@@ -1,0 +1,201 @@
+<style>
+    /* ✅ 1. คุม Container หลักให้สูงคงที่ 84vh และห้ามมี Scrollbar นอก */
+    .user-info-wrapper {
+        height: 84vh; /* บังคับความสูงคงที่ */
+        display: flex;
+        flex-direction: column;
+        padding-bottom: 20px;
+        overflow: hidden; /* ห้าม Scroll ทั้งหน้าจอ */
+    }
+
+    /* ส่วนหัวและช่องค้นหา (ไม่ต้อง Scroll) */
+    .info-header-section {
+        flex-shrink: 0;
+        padding: 1rem 0;
+    }
+
+    /* ✅ 2. ส่วนที่เก็บ Accordion ให้ Scroll ได้เฉพาะในโซนนี้ */
+    #userAccordion {
+        flex-grow: 1;
+        overflow-y: auto; /* เปิด Scroll เฉพาะส่วนรายชื่อ */
+        padding-right: 5px;
+        /* เว้นระยะล่างสุดให้เมนูตัวสุดท้ายเปิดได้ */
+        padding-bottom: 100px !important; 
+    }
+
+    /* ปรับแต่ง Scrollbar ของส่วนรายชื่อ */
+    #userAccordion::-webkit-scrollbar { width: 6px; }
+    #userAccordion::-webkit-scrollbar-thumb { background: #d1d3e2; border-radius: 10px; }
+
+    /* การจัดกลุ่มแบบ Card */
+    .year-section {
+        border: none;
+        border-radius: 15px;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+
+    /* ✅ 3. เมนูจัดการ (Dropdown) ให้ลอยทับและไม่ยาวเกินไป */
+    .custom-expand-menu {
+        max-height: 0;
+        opacity: 0;
+        visibility: hidden;
+        overflow-y: auto;
+        transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+        width: 100%;
+        background-color: #fdfdfd;
+        border-radius: 8px;
+        z-index: 100;
+        position: relative;
+    }
+
+    .custom-expand-menu.show {
+        max-height: 140px; /* จำกัดความสูงเมนูไม่ให้ดันตารางจนเละ */
+        opacity: 1;
+        visibility: visible;
+        margin-top: 5px;
+        border: 1px dashed #d1d3e2;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .search-wrapper { position: relative; max-width: 500px; margin-bottom: 15px; }
+    .search-input { padding-left: 45px; border-radius: 50px; height: 45px; border: 2px solid #e3e6f0; }
+    .search-icon { position: absolute; left: 18px; top: 13px; color: #d1d3e2; }
+    .student-avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 1px solid #d1d3e2;}
+    .rotate-180 { transform: rotate(180deg); transition: 0.3s ease; }
+</style>
+
+<div class="container-fluid user-info-wrapper">
+    <div class="info-header-section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h2 class="text-gray-800 font-weight-bold mb-0">รายชื่อนักศึกษาแยกตามปี</h2>
+            <span class="badge badge-info p-2">จำนวนทั้งหมด: <%= Object.values(groupedData).flat().length %> คน</span>
+        </div>
+
+        <div class="search-wrapper">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" id="mainSearch" class="form-control search-input" placeholder="ค้นหารหัส หรือ ชื่อนักศึกษา...">
+        </div>
+    </div>
+
+    <div id="userAccordion">
+        <% 
+           const years = Object.keys(groupedData).sort((a, b) => b - a);
+           years.forEach(year => { 
+        %>
+            <div class="card year-section group-container">
+                <div class="year-header" style="cursor:pointer; padding: 1rem; display:flex; justify-content:space-between; align-items:center;" data-toggle="collapse" data-target="#year-<%= year %>">
+                    <span class="h5 mb-0 font-weight-bold text-primary">ปีการศึกษาที่ขึ้นต้นด้วย <%= year %></span>
+                    <i class="fas fa-chevron-down text-gray-400"></i>
+                </div>
+
+                <div id="year-<%= year %>" class="collapse show">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table mb-0" style="table-layout: fixed;">
+                                <thead class="bg-light small">
+                                    <tr>
+                                        <th style="width: 40%;">นักศึกษา</th>
+                                        <th style="width: 25%;">เลขประจำตัว</th>
+                                        <th style="width: 20%;">สาขา</th>
+                                        <th style="width: 15%; text-align:center;">สถานะ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% groupedData[year].forEach(u => { %>
+                                        <tr class="student-item" data-search-text="<%= u.username %> <%= u.name %> <%= u.lastname %>">
+                                            <td class="align-middle">
+                                                <div class="d-flex align-items-center">
+                                                    <% if (u.picture && u.picture !== "" && u.picture !== "null" && u.picture !== undefined) { %>
+                                                        <img src="/image/<%= u.picture %>" class="student-avatar mr-2" onerror="this.src='/img/undraw_profile.svg'">
+                                                    <% } else { %>
+                                                        <img src="/img/undraw_profile.svg" class="student-avatar mr-2">
+                                                    <% } %>
+                                                    <div class="font-weight-bold text-truncate" style="max-width: 150px;"><%= u.name %></div>
+                                                </div>
+                                            </td>
+                                            <td class="align-middle text-muted"><%= u.username %></td>
+                                            <td class="align-middle"><%= u.branch || 'EnET' %></td>
+                                            <td class="text-center align-middle">
+                                                <% if (u.status === "จบแล้ว" || u.status === "สำเร็จการศึกษา") { %>
+                                                    <span class="badge badge-success px-3 py-2">
+                                                        <i class="fas fa-check-circle mr-1"></i> จบแล้ว
+                                                    </span>
+                                                <% } else { %>
+                                                    <span class="badge badge-warning px-3 py-2 text-white" style="background-color: #f6c23e;">
+                                                        <i class="fas fa-clock mr-1"></i> ยังไม่จบ
+                                                    </span>
+                                                <% } %>
+                                            </td>
+                                        </tr>
+                                    <% }) %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <% }) %>
+    </div>
+</div>
+
+<script>
+    // ✅ ระบบค้นหาแบบ Real-time (ซ่อน/แสดง อัตโนมัติ)
+    document.getElementById('mainSearch').addEventListener('input', function(e) {
+        const val = e.target.value.toLowerCase();
+        const groups = document.querySelectorAll('.group-container');
+
+        groups.forEach(group => {
+            const rows = group.querySelectorAll('.student-item');
+            let matchCount = 0;
+
+            rows.forEach(row => {
+                const text = row.getAttribute('data-search-text').toLowerCase();
+                if (text.includes(val)) {
+                    row.style.display = "";
+                    matchCount++;
+                } else {
+                    row.style.display = "none";
+                }
+            });
+
+            // ถ้าในกลุ่มปีนั้นไม่มีข้อมูลที่ตรงเลย ให้ซ่อนทั้งกลุ่ม
+            if (matchCount > 0) {
+                group.style.display = "";
+                // ถ้ามีการค้นหา ให้กาง Accordion ออกดูทันที
+                if (val !== "") $(group.querySelector('.collapse')).collapse('show');
+            } else {
+                group.style.display = "none";
+            }
+        });
+    });
+    window.toggleExpand = (e, btn) => {
+    e.stopPropagation();
+    const li = btn.closest('.group-item');
+    const menu = li.querySelector('.custom-expand-menu');
+    const icon = btn.querySelector('i');
+    
+    // ปิดอันอื่นก่อน
+    document.querySelectorAll('.custom-expand-menu').forEach(m => {
+        if (m !== menu && m.classList.contains('show')) {
+            m.classList.remove('show');
+            m.closest('.group-item').querySelector('i').classList.remove('rotate-180');
+        }
+    });
+
+    // สลับคลาส show
+    const isShowing = menu.classList.toggle('show');
+    
+    if (isShowing) {
+        icon.classList.add('rotate-180');
+        
+        // ✅ เพิ่ม: สั่งให้เลื่อนมามองเห็นเมนูที่เพิ่งเปิด (กรณีอยู่ขอบล่างจอ)
+        setTimeout(() => {
+            li.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 300);
+        
+    } else {
+        icon.classList.remove('rotate-180');
+    }
+};
+</script>
