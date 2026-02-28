@@ -2269,29 +2269,55 @@ app.get("/admin", requireLogin, async (req, res) => {
 });
 
 app.post("/api/admin", requireLogin, async (req, res) => {
-  if(req.session.user.role !== "admin"){
-    return res.status(403).json({ error: "Unauthorized" });
-  }
-  try {
-      const { chosenAdvisor } = req.body;
+    // 🛡️ 1. เช็คสิทธิ์ Admin ปัจจุบัน
+    if (req.session.user.role !== "admin") {
+        return res.status(403).json({ error: "Unauthorized" });
+    }
 
-      if (!chosenAdvisor) {
-          return res.status(400).json({ error: "Missing chosenAdvisor" });
-      }
+    try {
+        const { chosenAdvisor } = req.body;
 
-      const adminUser = await User.findOneAndUpdate({ username: req.session.user.username }, { role: "teacher" });
+        if (!chosenAdvisor) {
+            return res.status(400).json({ error: "Missing chosenAdvisor" });
+        }
 
-      const advisorUser = await User.findOneAndUpdate({ username: chosenAdvisor }, { role: "admin" });
+        // ป้องกันการโอนสิทธิ์ให้ตัวเอง (ซึ่งจะทำให้ Role มั่ว)
+        if (chosenAdvisor === req.session.user.username) {
+            return res.status(400).json({ error: "คุณเป็น Admin อยู่แล้ว" });
+        }
 
-      if (!adminUser || !advisorUser) {
-        return res.status(404).json({ error: "User not found" });
-      }
+        // 2. เริ่มกระบวนการโอนสิทธิ์
+        // เปลี่ยนคนใหม่ให้เป็น Admin
+        const advisorUser = await User.findOneAndUpdate(
+            { username: chosenAdvisor }, 
+            { role: "admin" },
+            { new: true }
+        );
 
-      res.json({ success: true, message: `เปลี่ยน ${advisorUser.username} เป็น admin และ ${adminUser.username} เป็น teacher เรียบร้อยแล้ว` });
-  }catch (err) {
-      console.error("Admin Action Error:", err);
-      res.status(500).json({ error: "Internal Server Error" });
-  }
+        if (!advisorUser) {
+            return res.status(404).json({ error: "ไม่พบผู้ใช้ที่ต้องการมอบสิทธิ์ให้" });
+        }
+
+        // เปลี่ยนตัวเอง (Admin คนเก่า) ให้เป็น Teacher
+        const oldAdmin = await User.findOneAndUpdate(
+            { username: req.session.user.username }, 
+            { role: "teacher" },
+            { new: true }
+        );
+
+        // 🔴 จุดสำคัญ: อัปเดต Session ของตัวเองด้วย 
+        // ไม่เช่นนั้นคุณจะยังเข้าหน้า Admin ได้จนกว่าจะ Logout แต่จะแก้ข้อมูลไม่ได้เพราะ DB ไม่ตรง
+        req.session.user.role = "teacher";
+
+        res.json({ 
+            success: true, 
+            message: `โอนสิทธิ์ Admin ให้ ${advisorUser.name} เรียบร้อยแล้ว ขณะนี้คุณมีสิทธิ์เป็น อาจารย์` 
+        });
+
+    } catch (err) {
+        console.error("❌ Admin Transfer Error:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
 });
 
 app.get("/api/server-time", (req, res) => {
@@ -2622,27 +2648,43 @@ app.get("/addSecretary", requireLogin, async (req, res) => {
 });
 
 app.post("/api/addSecretary", requireLogin, async (req, res) => {
-  if(req.session.user.role !== "admin"){
-    return res.status(403).json({ error: "Unauthorized" });
-  }
-  try {
-      const { chosenAdvisor } = req.body;
+    // 1. ตรวจสอบสิทธิ์ Admin
+    if (req.session.user.role !== "admin") {
+        return res.status(403).json({ error: "คุณไม่มีสิทธิ์ดำเนินการในส่วนนี้" });
+    }
 
-      if (!chosenAdvisor) {
-          return res.status(400).json({ error: "Missing chosenAdvisor" });
-      }
+    try {
+        // 2. รับค่า username จาก req.body (ให้ตรงกับที่ AJAX ส่งมา)
+        const { username } = req.body; 
 
-      const advisorUser = await User.findOneAndUpdate({ username: chosenAdvisor }, { role: "secretary" });
+        if (!username) {
+            return res.status(400).json({ error: "กรุณาระบุรหัสอาจารย์ที่ต้องการมอบสิทธิ์" });
+        }
 
-      if (!advisorUser) {
-        return res.status(404).json({ error: "User not found" });
-      }
+        // 3. ค้นหาและอัปเดต โดยระบุเงื่อนไขเพิ่มว่าต้องเป็นอาจารย์เท่านั้น (Optional แต่แนะนำ)
+        const advisorUser = await User.findOneAndUpdate(
+            { username: username, role: "teacher" }, // ค้นหาอาจารย์
+            { role: "secretary" },                  // เปลี่ยนเป็นเลขาฯ
+            { new: true }                           // คืนค่าที่อัปเดตแล้วกลับมา
+        );
 
-      res.json({ success: true, message: `เปลี่ยน ${advisorUser.username} เป็น secretary เรียบร้อย` });
-  }catch (err) {
-      console.error("Admin Action Error:", err);
-      res.status(500).json({ error: "Internal Server Error" });
-  }
+        // 4. กรณีหาไม่เจอ (อาจจะเพราะรหัสผิด หรือไม่ใช่ role teacher)
+        if (!advisorUser) {
+            return res.status(404).json({ 
+                error: "ไม่พบข้อมูลอาจารย์ หรือผู้ใช้รายนี้มีสิทธิ์อื่นอยู่แล้ว" 
+            });
+        }
+
+        // 5. ส่งผลลัพธ์กลับไปให้ SweetAlert แสดงผล
+        res.json({ 
+            success: true, 
+            message: `มอบสิทธิ์เลขานุการให้แก่ ${advisorUser.name} ${advisorUser.lastname} เรียบร้อยแล้ว` 
+        });
+
+    } catch (err) {
+        console.error("❌ Admin Grant Secretary Error:", err);
+        res.status(500).json({ error: "เกิดข้อผิดพลาดภายในระบบ" });
+    }
 });
       
 // Socket.IO
