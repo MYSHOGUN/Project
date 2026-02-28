@@ -131,6 +131,7 @@ async function saveUsersFromExcel(dataArray) {
             role: 'user',
             branch: "EnET",
             picture: "",
+            group: [],
             createdAt: new Date()
         };
         
@@ -1464,11 +1465,14 @@ app.get("/addUserSingle",requireLogin,(req, res) => {
 
 // API สำหรับเพิ่มผู้ใช้รายคน
 app.post("/api/addUserSingle", async (req, res) => {
+  if(req.session.user.role !== "admin"){
+    return res.redirect("/");
+  }
     try {
-        const { username , role , branch} = req.body;
+        const { title , name , lastname , username , role} = req.body;
 
         // 1. ตรวจสอบว่ามีข้อมูลส่งมาครบหรือไม่
-        if (!username || !role || !branch) {
+        if (!title || !name || !lastname || !username || !role) {
             return res.status(400).json({ success: false, error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
         }
 
@@ -1479,8 +1483,8 @@ app.post("/api/addUserSingle", async (req, res) => {
         }
 
         const PENDING_PASS_STRING = 'PENDING_REGISTRATION_FOR_SIGNUP'; 
-        const PENDING_NAME = 'Pending';
-        const PENDING_LASTNAME = 'Registration';
+        const PENDING_NAME = name;
+        const PENDING_LASTNAME = lastname;
 
         // 2. Hash สตริง Placeholder นี้เพื่อใช้เป็นรหัสผ่านชั่วคราว
         const pendingHashedPassword = await bcrypt.hash(PENDING_PASS_STRING, saltRounds);
@@ -1491,12 +1495,13 @@ app.post("/api/addUserSingle", async (req, res) => {
         const newUser = new User({
             username: trimmedUsername,
             email: emailExel,
-            password: pendingHashedPassword, // ⬅️ Hashed Placeholder
+            password: pendingHashedPassword,
+            title: title, // ⬅️ Hashed Placeholder
             name: PENDING_NAME,             // ⬅️ Placeholder
             lastname: PENDING_LASTNAME,     // ⬅️ Placeholder
             role: role, 
             phone: null, 
-            group: null,
+            group: [],
             branch: trimedBranch // สามารถนำเข้า group ได้ถ้ามีใน Excel
         });
 
@@ -1854,7 +1859,7 @@ app.post("/api/addEvent", requireLogin, upload.single("file"), async (req, res) 
                 mention: description || title,
                 expireAt: testresultsdate,
                 passTimes: paperPassTimes,
-                date: expire,
+                date: date1,
                 director: directors // ในอาเรย์นี้จะมีทั้ง [กรรมการจาก Excel + Advisor]
               });
               const mem1 = await User.findOne({ username: group.member1 });

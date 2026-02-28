@@ -155,7 +155,7 @@
                 let cardHtml = "";
 
                 // ส่วนที่ 1: สำหรับอาจารย์ส่งผลสอบ
-                if ((currentRole === "teacher" || currentRole === "admin") && paperDate.getTime() < today.getTime() && (!targetResult || (!targetResult.pass.includes(currentUsername) && !targetResult.fail.includes(currentUsername)))) {
+                if ((currentRole === "teacher" || currentRole === "admin") && paperDate.getTime() <= today.getTime() && (!targetResult || (!targetResult.pass.includes(currentUsername) && !targetResult.fail.includes(currentUsername)))) {
                     cardHtml += `
                     <div class="card paper-card shadow mb-4 border-left-primary" style="grid-column: 1 / -1;">
                         <div class="card-body p-4 text-center">

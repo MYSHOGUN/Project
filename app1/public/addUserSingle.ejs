@@ -77,10 +77,30 @@
             
             <div class="page-title text-center mb-5">
                 <h1 class="font-weight-bold text-primary"><i class="fas fa-user-plus mr-3"></i>เพิ่มข้อมูลผู้ใช้</h1>
-                <p class="text-muted">ระบุรายละเอียดรหัสประจำตัว ตำแหน่ง และสาขาวิชา</p>
+                <p class="text-muted">ระบุรายละเอียดคำนำหน้า ชื่อ นามสกุล รหัสประจำตัวและตำแหน่ง</p>
             </div>
 
             <div class="input-group-row">
+                <div class="input-field-container">
+                    <label class="label-text">คำนำหน้า</label>
+                    <select class="custom-select" id="title">
+                        <option selected disabled>เลือกคำนำหน้า...</option>
+                        <option value="MR">นาย</option>
+                        <option value="MS">นางสาว</option>
+                        <option value="MRS">นาง</option>
+                    </select>
+                </div>
+
+                <div class="input-field-container">
+                    <label class="label-text">ชื่อ</label>
+                    <input type="text" class="custom-input" id="name" placeholder="ชื่อ">
+                </div>
+
+                <div class="input-field-container">
+                    <label class="label-text">นามสกุล</label>
+                    <input type="text" class="custom-input" id="lastname" placeholder="นามสกุล">
+                </div>
+
                 <div class="input-field-container">
                     <label class="label-text">รหัสประจำตัว</label>
                     <input type="text" class="custom-input" id="username" placeholder="รหัสนักศึกษา/อาจารย์">
@@ -95,14 +115,6 @@
                     </select>
                 </div>
 
-                <div class="input-field-container">
-                    <label class="label-text">สาขาผู้ใช้</label>
-                    <select class="custom-select" id="branch">
-                        <option selected disabled>เลือกสาขา...</option>
-                        <option value="enet">EnET</option>
-                        <option value="ect">ECT</option>
-                    </select>
-                </div>
             </div>
 
             <div class="d-flex justify-content-center mt-4">
@@ -124,10 +136,12 @@ document.getElementById('saveUser').addEventListener('click', async function(e) 
 
     const username = document.getElementById('username').value.trim();
     const role = document.getElementById('role').value;
-    const branch = document.getElementById('branch').value;
-
+    const title = document.getElementById('title').value;
+    const name = document.getElementById('name').value.trim();
+    const lastname = document.getElementById('lastname').value.trim();
+    const titleText = title === 'MR' ? 'นาย' : title === 'MS' ? 'นางสาว' : title === 'MRS' ? 'นาง' : null
     // 1. ตรวจสอบข้อมูลเบื้องต้น
-    if (!username || !role || role === "เลือกตำแหน่ง..." || !branch || branch === "เลือกสาขา...") {
+    if (!username || !role || role === "เลือกตำแหน่ง..." || !title || title === "เลือกคำนำหน้า..." || !name || !lastname) {
         Swal.fire({
             icon: 'warning',
             title: 'ข้อมูลไม่ครบ',
@@ -140,7 +154,7 @@ document.getElementById('saveUser').addEventListener('click', async function(e) 
     // 2. แสดงหน้าต่างยืนยัน (Confirm)
     const result = await Swal.fire({
         title: 'ยืนยันการเพิ่มผู้ใช้?',
-        text: `รหัส: ${username} (${role === 'student' ? 'นักศึกษา' : 'อาจารย์'}) สาขา: ${branch.toUpperCase()}`,
+        text: `${titleText} ${name} ${lastname} รหัส: ${username} (${role === 'student' ? 'นักศึกษา' : 'อาจารย์'}) สาขา: ${branch.toUpperCase()}`,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#1cc88a',
@@ -162,7 +176,7 @@ document.getElementById('saveUser').addEventListener('click', async function(e) 
             const response = await fetch("/api/addUserSingle", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, role, branch })
+                body: JSON.stringify({ titleText , name , lastname , username, role })
             });
 
             const data = await response.json();
