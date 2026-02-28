@@ -1464,45 +1464,45 @@ app.get("/addUserSingle",requireLogin,(req, res) => {
 });
 
 // API สำหรับเพิ่มผู้ใช้รายคน
-app.post("/api/addUserSingle", async (req, res) => {
-  if(req.session.user.role !== "admin"){
-    return res.redirect("/");
-  }
-    try {
-        const { title , name , lastname , username , role} = req.body;
+app.post("/api/addUserSingle", requireLogin, async (req, res) => {
+    // 🛡️ เช็คสิทธิ์ Admin
+    if (req.session.user.role !== "admin") {
+        return res.status(403).json({ success: false, error: "สิทธิ์ไม่เพียงพอ" });
+    }
 
-        // 1. ตรวจสอบว่ามีข้อมูลส่งมาครบหรือไม่
-        if (!title || !name || !lastname || !username || !role) {
+    try {
+        // 1. รับค่าจาก req.body (ชื่อต้องตรงกับ JSON ที่ส่งมาจากหน้าบ้าน)
+        const { titleText, name, lastname, username, role } = req.body;
+
+        // 2. ตรวจสอบข้อมูลเบื้องต้น
+        if (!titleText || !name || !lastname || !username || !role) {
             return res.status(400).json({ success: false, error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
         }
 
-        // 2. ตรวจสอบว่ามี User นี้ในระบบแล้วหรือยัง
-        const existingUser = await User.findOne({ username });
+        // 3. ตรวจสอบว่ามี User นี้แล้วหรือยัง
+        const existingUser = await User.findOne({ username: username.trim() });
         if (existingUser) {
-            return res.status(400).json({ success: false, error: "รหัสผู้ใช้ี้มีอยู่ในระบบแล้ว" });
+            return res.status(400).json({ success: false, error: "รหัสผู้ใช้นี้มีอยู่ในระบบแล้ว" });
         }
 
+        // 4. เตรียมข้อมูลก่อนบันทึก
         const PENDING_PASS_STRING = 'PENDING_REGISTRATION_FOR_SIGNUP'; 
-        const PENDING_NAME = name;
-        const PENDING_LASTNAME = lastname;
+        const pendingHashedPassword = await bcrypt.hash(PENDING_PASS_STRING, 10);
+        const trimmedUsername = String(username).trim();
+        const emailGenerated = "s" + trimmedUsername + "@kmutnb.ac.th";
 
-        // 2. Hash สตริง Placeholder นี้เพื่อใช้เป็นรหัสผ่านชั่วคราว
-        const pendingHashedPassword = await bcrypt.hash(PENDING_PASS_STRING, saltRounds);
-        const trimedBranch = String(branch).trim();
-        const trimmedUsername = String(usernameFromExcel).trim();
-        const emailExel = "s"+trimmedUsername+"@kmutnb.ac.th";
-
+        // ✅ ตัดส่วน branch ออกตามที่คุณต้องการ
         const newUser = new User({
             username: trimmedUsername,
-            email: emailExel,
+            email: emailGenerated,
             password: pendingHashedPassword,
-            title: title, // ⬅️ Hashed Placeholder
-            name: PENDING_NAME,             // ⬅️ Placeholder
-            lastname: PENDING_LASTNAME,     // ⬅️ Placeholder
+            title: titleText,
+            name: name.trim(),
+            lastname: lastname.trim(),
             role: role, 
             phone: null, 
             group: [],
-            branch: trimedBranch // สามารถนำเข้า group ได้ถ้ามีใน Excel
+            picture: "" // ตั้งเป็นค่าว่างตามที่คุณเคยต้องการ
         });
 
         await newUser.save();

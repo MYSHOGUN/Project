@@ -139,22 +139,28 @@ document.getElementById('saveUser').addEventListener('click', async function(e) 
     const title = document.getElementById('title').value;
     const name = document.getElementById('name').value.trim();
     const lastname = document.getElementById('lastname').value.trim();
-    const titleText = title === 'MR' ? 'นาย' : title === 'MS' ? 'นางสาว' : title === 'MRS' ? 'นาง' : null
-    // 1. ตรวจสอบข้อมูลเบื้องต้น
-    if (!username || !role || role === "เลือกตำแหน่ง..." || !title || title === "เลือกคำนำหน้า..." || !name || !lastname) {
+    
+    // แปลงคำนำหน้าเป็นภาษาไทย
+    const titleMap = { 'MR': 'นาย', 'MS': 'นางสาว', 'MRS': 'นาง' };
+    const titleText = titleMap[title] || "";
+
+    // 1. ตรวจสอบข้อมูลเบื้องต้น (ตัดการเช็ค branch ออก)
+    if (!username || !role || role.includes("เลือก") || !title || title.includes("เลือก") || !name || !lastname) {
         Swal.fire({
             icon: 'warning',
             title: 'ข้อมูลไม่ครบ',
-            text: 'กรุณาระบุรหัสประจำตัว เลือกตำแหน่ง และเลือกสาขาให้ถูกต้อง',
+            text: 'กรุณาระบุข้อมูลให้ครบทุกช่อง',
             confirmButtonColor: '#4e73df'
         });
         return;
     }
 
-    // 2. แสดงหน้าต่างยืนยัน (Confirm)
+    // 2. แสดงหน้าต่างยืนยัน
     const result = await Swal.fire({
         title: 'ยืนยันการเพิ่มผู้ใช้?',
-        text: `${titleText} ${name} ${lastname} รหัส: ${username} (${role === 'student' ? 'นักศึกษา' : 'อาจารย์'}) สาขา: ${branch.toUpperCase()}`,
+        html: `คุณกำลังจะเพิ่ม <b>${titleText}${name} ${lastname}</b><br>` +
+              `รหัส: ${username}<br>` +
+              `ตำแหน่ง: ${role === 'student' ? 'นักศึกษา' : 'อาจารย์'}`,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#1cc88a',
@@ -165,7 +171,6 @@ document.getElementById('saveUser').addEventListener('click', async function(e) 
     });
 
     if (result.isConfirmed) {
-        // แสดง Loading
         Swal.fire({
             title: 'กำลังบันทึก...',
             allowOutsideClick: false,
@@ -176,7 +181,7 @@ document.getElementById('saveUser').addEventListener('click', async function(e) 
             const response = await fetch("/api/addUserSingle", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ titleText , name , lastname , username, role })
+                body: JSON.stringify({ titleText, name, lastname, username, role })
             });
 
             const data = await response.json();
@@ -186,24 +191,15 @@ document.getElementById('saveUser').addEventListener('click', async function(e) 
                     icon: 'success',
                     title: 'สำเร็จ!',
                     text: data.message,
-                    timer: 2000,
+                    timer: 1500,
                     showConfirmButton: false
                 });
-                window.location.href = "/addUser"; 
+                window.location.reload(); 
             } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'เกิดข้อผิดพลาด',
-                    text: data.error
-                });
+                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.error });
             }
         } catch (err) {
-            console.error(err);
-            Swal.fire({
-                icon: 'error',
-                title: 'เซิร์ฟเวอร์ขัดข้อง',
-                text: 'ไม่สามารถเชื่อมต่อกับฐานข้อมูลได้ในขณะนี้'
-            });
+            Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้' });
         }
     }
 });
