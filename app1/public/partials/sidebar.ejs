@@ -17,7 +17,7 @@
                 <i class="fas fa-comments"></i>
                 <span>แชท</span></a>
         </li>-->
-        <% if (typeof user !== 'undefined' && user.role === 'admin') { %>
+        <% if (typeof user !== 'undefined' && (user.role === 'admin' || user.role === 'secretary')) { %>
         <!-- Divider -->
             <hr class="sidebar-divider my-0">
 
@@ -28,7 +28,7 @@
             </li>
         <% } %>
         
-        <% if (typeof user !== 'undefined' && user.role !== 'admin') { %>
+        <% if (typeof user !== 'undefined' && (user.role !== 'admin' || user.role !== 'secretary')) { %>
         <!-- Divider -->
             <hr class="sidebar-divider my-0">
 
@@ -105,6 +105,16 @@
                 <a class="nav-link" href="/admin">
                     <i class="fas fa-user"></i>
                     <span>มอบสิทธิ์อาจารย์หัวหน้าแขนง</span></a>
+            </li>
+        <% } %>
+
+        <% if (typeof user !== 'undefined' && user.role === 'admin') { %>
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/addSecretary' ? 'active' : '' %>">
+                <a class="nav-link" href="/addSecretary">
+                    <i class="fas fa-user"></i>
+                    <span>มอบสิทธิ์เลขานุการ</span></a>
             </li>
         <% } %>
 

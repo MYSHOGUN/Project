@@ -274,7 +274,7 @@ function generateEventId() {
 
 // Routes
 app.get("/" ,requireLogin, async (req, res) => {
-  if(req.session.user.role === "admin") return res.redirect("/userInfo")
+  if(req.session.user.role === "admin" || req.session.user.role === "secretary") return res.redirect("/userInfo")
   return res.redirect("/group");
   try {
     const newsList = await News.find().sort({ createdAt: -1 });
@@ -584,7 +584,7 @@ app.get("/file", requireLogin, (req, res) => {
   renderWithLayout(res, "file", { title: "KMUTNB Project - File" }, req.path,req);
 });
 app.get("/group", requireLogin, async (req, res) => {
-  if(req.session.user.role === "admin") return res.redirect("/userInfo")
+  if(req.session.user.role === "admin" || req.session.user.role === "secretary" ) return res.redirect("/userInfo")
   try{
 
     if (req.session.user && Array.isArray(req.session.user.group) && req.session.user.group.length === 0 && req.session.user.role !== "teacher") {
@@ -2279,7 +2279,7 @@ app.post("/api/admin", requireLogin, async (req, res) => {
           return res.status(400).json({ error: "Missing chosenAdvisor" });
       }
 
-      const adminUser = await User.findOneAndUpdate({ username: req.session.user.username }, { role: "advisor" });
+      const adminUser = await User.findOneAndUpdate({ username: req.session.user.username }, { role: "teacher" });
 
       const advisorUser = await User.findOneAndUpdate({ username: chosenAdvisor }, { role: "admin" });
 
@@ -2287,7 +2287,7 @@ app.post("/api/admin", requireLogin, async (req, res) => {
         return res.status(404).json({ error: "User not found" });
       }
 
-      res.json({ success: true, message: `เปลี่ยน ${advisorUser.username} เป็น admin และ ${adminUser.username} เป็น advisor เรียบร้อยแล้ว` });
+      res.json({ success: true, message: `เปลี่ยน ${advisorUser.username} เป็น admin และ ${adminUser.username} เป็น teacher เรียบร้อยแล้ว` });
   }catch (err) {
       console.error("Admin Action Error:", err);
       res.status(500).json({ error: "Internal Server Error" });
@@ -2530,6 +2530,119 @@ app.get("/userInfo", requireLogin, async (req, res) => {
         console.error("❌ Error fetching users:", err);
         res.status(500).send("Error fetching users");
     }
+});
+
+app.post("/update-exam-schedule", requireLogin, async (req, res) => {
+    if (req.session.user.role !== "admin") return res.status(403).send("สิทธิ์ไม่เพียงพอ");
+
+    try {
+        const { eventId, data: updatedData } = req.body;
+        const event = await Event.findOne({ id: eventId });
+
+        if (!event || !event.testTable?.fileId) return res.status(404).send("ไม่พบข้อมูลกิจกรรมหรือไฟล์");
+
+        // --- ส่วนที่ 1: จัดการไฟล์ Excel (GridFS) เหมือนเดิม ---
+        const newWS = XLSX.utils.json_to_sheet(updatedData);
+        const newWB = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(newWB, newWS, "Schedule");
+        const newBuffer = XLSX.write(newWB, { type: 'buffer', bookType: 'xlsx' });
+        const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
+        
+        await bucket.delete(new mongoose.Types.ObjectId(event.testTable.fileId));
+        const uploadStream = bucket.openUploadStream(event.testTable.filename, { contentType: event.testTable.contentType });
+        const newFileId = uploadStream.id;
+
+        await new Promise((resolve, reject) => {
+            streamifier.createReadStream(newBuffer).pipe(uploadStream).on('error', reject).on('finish', resolve);
+        });
+
+        event.testTable.fileId = newFileId;
+        await event.save();
+
+        // --- ส่วนที่ 2: แก้ไข Paper ของเก่า (Update existing instead of insert new) ---
+        const testResultsExpire = new Date(event.expireAt);
+        testResultsExpire.setDate(testResultsExpire.getDate() + 7);
+
+        for (const row of updatedData) {
+            const groupNameStr = (row['ชื่อกลุ่ม'] || row['groupName'] || row['Groupname'] || "").toString().trim();
+            if (!groupNameStr) continue;
+
+            // 1. หา Group เพื่อเอา _id
+            const group = await Group.findOne({ projectName: groupNameStr });
+            if (!group) continue;
+
+            // 2. จัดการรายชื่อกรรมการ (Logic เดิม)
+            let directorsStr = row['กรรมการ'] || row['director'] || "";
+            let directors = directorsStr.toString().split(/[,\/;]|\sและ\s/).map(s => {
+                let clean = s.trim().replace(/^(ดร\.|ผศ\.ดร\.|ผศ\.|รศ\.ดร\.|รศ\.|ศ\.|มร\.|นาย|นางสาว|นาง|อาจารย์|อ\.)\s?/, "");
+                return clean.split(/\s+/)[0]; 
+            }).filter(s => s !== "");
+
+            // เพิ่ม Advisor
+            const advisorUser = await User.findOne({ username: group.advisor });
+            if (advisorUser && advisorUser.name) {
+                let advClean = advisorUser.name.trim().replace(/^(ดร\.|ผศ\.ดร\.|ผศ\.|รศ\.ดร\.|รศ\.|ศ\.|มร\.|นาย|นางสาว|นาง|อาจารย์|อ\.)\s?/, "").split(/\s+/)[0];
+                if (!directors.includes(advClean)) directors.push(advClean);
+            }
+
+            // 3. 🛠️ แก้ไข Paper (findOneAndUpdate)
+            // ค้นหา Paper ที่มี eventId และ groupId ตรงกัน เพื่ออัปเดตข้อมูลใหม่
+            await Paper.findOneAndUpdate(
+                { eventId: event.id, groupId: group._id }, 
+                { 
+                    $set: { 
+                        director: directors,      // อัปเดตรายชื่อกรรมการใหม่
+                        mention: event.description || event.title,
+                        expireAt: testResultsExpire,
+                        date: event.date
+                    } 
+                },
+                { upsert: true } // ถ้าไม่เจอ Paper เดิม (เช่น แอดกลุ่มเพิ่มใน Excel) ให้สร้างใหม่
+            );
+        }
+
+        res.json({ success: true, message: "อัปเดตไฟล์ Excel และข้อมูล Paper เดิมเรียบร้อยแล้ว" });
+
+    } catch (err) {
+        console.error("❌ Update Error:", err);
+        res.status(500).send("เกิดข้อผิดพลาด: " + err.message);
+    }
+});
+
+app.get("/addSecretary", requireLogin, async (req, res) => {
+  if(req.session.user.role !== "admin"){
+    return res.redirect("/");
+  }
+  try {
+      renderWithLayout(res, "addSecretary", { title: "KMUTNB Project - Add Secretary" }, req.path,req);
+  } catch (err) {
+      console.error("Add Secretary Error:", err);
+      res.status(500).send("Internal Server Error");
+  }
+});
+
+app.post("/api/addSecretary", requireLogin, async (req, res) => {
+  if(req.session.user.role !== "admin"){
+    return res.status(403).json({ error: "Unauthorized" });
+  }
+  try {
+      const { chosenAdvisor } = req.body;
+
+      if (!chosenAdvisor) {
+          return res.status(400).json({ error: "Missing chosenAdvisor" });
+      }
+
+      const advisorUser = await User.findOneAndUpdate({ username: chosenAdvisor }, { role: "secretary" });
+
+      if (!advisorUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json({ success: true, message: `เปลี่ยน ${advisorUser.username} เป็น secretary เรียบร้อย` });
+  }catch (err) {
+      console.error("Admin Action Error:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+  }
 });
       
 // Socket.IO

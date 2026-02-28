@@ -81,39 +81,53 @@
                     <div class="excel-section mt-5 pt-4 border-top">
                         <h5 class="font-weight-bold text-dark mb-4 text-center">
                             <i class="fas fa-table mr-2 text-primary"></i>ตารางกำหนดการสอบ
+                            <% if (user.role === 'admin') { %>
+                                <small class="text-muted d-block mt-2">(โหมดแก้ไขสำหรับผู้ดูแลระบบ)</small>
+                            <% } %>
                         </h5>
-                        <div class="table-responsive shadow-sm">
-                            <table class="table table-bordered table-hover mb-0">
-                                <thead class="bg-primary text-white text-center">
-                                    <tr>
-                                        <th style="width: 80px;">ลำดับ</th>
-                                        <th>กลุ่ม</th>
-                                        <th>วันที่</th>
-                                        <th>เวลา</th>
-                                        <th>กรรมการ</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <% tableData.forEach((row) => { %>
+                        
+                        <form id="scheduleForm">
+                            <div class="table-responsive shadow-sm">
+                                <table class="table table-bordered table-hover mb-0" id="editableTable">
+                                    <thead class="bg-primary text-white text-center">
                                         <tr>
-                                            <td class="text-center text-muted"><%= row['ลำดับ'] || '-' %></td>
-                                            <td class="font-weight-bold text-gray-800">
-                                                <%= row['ชื่อกลุ่ม'] || row['Groupname'] || '-' %>
-                                            </td>
-                                            <td class="text-center">
-                                                <%= row['วันที่'] || '-' %>
-                                            </td>
-                                            <td class="text-center font-weight-bold text-primary">
-                                                <%= row['เวลา'] || '-' %>
-                                            </td>
-                                            <td class="small">
-                                                <%= row['กรรมการ'] || '-' %>
-                                            </td>
+                                            <th style="width: 80px;">ลำดับ</th>
+                                            <th>กลุ่ม</th>
+                                            <th>วันที่</th>
+                                            <th>เวลา</th>
+                                            <th>กรรมการ</th>
                                         </tr>
-                                    <% }) %>
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        <% tableData.forEach((row, index) => { %>
+                                            <tr class="schedule-row">
+                                                <% if (user.role === 'admin') { %>
+                                                    <td class="p-0"><input type="text" name="data[<%= index %>][ลำดับ]" class="form-control border-0 text-center bg-transparent" value="<%= row['ลำดับ'] || '' %>"></td>
+                                                    <td class="p-0 font-weight-bold"><input type="text" name="data[<%= index %>][ชื่อกลุ่ม]" class="form-control border-0 bg-transparent" value="<%= row['ชื่อกลุ่ม'] || row['Groupname'] || '' %>"></td>
+                                                    <td class="p-0"><input type="text" name="data[<%= index %>][วันที่]" class="form-control border-0 text-center bg-transparent" value="<%= row['วันที่'] || '' %>"></td>
+                                                    <td class="p-0"><input type="text" name="data[<%= index %>][เวลา]" class="form-control border-0 text-center font-weight-bold text-primary bg-transparent" value="<%= row['เวลา'] || '' %>"></td>
+                                                    <td class="p-0"><textarea name="data[<%= index %>][กรรมการ]" class="form-control border-0 bg-transparent small" rows="1"><%= row['กรรมการ'] || '' %></textarea></td>
+                                                <% } else { %>
+                                                    <td class="text-center text-muted"><%= row['ลำดับ'] || '-' %></td>
+                                                    <td class="font-weight-bold text-gray-800"><%= row['ชื่อกลุ่ม'] || row['Groupname'] || '-' %></td>
+                                                    <td class="text-center"><%= row['วันที่'] || '-' %></td>
+                                                    <td class="text-center font-weight-bold text-primary"><%= row['เวลา'] || '-' %></td>
+                                                    <td class="small"><%= row['กรรมการ'] || '-' %></td>
+                                                <% } %>
+                                            </tr>
+                                        <% }) %>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <% if (user.role === 'admin') { %>
+                                <div class="text-right mt-3">
+                                    <button type="button" id="saveScheduleBtn" class="btn btn-success shadow-sm">
+                                        <i class="fas fa-save mr-2"></i>บันทึกการแก้ไขทั้งหมด
+                                    </button>
+                                </div>
+                            <% } %>
+                        </form>
                     </div>
                 <% } %>
             </div>
@@ -156,4 +170,48 @@
             }
         }
     }
+    // ในหน้า eventInfo.ejs ส่วน <script>
+    $("#saveScheduleBtn").on("click", function() {
+        const $btn = $(this);
+        const originalText = $btn.html();
+        
+        // ดึงข้อมูลจากฟอร์มตาราง
+        const formData = $("#scheduleForm").serializeArray();
+        
+        // เพิ่ม eventId เข้าไปในข้อมูลที่จะส่ง
+        const payload = {
+            eventId: "<%= event.id %>", // ID จาก Event Model
+            data: []
+        };
+
+        // แปลง serializeArray ให้เป็นรูปแบบ JSON ที่เหมาะสม
+        // (Logic นี้จะช่วยรวมค่า data[index][key] กลับเป็น Object)
+        const temp = {};
+        formData.forEach(item => {
+            const match = item.name.match(/data\[(\d+)\]\[(.+)\]/);
+            if (match) {
+                const index = match[1];
+                const key = match[2];
+                if (!payload.data[index]) payload.data[index] = {};
+                payload.data[index][key] = item.value;
+            }
+        });
+
+        $btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin mr-2"></i>กำลังบันทึก...');
+
+        $.ajax({
+            url: "/update-exam-schedule",
+            method: "POST",
+            contentType: "application/json",
+            data: JSON.stringify(payload), // ส่งเป็น JSON แทนการ serialize ธรรมดาจะจัดการง่ายกว่า
+            success: function(res) {
+                Swal.fire('สำเร็จ', 'บันทึกข้อมูลลงไฟล์ Excel เรียบร้อย', 'success')
+                    .then(() => location.reload());
+            },
+            error: function(err) {
+                Swal.fire('ผิดพลาด', err.responseText, 'error');
+                $btn.prop("disabled", false).html(originalText);
+            }
+        });
+    });
 </script>
