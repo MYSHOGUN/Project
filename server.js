@@ -2111,6 +2111,34 @@ app.post("/api/PaperUploadFile", requireLogin, async (req, res) => {
     }
 });
 
+app.post("/api/paper/upload-raw", requireLogin, upload.array("files"), async (req, res) => {
+    try {
+        const results = [];
+        if (req.files && req.files.length > 0) {
+            for (const file of req.files) {
+                const uploadStream = bucket.openUploadStream(file.originalname, { 
+                    contentType: file.mimetype 
+                });
+                uploadStream.end(file.buffer);
+
+                await new Promise((resolve, reject) => {
+                    uploadStream.on("finish", resolve);
+                    uploadStream.on("error", reject);
+                });
+
+                results.push({
+                    fileId: uploadStream.id,
+                    filename: file.originalname
+                });
+            }
+        }
+        res.json(results);
+    } catch (err) {
+        console.error("❌ Raw Upload Error:", err);
+        res.status(500).json({ error: "Upload failed" });
+    }
+});
+
 app.get("/api/getMyPapers", requireLogin, async (req, res) => {
     try {
         const userGroupIds = req.session.user.group;

@@ -268,18 +268,26 @@
         const formData = new FormData();
         for (let f of files) formData.append('files', f);
 
+        // เริ่มแสดงสถานะกำลังโหลด
         Swal.fire({ title: 'กำลังอัปโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         try {
-            const uploadRes = await fetch(`/upload-file/${paperId}`, { method: 'POST', body: formData });
-            const uploadedData = await uploadRes.json();
+            // 1. เปลี่ยนไปเรียก API ใหม่ที่ไม่มี Logic แชทมาเกี่ยว
+            const uploadRes = await fetch(`/api/paper/upload-raw`, { 
+                method: 'POST', 
+                body: formData 
+            });
             
-            // ตรวจสอบโครงสร้าง: เปลี่ยนจาก .id เป็น .fileId ตามที่ Backend ส่งมา
+            if (!uploadRes.ok) throw new Error('Upload to GridFS failed');
+            const uploadedData = await uploadRes.json();
+
+            // 2. แมปข้อมูลให้ตรงกับที่ /api/PaperUploadFile ต้องการ (id และ filename)
             const filesData = uploadedData.map(m => ({ 
-                id: m.fileId || m.file?.fileId, 
-                filename: m.filename || m.file?.filename 
+                id: m.fileId, 
+                filename: m.filename 
             }));
 
+            // 3. ส่งไปบันทึก Metadata และอัปเดตสถานะกลุ่ม
             const saveRes = await fetch('/api/PaperUploadFile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -287,12 +295,15 @@
             });
 
             if (saveRes.ok) {
-                Swal.close(); // ✅ ปิด Spinner ทันที
-                await fetchFileList(paperId); // ✅ โหลดรายการไฟล์ใหม่มาทับ "กำลังโหลด..."
+                Swal.close(); // ✅ ปิดสถานะโหลดทันที
+                await fetchFileList(paperId); // ✅ โหลดรายการไฟล์ใหม่มาแสดง
                 Swal.fire({ icon: 'success', title: 'สำเร็จ', timer: 1000, showConfirmButton: false });
+            } else {
+                throw new Error('Save metadata failed');
             }
         } catch (err) { 
-            Swal.fire('ผิดพลาด', 'ไม่สามารถบันทึกไฟล์ได้', 'error'); 
+            console.error("❌ Detail:", err);
+            Swal.fire('ผิดพลาด', 'ไม่สามารถบันทึกไฟล์ได้: ' + err.message, 'error'); 
         }
     }
 
