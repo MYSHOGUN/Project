@@ -2097,7 +2097,8 @@ app.post("/api/PaperUploadFile", requireLogin, async (req, res) => {
 
         await Promise.all(savePromises);
 
-        await Group.findByIdAndUpdate(req.session.user.group, { $set: { status: "ส่งเอกสารเรียบร้อย" } });
+        // ✅ เปลี่ยนจาก req.session.user.group เป็น paperGroup
+        await Group.findByIdAndUpdate(paperGroup, { $set: { status: "ส่งเอกสารเรียบร้อย" } });
 
         // 3. ปลด TTL ให้เป็นบันทึกถาวร
         await Paper.findByIdAndUpdate(paperId, { $set: { expireAt: null } });
@@ -2110,36 +2111,22 @@ app.post("/api/PaperUploadFile", requireLogin, async (req, res) => {
 
 app.get("/api/getMyPapers", requireLogin, async (req, res) => {
     try {
-        const userGroupIds = req.session.user.group; // คาดว่าเป็น Array ของ IDs
+        const userGroupIds = req.session.user.group;
 
-        // 1. ตรวจสอบว่ามีข้อมูลกลุ่มใน Session หรือไม่
         if (!userGroupIds || !Array.isArray(userGroupIds) || userGroupIds.length === 0) {
-            console.log("⚠️ No group IDs found in session for user:", req.session.user.username);
             return res.json([]);
         }
 
-        // 2. ค้นหาข้อมูลกลุ่มทั้งหมดที่อยู่ใน Array นี้ (ใช้ $in เพื่อประสิทธิภาพ)
-        //const groups = await Group.find({ _id: { $in: userGroupIds } });
-        
-        //if (!groups || groups.length === 0) {
-            //return res.json([]);
-        //}
-
-        // 3. ดึงเฉพาะ ID ของกลุ่มทั้งหมดออกมาเป็น Array ของ String หรือ ObjectId
-        //const allGroupIds = groups.map(g => g._id);
-
-        // 4. ค้นหา Platform ใน Paper ทั้งหมดที่อยู่ในกลุ่มเหล่านี้
         const platforms = await Paper.find({ groupId: { $in: userGroupIds } }).lean();
 
-        // 5. ตรวจสอบสถานะการส่งไฟล์ (Check isSubmitted)
         const finalData = await Promise.all(platforms.map(async (p) => {
-            // ค้นหาไฟล์ที่ส่งล่าสุดของ Paper นี้
-            const fileRecord = await PaperFile.findOne({ paperId: p._id });
+            // ✅ เปลี่ยนจาก findOne เป็น find เพื่อเช็คว่ามีไฟล์อย่างน้อย 1 ไฟล์ไหม
+            const fileRecords = await PaperFile.find({ paperId: p._id });
             
             return {
                 ...p,
-                isSubmitted: !!fileRecord,
-                fileId: fileRecord ? fileRecord.file.fileId : null
+                isSubmitted: fileRecords.length > 0, // ถ้ามีไฟล์ใน PaperFile ให้ถือว่าส่งแล้ว
+                files: fileRecords.map(f => f.file)  // ส่งรายการไฟล์ทั้งหมดกลับไปด้วยเลย
             };
         }));
 
@@ -2150,12 +2137,13 @@ app.get("/api/getMyPapers", requireLogin, async (req, res) => {
     }
 });
 
+// ตรวจสอบว่าเขียนแบบนี้หรือไม่
 app.get("/api/getPaperFiles/:paperId", requireLogin, async (req, res) => {
     try {
-        const files = await PaperFile.find({ paperId: req.params.paperId }).sort({ submittedAt: -1 });
-        res.json(files);
+        const files = await PaperFile.find({ paperId: req.params.paperId }).sort({ createdAt: -1 });
+        res.json(files); // ส่ง Array ของไฟล์ทั้งหมดกลับไป
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json([]);
     }
 });
 

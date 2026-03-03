@@ -243,14 +243,17 @@
 
     // ✅ เพิ่มฟังก์ชัน Logic ทั้งหมด
     async function fetchFileList(paperId) {
+        const listContainer = document.getElementById(`file-list-${paperId}`);
         try {
             const res = await fetch(`/api/getPaperFiles/${paperId}`);
             const files = await res.json();
-            const listContainer = document.getElementById(`file-list-${paperId}`);
+            
             if (!files || files.length === 0) {
-                listContainer.innerHTML = '<div class="p-4 text-center text-muted small">ไม่มีไฟล์ที่ถูกอัปโหลด</div>';
+                listContainer.innerHTML = '<div class="p-4 text-center text-muted small">ไม่มีไฟล์</div>';
                 return;
             }
+
+            // ✅ ต้องเข้าถึงผ่าน f.file เพราะ Backend บันทึกแบบ Nested Object
             listContainer.innerHTML = files.map(f => `
                 <div class="d-flex align-items-center justify-content-between p-2 border-bottom">
                     <span class="small text-truncate mr-2"><i class="fas fa-file-alt mr-2"></i>${f.file.filename}</span>
@@ -271,19 +274,26 @@
             const uploadRes = await fetch(`/upload-file/${paperId}`, { method: 'POST', body: formData });
             const uploadedData = await uploadRes.json();
             
-            if (uploadRes.ok) {
-                const filesData = uploadedData.map(m => ({ id: m.file.fileId, filename: m.file.filename }));
-                const saveRes = await fetch('/api/PaperUploadFile', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ paperId, filesData })
-                });
-                if (saveRes.ok) {
-                    Swal.fire('สำเร็จ', 'อัปโหลดเรียบร้อย', 'success');
-                    fetchFileList(paperId);
-                }
+            // ตรวจสอบโครงสร้าง: เปลี่ยนจาก .id เป็น .fileId ตามที่ Backend ส่งมา
+            const filesData = uploadedData.map(m => ({ 
+                id: m.fileId || m.file?.fileId, 
+                filename: m.filename || m.file?.filename 
+            }));
+
+            const saveRes = await fetch('/api/PaperUploadFile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paperId, filesData })
+            });
+
+            if (saveRes.ok) {
+                Swal.close(); // ✅ ปิด Spinner ทันที
+                await fetchFileList(paperId); // ✅ โหลดรายการไฟล์ใหม่มาทับ "กำลังโหลด..."
+                Swal.fire({ icon: 'success', title: 'สำเร็จ', timer: 1000, showConfirmButton: false });
             }
-        } catch (err) { Swal.fire('ผิดพลาด', 'อัปโหลดไม่สำเร็จ', 'error'); }
+        } catch (err) { 
+            Swal.fire('ผิดพลาด', 'ไม่สามารถบันทึกไฟล์ได้', 'error'); 
+        }
     }
 
     function initDragAndDrop(paperId) {
