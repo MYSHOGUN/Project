@@ -2098,7 +2098,9 @@ app.post("/api/PaperUploadFile", requireLogin, async (req, res) => {
         await Promise.all(savePromises);
 
         // ✅ เปลี่ยนจาก req.session.user.group เป็น paperGroup
-        await Group.findByIdAndUpdate(paperGroup, { $set: { status: "ส่งเอกสารเรียบร้อย" } });
+        if (paperGroup) {
+            await Group.findByIdAndUpdate(paperGroup, { $set: { status: "ส่งเอกสารเรียบร้อย" } });
+        }
 
         // 3. ปลด TTL ให้เป็นบันทึกถาวร
         await Paper.findByIdAndUpdate(paperId, { $set: { expireAt: null } });
