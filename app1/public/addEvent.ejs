@@ -98,6 +98,7 @@
         </div>
     </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     let toDate = document.getElementById("toDate");
     let selectedValue = "";
@@ -383,7 +384,12 @@
                 
             } else {
                 // ถ้าไม่ใช่ไฟล์ Excel: แจ้งเตือน
-                alert('ไฟล์ที่เลือกไม่ใช่ไฟล์ Excel ที่ถูกต้อง (ยอมรับ: .xlsx, .xls) ประเภทที่เลือกคือ: ' + file.type);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ไฟล์ไม่ถูกต้อง',
+                    html: `ไฟล์ที่เลือกไม่ใช่ไฟล์ Excel ที่ถูกต้อง (ยอมรับ: .xlsx, .xls)<br>ประเภทที่เลือกคือ: <strong>${file.type || 'ไม่ทราบประเภท'}</strong>`,
+                    confirmButtonText: 'ตกลง'
+                });
                 fileInput.value = ''; // ล้างค่าใน input
             }
         } else {
@@ -397,7 +403,12 @@
         const year = document.getElementById("selectYear").value;
 
         if (!selectedValue || selectedValue === "เลือกกิจกรรม" || !day || !month || !year) {
-            alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+            Swal.fire({
+                icon: 'warning',
+                title: 'ข้อมูลไม่ครบถ้วน',
+                text: 'กรุณาเลือกกิจกรรมและวันที่ให้ครบถ้วนก่อนบันทึก',
+                confirmButtonText: 'ตกลง'
+            });
             return;
         }
 
@@ -407,7 +418,12 @@
         if (selectedValue === "วันสอบ") desc = "จะมีการจัดสอบในวันที่กำหนด โปรดเตรียมเอกสารในการสอบให้เรียบร้อย";
         else if (selectedValue === "วันส่งเอกสาร") desc = "โปรดส่งเอกสารภายในวันที่กำหนด";
         else if (selectedValue === "อื่นๆ" && !desc && !eventName.value.trim()) {
-            alert("กรุณากรอกรายละเอียดกิจกรรมสำหรับกิจกรรมอื่นๆ");
+            Swal.fire({
+                icon: 'warning',
+                title: 'ข้อมูลไม่ครบถ้วน',
+                text: 'กรุณากรอกชื่อและรายละเอียดกิจกรรมสำหรับกิจกรรมอื่นๆ',
+                confirmButtonText: 'ตกลง'
+            });
             return;
         }
         // 1. ใช้ FormData แทน JSON ปกติเพื่อส่งไฟล์
@@ -423,13 +439,23 @@
             if (td && tm && ty) {
                 formData.append("toDate", `${ty}-${tm.padStart(2, '0')}-${td.padStart(2, '0')}`);
             } else {
-                alert("กรุณาระบุวันที่สิ้นสุด");
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ข้อมูลไม่ครบถ้วน',
+                    text: 'กรุณาเลือกวันที่สิ้นสุดสำหรับกิจกรรมวันสอบ',
+                    confirmButtonText: 'ตกลง'
+                });
                 return;
             }
             
             // ตรวจสอบไฟล์สำหรับกิจกรรมวันสอบ
             if (!selectedFile) {
-                alert("กรุณาเลือกไฟล์ Excel สำหรับกิจกรรมวันสอบ");
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ข้อมูลไม่ครบถ้วน',
+                    text: 'กรุณาเลือกไฟล์ Excel สำหรับกิจกรรมวันสอบ',
+                    confirmButtonText: 'ตกลง'
+                });
                 return;
             }
             formData.append("file", selectedFile);
@@ -447,13 +473,23 @@
         .then(async response => {
             const result = await response.json();
             if (response.ok) {
-                alert("บันทึกกิจกรรมสำเร็จ");
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกกิจกรรมสำเร็จ',
+                    text: 'กิจกรรมได้รับการบันทึกเรียบร้อยแล้ว',
+                    confirmButtonText: 'ตกลง'
+                });
                 window.location.href = "/event";
             } else {
                 // 💡 แสดงผล Error ที่ส่งมาจาก Server ถ้าไม่มีให้ใช้ข้อความ Default
                 const errorMsg = result.message || result.error || "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
-                alert("Error: " + errorMsg);
-                
+                Swal.fire({
+                    icon: 'error',
+                    title: 'บันทึกกิจกรรมไม่สำเร็จ',
+                    text: errorMsg,
+                    confirmButtonText: 'ตกลง'
+                });
+
                 // 💡 พิมพ์ลง Console ของ Browser ไว้เช็คละเอียดๆ
                 console.error("Server Result:", result); 
 

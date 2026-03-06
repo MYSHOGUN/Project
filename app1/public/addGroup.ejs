@@ -134,6 +134,7 @@
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     $(function() {
         let chosenUser = null;
@@ -209,8 +210,14 @@
         $("#newGroupBtn").on("click", function() {
             const projectName = $("#projectNameInput").val().trim();
             const engName = $("#engNameInput").val().trim();
-            if(!projectName) return alert("กรุณากรอกชื่อปริญญานิพนธ์");
-            if(!engName) return alert("กรุณากรอกชื่อปริญญานิพนธ์ (ภาษาอังกฤษ)");
+            if(!projectName) return Swal.fire({
+                icon: 'warning',
+                title: 'กรุณากรอกชื่อปริญญานิพนธ์'
+            });
+            if(!engName) return Swal.fire({
+                icon: 'warning',
+                title: 'กรุณากรอกชื่อปริญญานิพนธ์ (ภาษาอังกฤษ)'
+            });
 
             $.ajax({
                 url: "/groups",
@@ -224,10 +231,23 @@
                     advisor: chosenAdvisor
                 }),
                 success: function() {
-                    alert("สร้างกลุ่มสำเร็จ!");
-                    window.location.href = "/group";
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'สร้างกลุ่มสำเร็จ',
+                        text: 'กลุ่มได้รับการสร้างเรียบร้อยแล้ว',
+                        confirmButtonText: 'ตกลง'
+                    }).then(() => {
+                        window.location.href = "/group";
+                    });
                 },
-                error: function(err) { alert(err.responseText); }
+                error: function(err) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'สร้างกลุ่มไม่สำเร็จ',
+                        text: err.responseText || 'เกิดข้อผิดพลาด',
+                        confirmButtonText: 'ตกลง'
+                    });
+                }
             });
         });
 

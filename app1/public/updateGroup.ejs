@@ -145,6 +145,7 @@
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     $(function() {
         let chosenUser = null;
@@ -257,10 +258,23 @@
                 contentType: "application/json",
                 data: JSON.stringify(groupData),
                 success: function() {
-                    alert("อัปเดตข้อมูลกลุ่มสำเร็จ!");
-                    window.location.href = "/group";
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'อัปเดตข้อมูลกลุ่มสำเร็จ',
+                        text: 'ข้อมูลกลุ่มได้รับการอัปเดตเรียบร้อยแล้ว',
+                        confirmButtonText: 'ตกลง'
+                    }).then(() => {
+                        window.location.href = "/group";
+                    });
                 },
-                error: function(err) { alert("เกิดข้อผิดพลาด: " + err.responseText); }
+                error: function(err) { 
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'อัปเดตข้อมูลกลุ่มไม่สำเร็จ',
+                        text: err.responseText || 'เกิดข้อผิดพลาด',
+                        confirmButtonText: 'ตกลง'
+                    });
+                }
             });
         });
     });

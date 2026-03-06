@@ -131,6 +131,7 @@
     </div>
 </div>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     // ส่วนประกาศตัวแปร
     const profile = document.getElementById('profile');
@@ -208,7 +209,12 @@
                 reader.readAsDataURL(file);
                 dropArea.style.border = 'none';
             } else {
-                alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ไฟล์ไม่ถูกต้อง',
+                    text: 'กรุณาเลือกไฟล์รูปภาพเท่านั้น',
+                    confirmButtonText: 'ตกลง'
+                });
             }
         }
     }
@@ -238,14 +244,30 @@
             contentType: false, // สำคัญมาก: ให้ Browser ตั้งค่า boundary เอง
             success: function(response) {
                 if (response.success) {
-                    alert('บันทึกข้อมูลสำเร็จ');
-                    location.reload();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกข้อมูลสำเร็จ',
+                        text: 'ข้อมูลได้รับการบันทึกเรียบร้อยแล้ว',
+                        confirmButtonText: 'ตกลง'
+                    }).then(() => {
+                        location.reload();
+                    });
                 } else {
-                    alert(response.message || 'เกิดข้อผิดพลาด');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'บันทึกข้อมูลไม่สำเร็จ',
+                        text: response.message || 'เกิดข้อผิดพลาด',
+                        confirmButtonText: 'ตกลง'
+                    });
                 }
             },
             error: function() {
-                alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'บันทึกข้อมูลไม่สำเร็จ',
+                    text: 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์',
+                    confirmButtonText: 'ตกลง'
+                });
             }
         });
     });

@@ -379,7 +379,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // ส่งข้อความ
   chatForm.addEventListener("submit", e => {
     e.preventDefault();
-    if(!currentGroupId) return alert("กรุณาเลือกกลุ่มก่อน");
+    if(!currentGroupId) return Swal.fire({
+        icon: 'warning',
+        title: 'กรุณาเลือกกลุ่มก่อน'
+    });
 
     const text = messageInput.value.trim();
     if(!text && selectedFiles.length === 0) return;
@@ -404,7 +407,12 @@ document.addEventListener("DOMContentLoaded", () => {
       fileInput.value = '';
       filePreviewBox.innerHTML = '';
     })
-    .catch(err => alert("เกิดข้อผิดพลาด: " + err.message));
+    .catch(err => Swal.fire({
+        icon: 'error',
+        title: 'เกิดข้อผิดพลาด',
+        text: err.message || 'เกิดข้อผิดพลาด',
+        confirmButtonText: 'ตกลง'
+    }));
   });
 
   // รับข้อความใหม่

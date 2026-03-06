@@ -49,6 +49,7 @@
     </div>
 </div>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     let selectedFile = null;
 
@@ -115,7 +116,12 @@
                 
             } else {
                 // ถ้าไม่ใช่รูปภาพ: แจ้งเตือนและกลับไปแสดงข้อความเริ่มต้น
-                alert('ไฟล์ที่เลือกไม่ใช่รูปภาพที่ถูกต้อง (ยอมรับ: JPEG, PNG, GIF, WEBP) ประเภทที่เลือกคือ: ' + file.type);
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ไฟล์ไม่ถูกต้อง',
+                    html: `ไฟล์ที่เลือกไม่ใช่รูปภาพที่ถูกต้อง (ยอมรับ: JPEG, PNG, GIF, WEBP)<br>ประเภทที่เลือกคือ: <strong>${file.type || 'ไม่ทราบประเภท'}</strong>`,
+                    confirmButtonText: 'ตกลง'
+                });
                 fileInput.value = ''; 
                 fileNameInput.value = '<%= newsDetails.img.filename %>'; 
                 imagePreview.src = initialImageUrl; // คืนค่า src กลับเป็นรูปเดิม
@@ -167,11 +173,21 @@
             processData: false, // 🚨 ต้องตั้งค่าเป็น false เมื่อใช้ FormData
             contentType: false, // 🚨 ต้องตั้งค่าเป็น false เมื่อใช้ FormData
             success: function(res) {
-                alert("อัปเดตสำเร็จ!");
+                Swal.fire({
+                    icon: 'success',
+                    title: 'อัปเดตข่าวสำเร็จ',
+                    text: 'ข่าวได้รับการอัปเดตเรียบร้อยแล้ว',
+                    confirmButtonText: 'ตกลง'
+                });
                 window.location.reload(); 
             },
             error: function(err) {
-                alert("เกิดข้อผิดพลาด: " + err.responseText);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'อัปเดตข่าวไม่สำเร็จ',
+                    text: 'เกิดข้อผิดพลาดในการอัปเดตข่าว',
+                    confirmButtonText: 'ตกลง'
+                });
             }
         });
     });
@@ -185,12 +201,22 @@
                 url: "/news-delete/" + newsId, 
                 method: "DELETE",
                 success: function(res) {
-                    alert("ลบข่าวสำเร็จ!");
-                    // นำผู้ใช้กลับไปที่หน้าหลักหรือหน้ารายการข่าวหลังจากลบ
-                    window.location.href = '/'; // สมมติว่าหน้ารายการข่าวคือ /news-list
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'ลบข่าวสำเร็จ',
+                        text: 'ข่าวได้รับการลบเรียบร้อยแล้ว',
+                        confirmButtonText: 'ตกลง'
+                    }).then(() => {
+                        window.location.href = '/'; // สมมติว่าหน้ารายการข่าวคือ /news-list
+                    });
                 },
                 error: function(err) {
-                    alert("เกิดข้อผิดพลาดในการลบข่าว: " + err.responseText);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ลบข่าวไม่สำเร็จ',
+                        text: 'เกิดข้อผิดพลาดในการลบข่าว',
+                        confirmButtonText: 'ตกลง'
+                    });
                 }
             });
         }

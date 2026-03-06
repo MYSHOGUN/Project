@@ -174,7 +174,7 @@
 
     <!-- Custom scripts for all pages-->
     <script src="js/sb-admin-2.min.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         $(document).ready(function() {
             const failModal = "<%= failModal %>";
@@ -262,8 +262,14 @@
 
                     dropArea.style.border = 'none';
                 } else {
-                    alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
-                    resetPreview();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'ไฟล์ไม่ถูกต้อง',
+                        text: 'กรุณาเลือกไฟล์รูปภาพเท่านั้น',
+                        confirmButtonText: 'ตกลง'
+                    }).then(() => {
+                        resetPreview();
+                    });
                 }
             }
         }
