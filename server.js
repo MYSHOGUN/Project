@@ -22,6 +22,8 @@ const streamifier = require('streamifier');
 
 const crypto = require('crypto');
 
+const { PDFDocument } = require('pdf-lib');
+
 const userSockets = new Map();
 const mongoose = require("mongoose");
 
@@ -177,6 +179,37 @@ async (req, res) => {
     } catch (err) {
         res.status(500).send("Error fetching users");
     }
+}
+
+async function generateAutoFilledPDF(groupData) {
+    // 1. โหลดไฟล์ต้นฉบับ (Template)
+    const templateBuffer = fs.readFileSync(path.join(__dirname, 'src', 'template', 'แบบฟอร์มขออนุมัติหัวข้อสอบก้าวหน้าและสอบป้องกัน.pdf'));
+    const pdfDoc = await PDFDocument.load(templateBuffer);
+    const form = pdfDoc.getForm();
+
+    const mem1 = await User.findOne({ username: groupData.member1 });
+    const mem2 = groupData.member2 ? await User.findOne({ username: groupData.member2 }) : null;
+    const adv = await User.findOne({ username: groupData.advisor });
+
+    const now = new Date();
+
+    // 2. กรอกข้อมูลลงฟิลด์ (ชื่อฟิลด์ต้องตรงกับในไฟล์ PDF ของคุณ)
+    form.getTextField('project').setText(groupData.projectName);
+    form.getTextField('engName').setText(groupData.engName);
+    form.getTextField('mem1').setText(mem1.name + " " + mem1.lastname);
+    form.getTextField('user1').setText(mem1.username);
+    form.getTextField('mem2').setText(mem2 ? mem2.name + " " + mem2.lastname : "");
+    form.getTextField('user2').setText(mem2 ? mem2.username : "");
+    form.getTextField('adv').setText(adv.name + " " + adv.lastname);
+    form.getTextField('day').setText(now.getDate().toString());
+    form.getTextField('month').setText((now.getMonth() + 1).toString());
+    form.getTextField('year').setText((now.getFullYear()+543).toString());
+    form.getTextField('yeart').setText(now.getMonth()+1 >= 10 ? (now.getFullYear()+543).toString() : (now.getFullYear()+542).toString());
+    form.getTextField('enetc').setText("วิทยาลัยเทคโนโลยีอุตสาหกรรม สาขาคอมพิวเตอร์");
+    form.getTextField('enet').setText("วิทยาลัยเทคโนโลยีอุตสาหกรรม");
+    form.getTextField('c').setText("คอมพิวเตอร์");
+    // 3. บันทึกเป็น Buffer
+    return await pdfDoc.save();
 }
 
 app.use(express.urlencoded({ extended: true }));
@@ -781,13 +814,13 @@ app.get("/search-advisor", requireLogin, async (req, res) => {
 // ✅ บันทึกกลุ่มใหม่
 app.post("/groups", requireLogin, async (req, res) => {
   try {
-    const {  projectName, member1, member2, advisor} = req.body;
+    const {  projectName, engName, member1, member2, advisor} = req.body;
 
     const status = "รอนำเสนอหัวข้อ";
 
     let existingGroup;
 
-    if (!projectName||!member1) {
+    if (!projectName||!engName||!member1) {
       return res.status(400).send("ข้อมูลไม่ครบ");
     }
 
@@ -819,7 +852,7 @@ app.post("/groups", requireLogin, async (req, res) => {
     const adv = advisor === null || advisor === "" || advisor === "undefined" ? null : `${advisor} (Pending)`;
 
     // บันทึกกลุ่มใหม่
-    const newGroup = new Group({ projectName, member1: member1, member2: mem2 , advisor : adv,status , allMember: [member1]});
+    const newGroup = new Group({ projectName, engName, member1: member1, member2: mem2 , advisor : adv,status , allMember: [member1]});
     await newGroup.save();
 
     sendGroupNotification("addGroup", newGroup._id, "ระบบ", "ระบบ", `คุณถูกเพิ่มเข้ากลุ่มโดย ${mem1.name}`, null, null , undefined , null ,  member2 , advisor)
@@ -2059,56 +2092,55 @@ app.get("/paper", requireLogin, async (req, res) => {
 
 app.post("/api/PaperUploadFile", requireLogin, async (req, res) => {
     try {
-        const { paperId, filesData } = req.body; 
-
-        if (!filesData || !Array.isArray(filesData)) {
-            return res.status(400).send("ข้อมูลไฟล์ไม่ถูกต้อง");
-        }
-
-        // --- 1. ค้นหาและลบไฟล์เก่าทั้งหมดของ PaperId นี้ ---
-        const oldFiles = await PaperFile.find({ paperId: paperId });
-
+        const { paperId, filesData } = req.body;
         const paper = await Paper.findById(paperId);
-        const paperGroup = paper.groupId;
+        const paperGroup = await Group.findById(paper.groupId);
 
+        // 1. สร้าง PDF ออโต้และอัปโหลดเข้า GridFS
+        const autoPdfBuffer = await generateAutoFilledPDF(paperGroup);
+        const autoPdfName = `แบบฟอร์ม_${paperGroup.projectName}.pdf`;
+        const uploadStream = bucket.openUploadStream(autoPdfName, { contentType: 'application/pdf' });
+        const autoFileId = uploadStream.id;
+
+        await new Promise((resolve, reject) => {
+            streamifier.createReadStream(Buffer.from(autoPdfBuffer)).pipe(uploadStream)
+                .on('error', reject).on('finish', resolve);
+        });
+
+        // 2. ลบไฟล์เก่าใน PaperFile เฉพาะที่เป็นไฟล์ที่เด็กอัปโหลด
+        const oldFiles = await PaperFile.find({ paperId: paperId });
         for (const oldFile of oldFiles) {
-            if (oldFile.file && oldFile.file.fileId) {
-                try {
-                    await bucket.delete(new mongoose.Types.ObjectId(oldFile.file.fileId)); // ลบไฟล์จริงใน GridFS
-                } catch (err) {
-                    console.warn(`⚠️ ไม่สามารถลบไฟล์เก่า ${oldFile.file.fileId} ได้:`, err.message);
-                }
+            if (oldFile.file?.fileId) {
+                try { await bucket.delete(new mongoose.Types.ObjectId(oldFile.file.fileId)); } 
+                catch (err) { console.warn(err.message); }
             }
         }
-        // ลบ Metadata เก่าใน PaperFile
         await PaperFile.deleteMany({ paperId: paperId });
 
-        // --- 2. บันทึกไฟล์ชุดใหม่ ---
+        // 3. บันทึกไฟล์ที่เด็กอัปโหลดลง PaperFile ตามปกติ
         const savePromises = filesData.map(file => {
             return new PaperFile({
                 paperId: paperId,
-                groupId: paperGroup,
-                file: { 
-                    fileId: file.id, 
-                    filename: file.filename 
-                }
+                groupId: paperGroup._id,
+                file: { fileId: file.id, filename: file.filename }
             }).save();
         });
-
         await Promise.all(savePromises);
 
-        // ✅ เปลี่ยนจาก req.session.user.group เป็น paperGroup
+        // 4. ✅ เก็บ ID ของ PDF ออโต้ไว้ที่ตัว Paper (แยกคอลัมน์)
+        await Paper.findByIdAndUpdate(paperId, { 
+            $set: { 
+                expireAt: null,
+                autoPdfId: autoFileId // เพิ่ม Field นี้ใน Schema Paper
+            } 
+        });
+
         if (paperGroup) {
-            await Group.findByIdAndUpdate(paperGroup, { $set: { status: "ส่งเอกสารเรียบร้อย" } });
+            await Group.findByIdAndUpdate(paperGroup._id, { $set: { status: "ส่งเอกสารเรียบร้อย" } });
         }
 
-        // 3. ปลด TTL ให้เป็นบันทึกถาวร
-        await Paper.findByIdAndUpdate(paperId, { $set: { expireAt: null } });
-
-        res.status(200).send("อัปโหลดไฟล์ใหม่แทนที่อันเดิมสำเร็จ");
-    } catch (err) {
-        res.status(500).send(err.message);
-    }
+        res.status(200).send("สำเร็จ");
+    } catch (err) { res.status(500).send(err.message); }
 });
 
 app.post("/api/paper/upload-raw", requireLogin, upload.array("files"), async (req, res) => {
@@ -2150,15 +2182,14 @@ app.get("/api/getMyPapers", requireLogin, async (req, res) => {
         const platforms = await Paper.find({ groupId: { $in: userGroupIds } }).lean();
 
         const finalData = await Promise.all(platforms.map(async (p) => {
-            // ✅ เปลี่ยนจาก findOne เป็น find เพื่อเช็คว่ามีไฟล์อย่างน้อย 1 ไฟล์ไหม
-            const fileRecords = await PaperFile.find({ paperId: p._id });
-            
-            return {
-                ...p,
-                isSubmitted: fileRecords.length > 0, // ถ้ามีไฟล์ใน PaperFile ให้ถือว่าส่งแล้ว
-                files: fileRecords.map(f => f.file)  // ส่งรายการไฟล์ทั้งหมดกลับไปด้วยเลย
-            };
-        }));
+        const fileRecords = await PaperFile.find({ paperId: p._id });
+          return {
+              ...p,
+              isSubmitted: fileRecords.length > 0,
+              files: fileRecords.map(f => f.file),
+              autoPdfId: p.autoPdfId // ✅ ส่ง ID ของ PDF แยกออกไป
+          };
+      }));
 
         res.json(finalData);
     } catch (err) {

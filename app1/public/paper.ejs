@@ -193,16 +193,25 @@
                                 <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">${paper.mention}</div>
                                 <h5 class="font-weight-bold text-gray-800 mb-0">${groupName} (ครั้งที่ ${passTime})</h5>
                             </div>
-                            ${(currentRole === 'teacher' || currentRole === 'admin') ? `
-                                <label class="custom-check-container" for="check-${targetGroup._id}">
-                                    <input type="checkbox" class="mr-2" id="check-${targetGroup._id}" 
-                                        onchange="updateReadyStatus(this, '${targetGroup._id}')"
-                                        ${targetGroup.status.includes('พร้อมสอบ') ? 'checked disabled' : ''}>
-                                    <span class="small font-weight-bold ${targetGroup.status.includes('พร้อมสอบ') ? 'text-success' : 'text-primary'}">
-                                        ${targetGroup.status.includes('พร้อมสอบ') ? 'พร้อมสอบแล้ว' : 'ยืนยันพร้อมสอบ'}
-                                    </span>
-                                </label>
-                            ` : ''}
+                            
+                            <div class="d-flex align-items-center" style="gap: 10px;">
+                                ${paper.autoPdfId ? `
+                                    <a href="/file/download/${paper.autoPdfId}" class="btn btn-sm btn-outline-danger shadow-sm px-3" title="ดาวน์โหลดแบบฟอร์มที่มีการกรอกข้อมูลแล้ว">
+                                        <i class="fas fa-file-pdf mr-2"></i>ดาวน์โหลดแบบฟอร์ม
+                                    </a>
+                                ` : ''}
+
+                                ${(currentRole === 'teacher' || currentRole === 'admin') ? `
+                                    <label class="custom-check-container mb-0" for="check-${targetGroup._id}">
+                                        <input type="checkbox" class="mr-2" id="check-${targetGroup._id}" 
+                                            onchange="updateReadyStatus(this, '${targetGroup._id}')"
+                                            ${targetGroup.status.includes('พร้อมสอบ') ? 'checked disabled' : ''}>
+                                        <span class="small font-weight-bold ${targetGroup.status.includes('พร้อมสอบ') ? 'text-success' : 'text-primary'}">
+                                            ${targetGroup.status.includes('พร้อมสอบ') ? 'พร้อมสอบแล้ว' : 'ยืนยันพร้อมสอบ'}
+                                        </span>
+                                    </label>
+                                ` : ''}
+                            </div>
                         </div>
 
                         <div class="paper-content-grid">
@@ -225,7 +234,6 @@
                                 `}
                             </div>
                         </div>
-
                     </div>
                 </div>`;
                 }
