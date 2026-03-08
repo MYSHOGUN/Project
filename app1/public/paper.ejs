@@ -196,10 +196,12 @@
                             
                             <div class="d-flex align-items-center" style="gap: 10px;">
                                 ${paper.autoPdfId ? `
-                                    <a href="/file/download/${paper.autoPdfId}" class="btn btn-sm btn-outline-danger shadow-sm px-3" title="ดาวน์โหลดแบบฟอร์มที่มีการกรอกข้อมูลแล้ว">
+                                    <a href="/view-pdf/${paper.autoPdfId}" target="_blank" class="btn btn-sm btn-outline-danger shadow-sm px-3">
                                         <i class="fas fa-file-pdf mr-2"></i>ดาวน์โหลดแบบฟอร์ม
                                     </a>
-                                ` : ''}
+                                ` : `
+                                    <span class="badge badge-light text-muted p-2">ระบบยังไม่ได้สร้างแบบฟอร์ม</span>
+                                `}
 
                                 ${(currentRole === 'teacher' || currentRole === 'admin') ? `
                                     <label class="custom-check-container mb-0" for="check-${targetGroup._id}">

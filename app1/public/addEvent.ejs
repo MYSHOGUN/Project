@@ -478,8 +478,9 @@
                     title: 'บันทึกกิจกรรมสำเร็จ',
                     text: 'กิจกรรมได้รับการบันทึกเรียบร้อยแล้ว',
                     confirmButtonText: 'ตกลง'
+                }).then(() => {
+                    window.location.href = "/event";
                 });
-                window.location.href = "/event";
             } else {
                 // 💡 แสดงผล Error ที่ส่งมาจาก Server ถ้าไม่มีให้ใช้ข้อความ Default
                 const errorMsg = result.message || result.error || "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";

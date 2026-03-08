@@ -34,6 +34,8 @@ const http = require("http");
 const { Server } = require("socket.io");
 const connectDB = require("./db"); // ✅ เพิ่มตรงนี้
 
+const fontkit = require('@pdf-lib/fontkit');
+
 const migrateOldNotis = async () => {
     await Notification.updateMany(
         { isRead: { $exists: false } }, 
@@ -182,34 +184,112 @@ async (req, res) => {
 }
 
 async function generateAutoFilledPDF(groupData) {
-    // 1. โหลดไฟล์ต้นฉบับ (Template)
-    const templateBuffer = fs.readFileSync(path.join(__dirname, 'src', 'template', 'แบบฟอร์มขออนุมัติหัวข้อสอบก้าวหน้าและสอบป้องกัน.pdf'));
-    const pdfDoc = await PDFDocument.load(templateBuffer);
-    const form = pdfDoc.getForm();
+    try {
+        const templatePath = path.join(__dirname, 'app1', 'src', 'template', 'แบบฟอร์มขออนุมัติหัวข้อสอบก้าวหน้าและสอบป้องกัน.pdf');
+        // ใช้ฟอนต์ Bold ตามที่คุณต้องการ
+        const fontPath = path.join(__dirname, 'app1', 'src', 'fonts', 'THSarabunNew Bold.ttf');
+        
+        console.log("🔍 กำลังโหลดฟอนต์จาก:", fontPath);
 
-    const mem1 = await User.findOne({ username: groupData.member1 });
-    const mem2 = groupData.member2 ? await User.findOne({ username: groupData.member2 }) : null;
-    const adv = await User.findOne({ username: groupData.advisor });
+        const templateBuffer = fs.readFileSync(templatePath);
+        const fontBuffer = fs.readFileSync(fontPath);
+        
+        const pdfDoc = await PDFDocument.load(templateBuffer);
+        pdfDoc.registerFontkit(fontkit);
 
-    const now = new Date();
+        const thaiFont = await pdfDoc.embedFont(fontBuffer);
+        const form = pdfDoc.getForm();
 
-    // 2. กรอกข้อมูลลงฟิลด์ (ชื่อฟิลด์ต้องตรงกับในไฟล์ PDF ของคุณ)
-    form.getTextField('project').setText(groupData.projectName);
-    form.getTextField('engName').setText(groupData.engName);
-    form.getTextField('mem1').setText(mem1.name + " " + mem1.lastname);
-    form.getTextField('user1').setText(mem1.username);
-    form.getTextField('mem2').setText(mem2 ? mem2.name + " " + mem2.lastname : "");
-    form.getTextField('user2').setText(mem2 ? mem2.username : "");
-    form.getTextField('adv').setText(adv.name + " " + adv.lastname);
-    form.getTextField('day').setText(now.getDate().toString());
-    form.getTextField('month').setText((now.getMonth() + 1).toString());
-    form.getTextField('year').setText((now.getFullYear()+543).toString());
-    form.getTextField('yeart').setText(now.getMonth()+1 >= 10 ? (now.getFullYear()+543).toString() : (now.getFullYear()+542).toString());
-    form.getTextField('enetc').setText("วิทยาลัยเทคโนโลยีอุตสาหกรรม สาขาคอมพิวเตอร์");
-    form.getTextField('enet').setText("วิทยาลัยเทคโนโลยีอุตสาหกรรม");
-    form.getTextField('c').setText("คอมพิวเตอร์");
-    // 3. บันทึกเป็น Buffer
-    return await pdfDoc.save();
+        const smartFill = (name, value) => {
+            try {
+                const field = form.getField(name);
+                if (field && field.constructor.name === 'PDFTextField') {
+                    const textValue = value ? value.toString() : "-";
+                    
+                    // 1. ดึงขนาดความกว้างของช่องจริงใน PDF
+                    const widgets = field.acroField.getWidgets();
+                    if (!widgets || widgets.length === 0) return;
+                    const width = widgets[0].getRectangle().width;
+
+                    // 2. ตั้งค่าเริ่มต้นสำหรับ Auto-fit
+                    let fontSize = 12; // ขนาดเริ่มต้น (หนาและสวย)
+                    field.updateAppearances(thaiFont);
+
+                    // 3. คำนวณขนาดฟอนต์ให้พอดีช่อง (Auto-fit Logic)
+                    let textWidth = thaiFont.widthOfTextAtSize(textValue, fontSize);
+                    while (textWidth > width - 6 && fontSize > 6) { // Margin 6 pt
+                        fontSize -= 0.5;
+                        textWidth = thaiFont.widthOfTextAtSize(textValue, fontSize);
+                    }
+
+                    // 4. สั่งกรอกข้อมูลด้วยขนาดที่คำนวณได้
+                    field.setFontSize(fontSize);
+                    field.setText(textValue);
+                    
+                    // บังคับ Appearance อีกครั้งหลัง SetText
+                    if (typeof field.updateAppearances === 'function') {
+                        field.updateAppearances(thaiFont);
+                    }
+                }
+            } catch (e) {
+                console.warn(`⚠️ ข้ามฟิลด์ ${name}: ${e.message}`);
+            }
+        };
+
+        // --- เตรียมข้อมูลชื่อ (ดึง User เหมือนเดิม) ---
+        const cleanM1 = groupData.member1 ? groupData.member1.replace(" (Pending)", "") : null;
+        const cleanM2 = groupData.member2 ? groupData.member2.replace(" (Pending)", "") : null;
+        const cleanAdv = groupData.advisor ? groupData.advisor.replace(" (Pending)", "") : null;
+
+        const [mem1, mem2, adv] = await Promise.all([
+            User.findOne({ username: cleanM1 }),
+            cleanM2 ? User.findOne({ username: cleanM2 }) : null,
+            cleanAdv ? User.findOne({ username: cleanAdv }) : null
+        ]);
+
+        const name1 = mem1 ? `${mem1.name} ${mem1.lastname}` : (cleanM1 || "-");
+        const name2 = mem2 ? `${mem2.name} ${mem2.lastname}` : (cleanM2 || "");
+        const nameAdv = adv ? `${adv.name} ${adv.lastname}` : (cleanAdv || "");
+        const now = new Date();
+
+        // --- สั่งกรอกข้อมูล ---
+        smartFill('Text1', 'วิทยาลัยเทคโนโลยีอุตสาหกรรม สาขาวิชาคอมพิวเตอร์');
+        smartFill('Text2', (now.getMonth() + 1 >= 10 ? (now.getFullYear() + 543) : (now.getFullYear() + 542)).toString());
+        smartFill('Text3', groupData.projectName);
+        smartFill('Text4', groupData.engName);
+        smartFill('Text5', name1);
+        smartFill('Text6', name2);
+        smartFill('Text7', 'วิทยาลัยเทคโนโลยีอุตสาหกรรม สาขาวิชาคอมพิวเตอร์');
+        smartFill('Text8', nameAdv);
+        smartFill('Text10', 'วิทยาลัยเทคโนโลยีอุตสาหกรรม');
+        smartFill('Text11', 'คอมพิวเตอร์');
+        smartFill('Text12', 'วิทยาลัยเทคโนโลยีอุตสาหกรรม สาขาวิชาคอมพิวเตอร์');
+        smartFill('Text13', (now.getMonth() + 1 >= 10 ? 2 : 1).toString());
+        smartFill('Text14', (now.getMonth() + 1 >= 10 ? (now.getFullYear() + 543) : (now.getFullYear() + 542)).toString());
+        smartFill('Text15', groupData.projectName);
+        smartFill('Text16', groupData.engName);
+        smartFill('Text17', name1);
+        smartFill('Text18', cleanM1);
+        smartFill('Text19', name2);
+        smartFill('Text20', cleanM2);
+        smartFill('Text22', 'วิทยาลัยเทคโนโลยีอุตสาหกรรม สาขาวิชาคอมพิวเตอร์');
+        smartFill('Text23', (now.getMonth() + 1 >= 10 ? 2 : 1).toString());
+        smartFill('Text24', (now.getMonth() + 1 >= 10 ? (now.getFullYear() + 543) : (now.getFullYear() + 542)).toString());
+        smartFill('Text25', groupData.projectName);
+        smartFill('Text26', groupData.engName);
+        smartFill('Text27', name1);
+        smartFill('Text28', cleanM1);
+        smartFill('Text29', name2);
+        smartFill('Text30', cleanM2);
+
+        // ✅ ท่าไม้ตายสุดท้าย: รวมเลเยอร์ (Flatten) เพื่อไม่ให้พื้นหลังหายและตัวหนังสือคงที่
+        form.flatten();
+
+        return await pdfDoc.save();
+    } catch (err) {
+        console.error("❌ PDF REAL ERROR:", err);
+        return null;
+    }
 }
 
 app.use(express.urlencoded({ extended: true }));
@@ -1804,34 +1884,54 @@ app.post("/api/addEvent", requireLogin, upload.single("file"), async (req, res) 
 
         let targetGroups = [];
 
-        if(title === "วันส่งเอกสาร"){
-          const allGroups = await Group.find({ 
-            status: { 
-                $nin: ["ผ่านการสอบปริญญานิพนธ์", "ไปคุยกับรากมะม่วง"] 
-            } 
-          });
-            
-            const paperPlatforms = allGroups.map(group => ({
-                eventId: eventId,
-                groupId: group._id, // หรือ group._id
-                mention: description || title,
-                expireAt: expire, // ตั้งวันหมดอายุไว้ที่นี่
-                passTimes: group.passTimes,
-                date: expire, // หรือใช้วันที่ปัจจุบันก็ได้ ขึ้นอยู่กับความหมายที่ต้องการ
-            }));
+        if (title === "วันส่งเอกสาร") {
+              // 1. สร้าง bucket เฉพาะกิจตรงนี้เลยเพื่อให้มั่นใจว่าไม่เป็น undefined
+              const localBucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: "fs" });
 
-            const updateGroupStatus = allGroups.map(group => ({
-                updateOne: {
-                    filter: { _id: group._id },
-                    update: { status: "รอส่งเอกสาร" }
-                }
-            }));
+              const allGroups = await Group.find({ 
+                  status: { $nin: ["ผ่านการสอบปริญญานิพนธ์", "ไปคุยกับรากมะม่วง"] } 
+              });
 
-            await Group.bulkWrite(updateGroupStatus);
-            await Paper.insertMany(paperPlatforms);
+              for (const group of allGroups) {
+                  let finalAutoIdString = null;
 
-            
-        } else if (title === "วันสอบ" && file) {
+                  try {
+                      const autoPdfBuffer = await generateAutoFilledPDF(group);
+
+                      if (autoPdfBuffer) {
+                          // 2. ใช้ localBucket ที่สร้างขึ้นใหม่
+                          const uploadStream = localBucket.openUploadStream(`แบบฟอร์ม_${group.projectName}.pdf`, { 
+                              contentType: 'application/pdf' 
+                          });
+
+                          await new Promise((resolve, reject) => {
+                              streamifier.createReadStream(Buffer.from(autoPdfBuffer))
+                                  .pipe(uploadStream)
+                                  .on('error', reject)
+                                  .on('finish', resolve);
+                          });
+
+                          finalAutoIdString = uploadStream.id.toString();
+                          console.log(`✅ เขียนไฟล์สำเร็จ ID: ${finalAutoIdString}`);
+                      }
+                  } catch (pdfErr) {
+                      console.error(`❌ PDF Fail (${group.projectName}):`, pdfErr.message);
+                  }
+
+                  const newPaper = new Paper({
+                      eventId: eventId,
+                      groupId: group._id,
+                      mention: description || title,
+                      expireAt: expire,
+                      passTimes: group.passTimes,
+                      date: expire,
+                      autoPdfId: finalAutoIdString // ✅ รอบนี้จะไม่เป็น null ถ้าผ่าน try
+                  });
+
+                  const savedPaper = await newPaper.save(); 
+                  console.log(`💾 บันทึกสำเร็จ! ID: ${savedPaper.autoPdfId}`);
+              }
+          } else if (title === "วันสอบ" && file) {
             console.log("Processing Excel file for event:", title);
             const workbook = XLSX.read(file.buffer, { type: 'buffer' });
             const sheetName = workbook.SheetNames[0];
@@ -2032,7 +2132,7 @@ app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
                 g.status = "รอสอบก้าวหน้า";
               }
             }
-            await g.save();
+            await Group.findByIdAndUpdate(g._id, { $set: { status: g.status } });
           }
         }else if (event.title === "วันสอบ") {
           const groupExamDone = group.filter(g => g.status === "รอสอบปริญญานิพนธ์" || g.status === "รอสอบก้าวหน้า" || g.status === "รอนำเสนอหัวข้อ");
@@ -2044,7 +2144,7 @@ app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
             }else if(g.status === "รอนำเสนอหัวข้อ"){
               g.status = "พร้อมสอบนำเสนอหัวข้อ";
             }
-            await g.save();
+            await Group.findByIdAndUpdate(g._id, { $set: { status: g.status } });
           }
         }
         
@@ -2093,54 +2193,59 @@ app.get("/paper", requireLogin, async (req, res) => {
 app.post("/api/PaperUploadFile", requireLogin, async (req, res) => {
     try {
         const { paperId, filesData } = req.body;
+
+        // 1. ตรวจสอบข้อมูลพื้นฐาน
         const paper = await Paper.findById(paperId);
+        if (!paper) return res.status(404).send("ไม่พบรายการเอกสาร");
+
         const paperGroup = await Group.findById(paper.groupId);
+        if (!paperGroup) return res.status(404).send("ไม่พบข้อมูลกลุ่ม");
 
-        // 1. สร้าง PDF ออโต้และอัปโหลดเข้า GridFS
-        const autoPdfBuffer = await generateAutoFilledPDF(paperGroup);
-        const autoPdfName = `แบบฟอร์ม_${paperGroup.projectName}.pdf`;
-        const uploadStream = bucket.openUploadStream(autoPdfName, { contentType: 'application/pdf' });
-        const autoFileId = uploadStream.id;
-
-        await new Promise((resolve, reject) => {
-            streamifier.createReadStream(Buffer.from(autoPdfBuffer)).pipe(uploadStream)
-                .on('error', reject).on('finish', resolve);
-        });
-
-        // 2. ลบไฟล์เก่าใน PaperFile เฉพาะที่เป็นไฟล์ที่เด็กอัปโหลด
+        // 2. ลบข้อมูลไฟล์เก่าใน PaperFile (เฉพาะไฟล์ที่นักศึกษาอัปโหลด)
         const oldFiles = await PaperFile.find({ paperId: paperId });
         for (const oldFile of oldFiles) {
             if (oldFile.file?.fileId) {
-                try { await bucket.delete(new mongoose.Types.ObjectId(oldFile.file.fileId)); } 
-                catch (err) { console.warn(err.message); }
+                try { 
+                    // ลบไฟล์จริงออกจาก GridFS
+                    await bucket.delete(new mongoose.Types.ObjectId(oldFile.file.fileId)); 
+                } catch (err) { 
+                    console.warn(`⚠️ Warning: ไม่สามารถลบไฟล์ ${oldFile.file.fileId} ได้:`, err.message); 
+                }
             }
         }
         await PaperFile.deleteMany({ paperId: paperId });
 
-        // 3. บันทึกไฟล์ที่เด็กอัปโหลดลง PaperFile ตามปกติ
-        const savePromises = filesData.map(file => {
-            return new PaperFile({
-                paperId: paperId,
-                groupId: paperGroup._id,
-                file: { fileId: file.id, filename: file.filename }
-            }).save();
-        });
-        await Promise.all(savePromises);
-
-        // 4. ✅ เก็บ ID ของ PDF ออโต้ไว้ที่ตัว Paper (แยกคอลัมน์)
-        await Paper.findByIdAndUpdate(paperId, { 
-            $set: { 
-                expireAt: null,
-                autoPdfId: autoFileId // เพิ่ม Field นี้ใน Schema Paper
-            } 
-        });
-
-        if (paperGroup) {
-            await Group.findByIdAndUpdate(paperGroup._id, { $set: { status: "ส่งเอกสารเรียบร้อย" } });
+        // 3. บันทึกรายการไฟล์ใหม่ที่นักศึกษาส่งมาลง PaperFile
+        if (filesData && filesData.length > 0) {
+            const savePromises = filesData.map(file => {
+                return new PaperFile({
+                    paperId: paperId,
+                    groupId: paperGroup._id,
+                    file: { 
+                        fileId: file.id, 
+                        filename: file.filename 
+                    }
+                }).save();
+            });
+            await Promise.all(savePromises);
         }
 
+        // 4. อัปเดต Paper: ปลด TTL (expireAt) เพื่อไม่ให้ระบบลบทิ้งอัตโนมัติ
+        // หมายเหตุ: ไม่ต้องอัปเดต autoPdfId ที่นี่แล้ว เพราะเราสร้างไว้ตั้งแต่ตอน addEvent
+        await Paper.findByIdAndUpdate(paperId, { 
+            $set: { expireAt: null } 
+        });
+
+        // 5. อัปเดตสถานะกลุ่ม (ใช้ findByIdAndUpdate เพื่อเลี่ยง Error engName)
+        await Group.findByIdAndUpdate(paperGroup._id, { 
+            $set: { status: "ส่งเอกสารเรียบร้อย" } 
+        });
+
         res.status(200).send("สำเร็จ");
-    } catch (err) { res.status(500).send(err.message); }
+    } catch (err) { 
+        console.error("❌ PaperUpload Error:", err.message);
+        res.status(500).send("เกิดข้อผิดพลาดในการบันทึกข้อมูล: " + err.message); 
+    }
 });
 
 app.post("/api/paper/upload-raw", requireLogin, upload.array("files"), async (req, res) => {
@@ -2733,6 +2838,42 @@ app.post("/api/addSecretary", requireLogin, async (req, res) => {
     } catch (err) {
         console.error("❌ Admin Grant Secretary Error:", err);
         res.status(500).json({ error: "เกิดข้อผิดพลาดภายในระบบ" });
+    }
+});
+
+// ✅ API สำหรับดึง PDF จาก autoPdfId มาแสดงผล
+// เพิ่มหรือแก้ไขใน server.js
+app.get("/view-pdf/:id", async (req, res) => {
+    try {
+        const idParam = req.params.id;
+        
+        // 1. ตรวจสอบความถูกต้องของ ID String
+        if (!mongoose.Types.ObjectId.isValid(idParam)) {
+            return res.status(400).send("❌ รูปแบบ ID ไม่ถูกต้อง");
+        }
+
+        const fileId = new mongoose.Types.ObjectId(idParam);
+        
+        // 2. ใช้ bucket (GridFSBucket) ที่ประกาศไว้ในบรรทัดที่ 46
+        const files = await bucket.find({ _id: fileId }).toArray();
+        
+        if (!files || files.length === 0) {
+            return res.status(404).send("❌ ไม่พบไฟล์เอกสารใน GridFS (ID นี้ไม่มีไฟล์จริง)");
+        }
+
+        // 3. ตั้งค่า Header สำหรับ PDF
+        res.set({
+            "Content-Type": "application/pdf",
+            "Content-Disposition": `inline; filename="${encodeURIComponent(files[0].filename)}"`
+        });
+
+        // 4. Stream ไฟล์ออกไป
+        const downloadStream = bucket.openDownloadStream(fileId);
+        downloadStream.pipe(res);
+
+    } catch (err) {
+        console.error("❌ View PDF Error:", err.message);
+        res.status(500).send("เกิดข้อผิดพลาด: " + err.message);
     }
 });
       
