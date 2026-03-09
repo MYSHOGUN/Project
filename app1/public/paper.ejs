@@ -151,11 +151,16 @@
                 const paperDate = new Date(paper.date);
                 paperDate.setHours(0,0,0,0);
 
+                const Result = targetResult ? (!targetResult.pass.includes(currentUsername) && !targetResult.fail.includes(currentUsername)) : true;
+
                 const passTime = (paper.passTimes || 0) + 1;
                 let cardHtml = "";
 
+                const test = paperDate.getTime() <= today.getTime();
+                console.log("📅 Debug Date Check:", { paperDate, today, test });
+
                 // ส่วนที่ 1: สำหรับอาจารย์ส่งผลสอบ
-                if ((currentRole === "teacher" || currentRole === "admin") && paperDate.getTime() <= today.getTime() && (!targetResult.pass.includes(currentUsername) && !targetResult.fail.includes(currentUsername))) {
+                if ((currentRole === "teacher" || currentRole === "admin") && paperDate.getTime() <= today.getTime() && Result) {
                     cardHtml += `
                     <div class="card paper-card shadow mb-4 border-left-primary" style="grid-column: 1 / -1;">
                         <div class="card-body p-4 text-center">
