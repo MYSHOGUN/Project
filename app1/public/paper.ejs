@@ -146,22 +146,22 @@
                 const isUserInGroup = [targetGroup.member1, targetGroup.member2, targetGroup.advisor].includes(currentUsername);
                 
                 // ✅ ปรับแก้ Logic วันที่ให้เทียบเฉพาะ วัน/เดือน/ปี
-                const paperDate = new Date(paper.date);
-                const pYear = paperDate.getFullYear();
-                const pMonth = paperDate.getMonth();
-                const pDay = paperDate.getDate();
-                const cleanPaperDate = new Date(pYear, pMonth, pDay).getTime();
+                const today = new Date();
+                // เซ็ตเป็นเวลา 00:00:00 ของวันนี้เวลาไทย
+                const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
 
-                const tYear = today.getFullYear();
-                const tMonth = today.getMonth();
-                const tDay = today.getDate();
-                const cleanToday = new Date(tYear, tMonth, tDay).getTime();
+                const paperDateObj = new Date(paper.date);
+                // เซ็ตเป็นเวลา 00:00:00 ของวันที่ในเอกสาร
+                const paperDateLocal = new Date(paperDateObj.getFullYear(), paperDateObj.getMonth(), paperDateObj.getDate()).getTime();
+
+                // ตรวจสอบว่าอาจารย์เคยลงคะแนนหรือยัง
+                const hasAlreadyVoted = targetResult.pass.includes(currentUsername) || targetResult.fail.includes(currentUsername);
 
                 const passTime = (paper.passTimes || 0) + 1;
                 let cardHtml = "";
 
                 // ส่วนที่ 1: สำหรับอาจารย์ส่งผลสอบ
-                if ((currentRole === "teacher" || currentRole === "admin") && cleanPaperDate <= cleanToday && (!targetResult.pass.includes(currentUsername) && !targetResult.fail.includes(currentUsername))) {
+                if ((currentRole === "teacher" || currentRole === "admin") && paperDateLocal <= todayLocal && !hasAlreadyVoted) {
                     cardHtml += `
                     <div class="card paper-card shadow mb-4 border-left-primary" style="grid-column: 1 / -1;">
                         <div class="card-body p-4 text-center">
