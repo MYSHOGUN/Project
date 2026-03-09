@@ -186,7 +186,7 @@
                 }
 
                 // ส่วนที่ 2: Card หลัก (ส่งไฟล์และ Checkbox อาจารย์)
-                if (isUserInGroup || currentRole === "admin") {
+                if ((isUserInGroup || currentRole === "admin") && paper.mention !== "จะมีการจัดสอบในวันที่กำหนด โปรดเตรียมเอกสารในการสอบให้เรียบร้อย") {
                     // แก้ไขโครงสร้างในส่วน cardHtml (จุดที่ส่งไฟล์) ให้เป็นตามนี้ครับ
                 // เปลี่ยนโครงสร้างภายใน cardHtml ช่วงที่มีการส่งไฟล์
                 cardHtml += `
