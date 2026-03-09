@@ -155,7 +155,7 @@
                 const paperDateLocal = new Date(paperDateObj.getFullYear(), paperDateObj.getMonth(), paperDateObj.getDate()).getTime();
 
                 // ตรวจสอบว่าอาจารย์เคยลงคะแนนหรือยัง
-                const hasAlreadyVoted = targetResult.pass.includes(currentUsername) || targetResult.fail.includes(currentUsername);
+                const hasAlreadyVoted = targetResult.pass.includes(currentUsername) || targetResult.fail.includes(currentUsername) || false;;
 
                 const passTime = (paper.passTimes || 0) + 1;
                 let cardHtml = "";
