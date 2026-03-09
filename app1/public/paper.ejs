@@ -146,16 +146,22 @@
                 const isUserInGroup = [targetGroup.member1, targetGroup.member2, targetGroup.advisor].includes(currentUsername);
                 
                 // ✅ ปรับแก้ Logic วันที่ให้เทียบเฉพาะ วัน/เดือน/ปี
-                const today = new Date();
-                today.setHours(0,0,0,0);
                 const paperDate = new Date(paper.date);
-                paperDate.setHours(0,0,0,0);
+                const pYear = paperDate.getFullYear();
+                const pMonth = paperDate.getMonth();
+                const pDay = paperDate.getDate();
+                const cleanPaperDate = new Date(pYear, pMonth, pDay).getTime();
+
+                const tYear = today.getFullYear();
+                const tMonth = today.getMonth();
+                const tDay = today.getDate();
+                const cleanToday = new Date(tYear, tMonth, tDay).getTime();
 
                 const passTime = (paper.passTimes || 0) + 1;
                 let cardHtml = "";
 
                 // ส่วนที่ 1: สำหรับอาจารย์ส่งผลสอบ
-                if ((currentRole === "teacher" || currentRole === "admin") && paperDate.getTime() <= today.getTime() && (!targetResult.pass.includes(currentUsername) && !targetResult.fail.includes(currentUsername))) {
+                if ((currentRole === "teacher" || currentRole === "admin") && cleanPaperDate <= cleanToday && (!targetResult.pass.includes(currentUsername) && !targetResult.fail.includes(currentUsername))) {
                     cardHtml += `
                     <div class="card paper-card shadow mb-4 border-left-primary" style="grid-column: 1 / -1;">
                         <div class="card-body p-4 text-center">
