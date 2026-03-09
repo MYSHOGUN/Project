@@ -147,21 +147,15 @@
                 
                 // ✅ ปรับแก้ Logic วันที่ให้เทียบเฉพาะ วัน/เดือน/ปี
                 const today = new Date();
-                // เซ็ตเป็นเวลา 00:00:00 ของวันนี้เวลาไทย
-                const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-
-                const paperDateObj = new Date(paper.date);
-                // เซ็ตเป็นเวลา 00:00:00 ของวันที่ในเอกสาร
-                const paperDateLocal = new Date(paperDateObj.getFullYear(), paperDateObj.getMonth(), paperDateObj.getDate()).getTime();
-
-                // ตรวจสอบว่าอาจารย์เคยลงคะแนนหรือยัง
-                const hasAlreadyVoted = targetResult.pass.includes(currentUsername) || targetResult.fail.includes(currentUsername) || false;;
+                today.setHours(0,0,0,0);
+                const paperDate = new Date(paper.date);
+                paperDate.setHours(0,0,0,0);
 
                 const passTime = (paper.passTimes || 0) + 1;
                 let cardHtml = "";
 
                 // ส่วนที่ 1: สำหรับอาจารย์ส่งผลสอบ
-                if ((currentRole === "teacher" || currentRole === "admin") && paperDateLocal <= todayLocal && !hasAlreadyVoted) {
+                if ((currentRole === "teacher" || currentRole === "admin") && paperDate.getTime() <= today.getTime() && (!targetResult.pass.includes(currentUsername) && !targetResult.fail.includes(currentUsername))) {
                     cardHtml += `
                     <div class="card paper-card shadow mb-4 border-left-primary" style="grid-column: 1 / -1;">
                         <div class="card-body p-4 text-center">
