@@ -171,47 +171,79 @@
         }
     }
     // ในหน้า eventInfo.ejs ส่วน <script>
-    $("#saveScheduleBtn").on("click", function() {
-        const $btn = $(this);
-        const originalText = $btn.html();
-        
-        // ดึงข้อมูลจากฟอร์มตาราง
-        const formData = $("#scheduleForm").serializeArray();
-        
-        // เพิ่ม eventId เข้าไปในข้อมูลที่จะส่ง
-        const payload = {
-            eventId: "<%= event.id %>", // ID จาก Event Model
-            data: []
-        };
+    const saveBtn = document.getElementById("saveScheduleBtn");
+    if (saveBtn) {
+        saveBtn.addEventListener("click", async function() {
+            // 1. แสดงหน้าต่างยืนยัน (Confirm Dialog)
+            const confirmResult = await Swal.fire({
+                title: 'ยืนยันการบันทึก?',
+                text: "ข้อมูลในตารางจะถูกอัปเดตลงในไฟล์ Excel และระบบเอกสารทันที",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#1cc88a',
+                cancelButtonColor: '#858796',
+                confirmButtonText: 'ใช่, บันทึกเลย',
+                cancelButtonText: 'ยกเลิก',
+                reverseButtons: true
+            });
 
-        // แปลง serializeArray ให้เป็นรูปแบบ JSON ที่เหมาะสม
-        // (Logic นี้จะช่วยรวมค่า data[index][key] กลับเป็น Object)
-        const temp = {};
-        formData.forEach(item => {
-            const match = item.name.match(/data\[(\d+)\]\[(.+)\]/);
-            if (match) {
-                const index = match[1];
-                const key = match[2];
-                if (!payload.data[index]) payload.data[index] = {};
-                payload.data[index][key] = item.value;
+            // ถ้าผู้ใช้กด "ยกเลิก" ให้หยุดการทำงาน
+            if (!confirmResult.isConfirmed) return;
+
+            const originalHTML = this.innerHTML;
+            const rows = document.querySelectorAll(".schedule-row");
+            const scheduleData = [];
+
+            // 2. รวบรวมข้อมูลจากตาราง
+            rows.forEach((row) => {
+                const inputs = row.querySelectorAll("input, textarea");
+                const rowObj = {};
+                inputs.forEach(input => {
+                    const nameAttr = input.getAttribute("name");
+                    // ดึง key เช่น [ชื่อกลุ่ม] จาก data[0][ชื่อกลุ่ม]
+                    const keyMatch = nameAttr.match(/\[([^\]]+)\]$/); 
+                    if (keyMatch) {
+                        rowObj[keyMatch[1]] = input.value;
+                    }
+                });
+                scheduleData.push(rowObj);
+            });
+
+            const payload = {
+                eventId: "<%= event.id %>",
+                data: scheduleData
+            };
+
+            // 3. เริ่มส่งข้อมูลไป Server
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>กำลังบันทึก...';
+
+            try {
+                const response = await fetch("/update-exam-schedule", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกสำเร็จ',
+                        text: 'ข้อมูลตารางสอบและไฟล์ Excel ถูกอัปเดตเรียบร้อยแล้ว',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    location.reload();
+                } else {
+                    const errorText = await response.text();
+                    throw new Error(errorText || "เซิร์ฟเวอร์ตอบกลับด้วยข้อผิดพลาด");
+                }
+            } catch (err) {
+                console.error("❌ Save Error:", err);
+                Swal.fire('เกิดข้อผิดพลาด', err.message, 'error');
+                this.disabled = false;
+                this.innerHTML = originalHTML;
             }
         });
-
-        $btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin mr-2"></i>กำลังบันทึก...');
-
-        $.ajax({
-            url: "/update-exam-schedule",
-            method: "POST",
-            contentType: "application/json",
-            data: JSON.stringify(payload), // ส่งเป็น JSON แทนการ serialize ธรรมดาจะจัดการง่ายกว่า
-            success: function(res) {
-                Swal.fire('สำเร็จ', 'บันทึกข้อมูลลงไฟล์ Excel เรียบร้อย', 'success')
-                    .then(() => location.reload());
-            },
-            error: function(err) {
-                Swal.fire('ผิดพลาด', err.responseText, 'error');
-                $btn.prop("disabled", false).html(originalText);
-            }
-        });
-    });
+    }
 </script>
