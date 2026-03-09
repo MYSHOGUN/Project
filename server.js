@@ -2331,7 +2331,10 @@ app.post("/api/submitPaperResult", requireLogin, async (req, res) => {
                 groupId: currentPaper.groupId,
                 mention: `อาจารย์ ${user} ต้องการให้แก้ไข: ${comment}`,
                 director: currentPaper.director, // ส่งกรรมการชุดเดิมไปด้วย
-                date: currentPaper.date
+                date: currentPaper.date,
+                passTimes: currentPaper.passTimes,
+                autoPdfId: currentPaper.autoPdfId, // ส่งต่อ PDF เดิมไปด้วย (ถ้ามี)
+                date: new Date() // อัปเดตวันที่เป็นปัจจุบันเพื่อให้เด้งใหม่
             });
             await fixPaper.save();
 
@@ -2344,7 +2347,7 @@ app.post("/api/submitPaperResult", requireLogin, async (req, res) => {
         let group = await Group.findById(currentPaper.groupId);
         if (!group) return res.status(404).json({ error: "ไม่พบข้อมูลกลุ่ม" });
 
-        let examResult = await Result.findOne({ groupId: currentPaper.groupId });
+        let examResult = await Result.findOne({ groupId: currentPaper.groupId , passTimes: currentPaper.passTimes });
 
         if (!examResult) {
             examResult = new Result({
