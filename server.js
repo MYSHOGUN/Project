@@ -16,6 +16,10 @@ const Notification = require("./models/Notification");
 
 const NotificationRead = require("./models/NotificationRead");
 
+const Log = require("./models/Log");
+
+const logger = require('./models/logger');
+
 const nodemailer = require("nodemailer");
 
 const streamifier = require('streamifier');
@@ -292,6 +296,33 @@ async function generateAutoFilledPDF(groupData) {
     }
 }
 
+async function createLog(req, action, details = {}) {
+    const username = req.session?.user?.username || "Guest";
+    const logMsg = `${action} by ${username} - Details: ${JSON.stringify(details)}`;
+
+    try {
+        // 1. บันทึกลงไฟล์ผ่าน Winston
+        if (action.includes('ERROR')) {
+            logger.error(logMsg);
+        } else {
+            logger.info(logMsg);
+        }
+
+        // 2. บันทึกลง MongoDB (โค้ดเดิมของคุณ)
+         const newLog = new Log({
+            username: req.session.user ? req.session.user.username : "System/Guest",
+            role: req.session.user ? req.session.user.role : "N/A",
+            action: action,
+            details: details,
+            ip: req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress
+        });
+        await newLog.save();
+        console.log(`[LOG]: ${action} by ${newLog.username}`);
+    } catch (err) {
+        logger.error(`Failed to save log to DB: ${err.message}`);
+    }
+}
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({
@@ -406,11 +437,12 @@ app.get("/upload", requireLogin, (req, res) => {
 });
 
 app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (req, res) => {
+    let group;
   try {
     const messages = [];
 
     const groupId = req.params.groupId;
-    const group = await Group.findById(groupId);
+    group = await Group.findById(groupId);
 
     let hasMovement = false;
 
@@ -502,6 +534,11 @@ app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (re
       console.error(err);
       res.status(500).json({ error: "Upload error" });
     }
+
+    await createLog(req, "SENT_CHAT", { 
+        groupName: group.projectName,
+        type: req.body.text && req.body.text.trim() !== "" ? "message" : "file" // ดึงชื่อกิจกรรมมาเก็บไว้ดูย้อนหลังได้
+    });
   });
 
   async function sendGroupNotification(type, groupId, senderUsername, sender, messageText, senderPic, mention , expire , member1, member2 , advisor) {
@@ -748,6 +785,9 @@ app.get("/group", requireLogin, async (req, res) => {
     console.error("❌ Error deleting news:", err);
     res.status(500).send("Error loading groups");
   }
+  await createLog(req, "ENTER_CHAT", { 
+        username: req.session.user.username
+    });
 });
 
 app.get("/chat", requireLogin, async (req, res) => {
@@ -840,6 +880,10 @@ app.post("/login" , async (req, res) => {
     req.session.cookie.expires = false;
   }
 
+  await createLog(req, "LOGIN", { 
+        username: req.session.user.username
+    });
+
   return res.redirect("/");
 });
 
@@ -893,8 +937,12 @@ app.get("/search-advisor", requireLogin, async (req, res) => {
 
 // ✅ บันทึกกลุ่มใหม่
 app.post("/groups", requireLogin, async (req, res) => {
+    let projectName,member1;
   try {
     const {  projectName, engName, member1, member2, advisor} = req.body;
+
+    projectName = projectName ? projectName.trim() : "";
+    member1 = member1 ? member1.trim() : "";
 
     const status = "รอนำเสนอหัวข้อ";
 
@@ -950,6 +998,10 @@ app.post("/groups", requireLogin, async (req, res) => {
     console.error("❌ Error saving group:", err);
     res.status(500).send("เกิดข้อผิดพลาดในการบันทึกกลุ่ม");
   }
+  await createLog(req, "CREATE_GROUP", { 
+        groupName: projectName,
+        createBy: member1 // ดึงชื่อกิจกรรมมาเก็บไว้ดูย้อนหลังได้
+    });
 });
 
 
@@ -1017,6 +1069,10 @@ app.post("/group/accept-invitation/:groupId/:notiId", requireLogin, async (req, 
     console.error("❌ Error accepting invitation:", err);
     res.status(500).send("เกิดข้อผิดพลาดในการเข้าร่วมกลุ่ม");
   }
+  await createLog(req, "ACCEPT_INVITATION", { 
+        username: req.session.user.username,
+        type: "accept" // ดึงชื่อกิจกรรมมาเก็บไว้ดูย้อนหลังได้
+    });
 });
 
 app.post("/group/deny-invitation/:groupId/:notiId", requireLogin, async (req, res) => {
@@ -1042,15 +1098,20 @@ app.post("/group/deny-invitation/:groupId/:notiId", requireLogin, async (req, re
     console.error("❌ Error denying invitation:", err);
     res.status(500).send("เกิดข้อผิดพลาดในการปฏิเสธ");
   }
+  await createLog(req, "SENT_CHAT", { 
+        username: req.session.user.username,
+        type: "deny" // ดึงชื่อกิจกรรมมาเก็บไว้ดูย้อนหลังได้
+    });
 });
 
 app.post("/groups-update/:groupId", requireLogin, async (req, res) => {
+    let group;
   try {
     const { member2, advisor } = req.body;
     const { groupId } = req.params;
 
     // 1. ค้นหากลุ่มด้วย ID ที่ได้มา (ตัวแปร group จะมีค่าแน่นอนถ้าเจอ)
-    const group = await Group.findById(groupId);
+     group = await Group.findById(groupId);
     if (!group) return res.status(404).send("ไม่พบข้อมูลกลุ่ม");
 
     const mem1 = await User.findOne({ username: group.member1 });
@@ -1081,6 +1142,10 @@ app.post("/groups-update/:groupId", requireLogin, async (req, res) => {
     console.error("❌ Error:", err);
     res.status(500).send("เกิดข้อผิดพลาด: " + err.message);
   }
+    await createLog(req, "UPDATE_GROUP", {
+        groupName: group ? group.projectName : "Unknown Group",
+        updateBy: req.session.user.username // ดึงชื่อกิจกรรมมาเก็บไว้ดูย้อนหลังได้
+    });
 });
 
 /*app.post("/groups/activate-add-member", requireLogin, async (req, res) => {
@@ -1101,6 +1166,7 @@ app.post("/groups-update/:groupId", requireLogin, async (req, res) => {
 });*/
 
 app.post("/groups/leave/:groupId", async (req, res) => {
+    let group;
   try {
     const groupId = req.params.groupId;
 
@@ -1114,7 +1180,7 @@ app.post("/groups/leave/:groupId", async (req, res) => {
 
     const username = req.session.user.username; // สมมติใน session มี username
 
-    const group = await Group.findById(groupId);
+    group = await Group.findById(groupId);
     if (!group) return res.status(404).send("ไม่พบกลุ่ม");
 
     // ตรวจสอบว่า user อยู่ field ไหน
@@ -1149,6 +1215,10 @@ app.post("/groups/leave/:groupId", async (req, res) => {
     console.error(err);
     res.status(500).send("เกิดข้อผิดพลาดที่ server");
   }
+    await createLog(req, "LEAVE_GROUP", {
+        groupName: group ? group.projectName : "Unknown Group",
+        leaveBy: req.session.user.username // ดึงชื่อกิจกรรมมาเก็บไว้ดูย้อนหลังได้
+    });
 });
 
 app.get("/addGroup", requireLogin, async (req, res) => {
@@ -1553,6 +1623,9 @@ app.post("/profile/update", requireLogin, upload.single("profileImage"), async (
         console.error("❌ Profile Update Error:", err);
         res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดในการอัปเดต" });
     }
+    await createLog(req, "UPDATE_PROFILE", { 
+        username: req.session.user.username,
+    });
 });
 
 app.get("/addUser",requireLogin,(req, res) => {
@@ -1626,6 +1699,10 @@ app.post("/api/addUserSingle", requireLogin, async (req, res) => {
         console.error("❌ Add User Error:", err);
         res.status(500).json({ success: false, error: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
     }
+    await createLog(req, "ADD_USER_SINGLE", { 
+        username: req.session.user.username,
+        addedUser: req.body.username // ดึงชื่อผู้ใช้ที่ถูกเพิ่มมาเก็บไว้ดูย้อนหลังได้
+    });
 });
 
 app.post('/api/excel-upload', requireLogin, upload.single('file'), async (req, res) => {
@@ -1665,8 +1742,11 @@ app.get("/register", checkFailModal ,async (req, res) => {
 app.post("/register", upload.single("profileImage"), async (req, res) => {
   console.log("Body data:", req.body); // ต้องมีข้อมูลชื่อ นามสกุล ฯลฯ
   console.log("File data:", req.file);
+  let username;
   try {
     const { username, password, name, lastname, phone ,passwordConfirm} = req.body;
+
+    username = String(username).trim(); // ตัดช่องว่างรอบๆ ออก
 
     if (username === "" || password === "" || name === "" || lastname === "" || phone === "") {
       req.session.failModal = "incomplete";
@@ -1722,6 +1802,9 @@ app.post("/register", upload.single("profileImage"), async (req, res) => {
     console.error("❌ Registration error:", err);
     res.status(500).send("เกิดข้อผิดพลาดในการลงทะเบียน");
   }
+    await createLog(req, "REGISTER", {
+        username: username // ดึงชื่อผู้ใช้ที่พยายามลงทะเบียนมาเก็บไว้ดูย้อนหลังได้
+    });
 });
 
 app.get("/api/notifications/unread", requireLogin, async (req, res) => {
@@ -2018,7 +2101,13 @@ app.post("/api/addEvent", requireLogin, upload.single("file"), async (req, res) 
         // 🔔 เรียกแจ้งเตือน (เช็คให้ชัวร์ว่าลบบั๊กในฟังก์ชันนี้แล้ว)
         await sendGroupNotification('alert', null, req.session.user.username, req.session.user.name, `มีกิจกรรมใหม่: ${title}`, req.session.user.picture || null , eventId , expire , null , null , null);
 
+         await createLog(req, "ADD_EVENT", {
+            username: req.session.user.username,
+            eventTitle: req.body.title // เก็บชื่อกิจกรรมที่ถูกเพิ่มเข้ามาใน Log ด้วย
+        });
+
         return res.status(201).json({ message: "บันทึกสำเร็จ" });
+       
     } catch (err) {  
         console.error("❌ API Error:", err); 
 
@@ -2027,6 +2116,7 @@ app.post("/api/addEvent", requireLogin, upload.single("file"), async (req, res) 
             message: err.message || err.toString() || "Server Internal Error" 
         });
     }
+    
 });
 
 app.get("/api/getEvents", requireLogin, async (req, res) => {
@@ -2086,6 +2176,7 @@ app.get("/eventInfo/:id", requireLogin, async (req, res) => {
 
 
 app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
+    let event; // ประกาศตัวแปร event ไว้ข้างนอกเพื่อให้เข้าถึงได้ในส่วนของ createLog หลังจากการลบข้อมูลทั้งหมดแล้ว
     try {
         const uuidFromParams = req.params.id; // รับ UUID String จาก URL
 
@@ -2117,7 +2208,7 @@ app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
 
         const group = await Group.find({status: { $ne: "ผ่านการสอบปริญญานิพนธ์" } });
 
-        const event = await Event.findOne({ id: uuidFromParams });
+        event = await Event.findOne({ id: uuidFromParams });
 
         if (event.title === "วันส่งเอกสาร") {
           const groupWaitFile = group.filter(g => g.status === "รอส่งเอกสาร");
@@ -2169,6 +2260,12 @@ app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
         console.error("❌ Error during full deletion:", err);
         res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดในการลบข้อมูลทั้งหมด" });
     }
+    await createLog(req, "DELETE_EVENT", { 
+        eventId: req.params.id,
+        eventTitle: event.title // ดึงชื่อกิจกรรมมาเก็บไว้ดูย้อนหลังได้
+    });
+
+    res.json({ success: true });
 });
 
 app.get("/paper", requireLogin, async (req, res) => {
@@ -2191,6 +2288,7 @@ app.get("/paper", requireLogin, async (req, res) => {
 });
 
 app.post("/api/PaperUploadFile", requireLogin, async (req, res) => {
+    let paperGroup; // ประกาศตัวแปร paperGroup ไว้ข้างนอกเพื่อให้เข้าถึงได้ในส่วนของ createLog หลังจากการบันทึกข้อมูลทั้งหมดแล้ว
     try {
         const { paperId, filesData } = req.body;
 
@@ -2198,7 +2296,7 @@ app.post("/api/PaperUploadFile", requireLogin, async (req, res) => {
         const paper = await Paper.findById(paperId);
         if (!paper) return res.status(404).send("ไม่พบรายการเอกสาร");
 
-        const paperGroup = await Group.findById(paper.groupId);
+        paperGroup = await Group.findById(paper.groupId);
         if (!paperGroup) return res.status(404).send("ไม่พบข้อมูลกลุ่ม");
 
         // 2. ลบข้อมูลไฟล์เก่าใน PaperFile (เฉพาะไฟล์ที่นักศึกษาอัปโหลด)
@@ -2246,6 +2344,10 @@ app.post("/api/PaperUploadFile", requireLogin, async (req, res) => {
         console.error("❌ PaperUpload Error:", err.message);
         res.status(500).send("เกิดข้อผิดพลาดในการบันทึกข้อมูล: " + err.message); 
     }
+    await createLog(req, "PAPER_UPLOAD", {
+        username: req.session.user.username,
+        groupName: paperGroup ? paperGroup.name : null // เก็บชื่อกลุ่มที่เกี่ยวข้องไว้ใน Log ด้วย
+    });
 });
 
 app.post("/api/paper/upload-raw", requireLogin, upload.array("files"), async (req, res) => {
@@ -2314,6 +2416,7 @@ app.get("/api/getPaperFiles/:paperId", requireLogin, async (req, res) => {
 });
 
 app.post("/api/submitPaperResult", requireLogin, async (req, res) => {
+    let group; // ประกาศตัวแปร group ไว้ข้างนอกเพื่อให้เข้าถึงได้ในส่วนของ createLog หลังจากการบันทึกข้อมูลทั้งหมดแล้ว
     try {
         // 1. รับค่าให้ตรงกับที่ Client ส่งมา (paperId, result, comment)
         const { paperId, result, comment } = req.body;
@@ -2344,7 +2447,7 @@ app.post("/api/submitPaperResult", requireLogin, async (req, res) => {
         } 
 
         // --- กรณี ผ่าน หรือ ไม่ผ่าน ---
-        let group = await Group.findById(currentPaper.groupId);
+        group = await Group.findById(currentPaper.groupId);
         if (!group) return res.status(404).json({ error: "ไม่พบข้อมูลกลุ่ม" });
 
         let examResult = await Result.findOne({ groupId: currentPaper.groupId , passTimes: currentPaper.passTimes });
@@ -2411,6 +2514,10 @@ app.post("/api/submitPaperResult", requireLogin, async (req, res) => {
         console.error(err);
         res.status(500).json({ error: err.message });
     }
+        await createLog(req, "SUBMIT_PAPER_RESULT", {
+        username: req.session.user.username,
+        groupName: group ? group.name : null
+    });
 });
 
 app.get("/admin", requireLogin, async (req, res) => {
@@ -2475,6 +2582,10 @@ app.post("/api/admin", requireLogin, async (req, res) => {
         console.error("❌ Admin Transfer Error:", err);
         res.status(500).json({ error: "Internal Server Error" });
     }
+    await createLog(req, "TRANSFER_ADMIN", {
+        from: req.session.user.username,
+        to: req.body.chosenAdvisor
+    });
 });
 
 app.get("/api/server-time", (req, res) => {
@@ -2486,9 +2597,10 @@ app.get("/forgotPassword", (req, res) => {
 });
 
 app.post("/forgot-password",checkFailModal , async (req, res) => {
+    let user; // ประกาศตัวแปร user ไว้ข้างนอกเพื่อให้เข้าถึงได้ในส่วนของ createLog หลังจากการดำเนินการทั้งหมดแล้ว
     try {
         const { email } = req.body;
-        const user = await User.findOne({ email });
+        user = await User.findOne({ email });
 
         if (!user) return res.status(404).send("ไม่พบผู้ใช้งานนี้");
 
@@ -2530,6 +2642,10 @@ app.post("/forgot-password",checkFailModal , async (req, res) => {
         console.error("❌ Mail Error:", err);
         res.status(500).send("เกิดข้อผิดพลาดในการส่งอีเมล");
     }
+    await createLog(req, "FORGOT_PASSWORD", {
+        email: req.body.email,
+        username: user ? user.username : null // เก็บ username ถ้ามีข้อมูลผู้ใช้ที่ตรงกับอีเมลนั้น
+    });
 });
 
 app.get("/reset-password/:token", checkFailModal , async (req, res) => {
@@ -2559,6 +2675,7 @@ app.get("/reset-password/:token", checkFailModal , async (req, res) => {
 });
 
 app.post("/reset-password/:token", async (req, res) => {
+    let user; // ประกาศตัวแปร user ไว้ข้างนอกเพื่อให้เข้าถึงได้ในส่วนของ createLog หลังจากการดำเนินการทั้งหมดแล้ว
     try {
         const { password, passwordConfirm } = req.body;
 
@@ -2566,7 +2683,7 @@ app.post("/reset-password/:token", async (req, res) => {
             return res.status(400).send("รหัสผ่านไม่ตรงกัน");
         }
 
-        const user = await User.findOne({
+        user = await User.findOne({
             resetPasswordToken: req.params.token,
             resetPasswordExpires: { $gt: Date.now() }
         });
@@ -2593,6 +2710,10 @@ app.post("/reset-password/:token", async (req, res) => {
         console.error(err);
         res.status(500).send("เกิดข้อผิดพลาดในการบันทึกรหัสผ่าน");
     }
+        await createLog(req, "RESET_PASSWORD", {
+            username: user ? user.username : null
+        });
+
 });
 
 app.post("/api/groups/mark-ready-for-exam", async (req, res) => {
@@ -2790,6 +2911,12 @@ app.post("/update-exam-schedule", requireLogin, async (req, res) => {
         console.error("❌ Update Error:", err);
         res.status(500).send("เกิดข้อผิดพลาด: " + err.message);
     }
+    await createLog(req, "UPDATE_SCHEDULE", { 
+        eventId: req.body.eventId, 
+        rowCount: req.body.data.length 
+    });
+
+    res.json({ success: true });
 });
 
 app.get("/addSecretary", requireLogin, async (req, res) => {
@@ -2842,6 +2969,10 @@ app.post("/api/addSecretary", requireLogin, async (req, res) => {
         console.error("❌ Admin Grant Secretary Error:", err);
         res.status(500).json({ error: "เกิดข้อผิดพลาดภายในระบบ" });
     }
+    await createLog(req, "GRANT_SECRETARY", { 
+        from: req.session.user.username,
+        to: req.body.username
+    });
 });
 
 // ✅ API สำหรับดึง PDF จาก autoPdfId มาแสดงผล
@@ -2878,6 +3009,14 @@ app.get("/view-pdf/:id", async (req, res) => {
         console.error("❌ View PDF Error:", err.message);
         res.status(500).send("เกิดข้อผิดพลาด: " + err.message);
     }
+});
+
+app.get("/logs", requireLogin, async (req, res) => {
+    if(req.session.user.role !== "admin"){
+      return res.redirect("/");
+    }
+    const logs = await Log.find().sort({ timestamp: -1 }).limit(100); // ดึง 100 รายการล่าสุด
+    renderWithLayout(res, "admin/logs", { title: "System Logs", logs }, req.path, req);
 });
       
 // Socket.IO

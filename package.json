@@ -18,6 +18,8 @@
     "socket.io": "^4.8.1",
     "streamifier": "^0.1.1",
     "tar": "^7.4.3",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0",
     "xlsx": "^0.18.5"
   },
   "name": "my-project",
