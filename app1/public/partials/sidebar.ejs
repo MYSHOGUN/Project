@@ -127,6 +127,16 @@
                 <span>ผังการดำเนินงาน</span></a>
         </li>
 
+        <% if (typeof user !== 'undefined' && user.role === 'admin') { %>
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/logs' ? 'active' : '' %>">
+                <a class="nav-link" href="/logs">
+                    <i class="fas fa-history"></i>
+                    <span>บันทึกกิจกรรม</span></a>
+            </li>
+        <% } %>
+
         <!-- Divider -->
         <hr class="sidebar-divider d-none d-md-block">
 

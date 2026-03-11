@@ -3051,10 +3051,23 @@ app.get("/view-pdf/:id", async (req, res) => {
 
 app.get("/logs", requireLogin, async (req, res) => {
     if(req.session.user.role !== "admin"){
-      return res.redirect("/");
+        return res.redirect("/");
     }
-    const logs = await Log.find().sort({ timestamp: -1 }).limit(100); // ดึง 100 รายการล่าสุด
-    renderWithLayout(res, "admin/logs", { title: "System Logs", logs }, req.path, req);
+    try {
+        // ดึง 200 รายการล่าสุด
+        const logs = await Log.find().sort({ timestamp: -1 }).limit(200).lean();
+        
+        renderWithLayout(res, "logs", { 
+            title: "System Activity Logs", 
+            logs 
+        }, req.path, req);
+    } catch (err) {
+        logger.error("Error fetching logs: " + err.message);
+        res.status(500).send("Internal Server Error");
+    }
+    await createLog(req, "VIEW_LOGS", {
+        username: req.session.user.username
+    });
 });
       
 // Socket.IO

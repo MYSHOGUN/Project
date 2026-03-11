@@ -1,7 +1,7 @@
 <style>
     /* ✅ 1. คุม Container หลักให้สูงคงที่ 84vh และห้ามมี Scrollbar นอก */
     .user-info-wrapper {
-        height: 84vh; /* บังคับความสูงคงที่ */
+        height: 93vh; /* บังคับความสูงคงที่ */
         display: flex;
         flex-direction: column;
         padding-bottom: 20px;
@@ -106,8 +106,8 @@
                                         <tr class="student-item" data-search-text="<%= u.username %> <%= u.name %> <%= u.lastname %>">
                                             <td class="align-middle">
                                                 <div class="d-flex align-items-center">
-                                                    <% if (u.picture && u.picture !== "" && u.picture !== "null" && u.picture !== undefined) { %>
-                                                        <img src="/image/<%= u.picture %>" class="student-avatar mr-2" onerror="this.src='/img/undraw_profile.svg'">
+                                                    <% if (u.picture && u.picture.id && u.picture !== "" && u.picture !== "null" && u.picture !== undefined) { %>
+                                                        <img src="/image/<%= u.picture.id %>" class="student-avatar mr-2" onerror="this.src='/img/undraw_profile.svg'">
                                                     <% } else { %>
                                                         <img src="/img/undraw_profile.svg" class="student-avatar mr-2">
                                                     <% } %>
