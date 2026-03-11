@@ -16,6 +16,20 @@ const Notification = require("./models/Notification");
 
 const NotificationRead = require("./models/NotificationRead");
 
+const helmet = require('helmet');
+
+const rateLimit = require('express-rate-limit');
+
+const mongoSanitize = require('express-mongo-sanitize');
+
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 นาที
+    max: 100, // จำกัด 100 request ต่อ IP ในช่วงเวลาที่กำหนด
+    message: "ขออภัย คุณส่งคำขอมากเกินไป กรุณาลองใหม่ในอีก 15 นาที",
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 const Log = require("./models/Log");
 
 const logger = require('./models/logger');
@@ -76,7 +90,7 @@ const { group } = require("console");
 //GGEZ
 // ใช้ memory storage ของ multer
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const upload = multer({ storage , limits: { fileSize: 20 * 1024 * 1024 }});
 
 const fs = require('fs'); // ต้องใช้ในการลบไฟล์ แต่ในกรณีนี้เราจะใช้ Buffer แทน
 const XLSX = require('xlsx'); // ✅ นำเข้าไลบรารีสำหรับอ่าน Excel
@@ -335,6 +349,17 @@ app.use(session({
     sameSite: 'lax' // ช่วยป้องกันการโจมตีแบบ CSRF
   }
 }));
+app.use(helmet());
+app.use(helmet.contentSecurityPolicy({
+    directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net"],
+        styleSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "fonts.googleapis.com"],
+        fontSrc: ["'self'", "fonts.gstatic.com"]
+    }
+}));
+
+app.use(mongoSanitize());
 
 // ✅ เชื่อม MongoDB ก่อนเริ่มเซิร์ฟเวอร์
 //connectDB();
@@ -436,7 +461,7 @@ app.get("/upload", requireLogin, (req, res) => {
   renderWithLayout(res, "upload", { title: "KMUTNB Project - Upload" }, req.path,req);
 });
 
-app.post("/upload-file/:groupId", requireLogin, upload.array("files"), async (req, res) => {
+app.post("/upload-file/:groupId", requireLogin, apiLimiter, upload.array("files"), async (req, res) => {
     let group;
   try {
     const messages = [];
@@ -839,7 +864,7 @@ app.get('/logout', (req, res) => {
   });
 });
 
-app.post("/login" , async (req, res) => {
+app.post("/login" , apiLimiter,async (req, res) => {
   const { username, password ,rememberMe} = req.body;
   const user = await User.findOne({ username });
 
@@ -936,7 +961,7 @@ app.get("/search-advisor", requireLogin, async (req, res) => {
 
 
 // ✅ บันทึกกลุ่มใหม่
-app.post("/groups", requireLogin, async (req, res) => {
+app.post("/groups", apiLimiter,requireLogin, async (req, res) => {
     let projectName,member1;
   try {
     const {  projectName, engName, member1, member2, advisor} = req.body;
@@ -1005,7 +1030,7 @@ app.post("/groups", requireLogin, async (req, res) => {
 });
 
 
-app.post("/group/accept-invitation/:groupId/:notiId", requireLogin, async (req, res) => {
+app.post("/group/accept-invitation/:groupId/:notiId", apiLimiter,requireLogin, async (req, res) => {
   try {
     const { groupId, notiId } = req.params;
     const username = req.session.user.username;
@@ -1075,7 +1100,7 @@ app.post("/group/accept-invitation/:groupId/:notiId", requireLogin, async (req, 
     });
 });
 
-app.post("/group/deny-invitation/:groupId/:notiId", requireLogin, async (req, res) => {
+app.post("/group/deny-invitation/:groupId/:notiId", apiLimiter,requireLogin, async (req, res) => {
   try {
     const { groupId, notiId } = req.params;
     const group = await Group.findById(groupId);
@@ -1104,7 +1129,7 @@ app.post("/group/deny-invitation/:groupId/:notiId", requireLogin, async (req, re
     });
 });
 
-app.post("/groups-update/:groupId", requireLogin, async (req, res) => {
+app.post("/groups-update/:groupId", apiLimiter,requireLogin, async (req, res) => {
     let group;
   try {
     const { member2, advisor } = req.body;
@@ -1165,7 +1190,7 @@ app.post("/groups-update/:groupId", requireLogin, async (req, res) => {
   }
 });*/
 
-app.post("/groups/leave/:groupId", async (req, res) => {
+app.post("/groups/leave/:groupId", apiLimiter,async (req, res) => {
     let group;
   try {
     const groupId = req.params.groupId;
@@ -1328,7 +1353,7 @@ app.get("/updateGroup", requireLogin, async (req, res) => {
   }
 });
 
-app.post("/api/news", requireLogin, upload.single("file"), async (req, res) => {
+app.post("/api/news", requireLogin, apiLimiter, upload.single("file"), async (req, res) => {
     try {
         const { newsTitle, newsData } = req.body;
         let imgInfo = {}; // ใช้อ็อบเจกต์เพื่อเก็บข้อมูลรูปภาพ
@@ -1429,7 +1454,7 @@ app.get("/news/details/:id", async (req, res) => {
       }
 });
 
-app.post("/news-update/:newsId", requireLogin, upload.single("newImage"), async (req, res) => {
+app.post("/news-update/:newsId", requireLogin, apiLimiter,upload.single("newImage"), async (req, res) => {
     // ชื่อ field 'newImage' ต้องตรงกับชื่อที่ใช้ใน FormData ฝั่ง Client
 
     const newsId = req.params.newsId;
@@ -1557,7 +1582,7 @@ app.delete("/news-delete/:newsId", requireLogin, async (req, res) => {
     }
 });
 
-app.post("/profile/update", requireLogin, upload.single("profileImage"), async (req, res) => {
+app.post("/profile/update", requireLogin, apiLimiter,upload.single("profileImage"), async (req, res) => {
     try {
         const { email, phone } = req.body;
         const username = req.session.user.username;
@@ -1650,7 +1675,7 @@ app.get("/addUserSingle",requireLogin,(req, res) => {
 });
 
 // API สำหรับเพิ่มผู้ใช้รายคน
-app.post("/api/addUserSingle", requireLogin, async (req, res) => {
+app.post("/api/addUserSingle", apiLimiter,requireLogin, async (req, res) => {
     // 🛡️ เช็คสิทธิ์ Admin
     if (req.session.user.role !== "admin") {
         return res.status(403).json({ success: false, error: "สิทธิ์ไม่เพียงพอ" });
@@ -1705,10 +1730,15 @@ app.post("/api/addUserSingle", requireLogin, async (req, res) => {
     });
 });
 
-app.post('/api/excel-upload', requireLogin, upload.single('file'), async (req, res) => {
+app.post('/api/excel-upload', apiLimiter,requireLogin, upload.single('file'), async (req, res) => {
     // 💡 เนื่องจากใช้ multer.memoryStorage() เราจะใช้ req.file.buffer
     if (!req.file) {
         return res.status(400).json({ error: 'No Excel file uploaded.' });
+    }
+
+    const fileName = req.file.originalname.toLowerCase();
+    if (!fileName.endsWith('.xlsx') && !fileName.endsWith('.xls')) {
+        return res.status(400).json({ error: 'ระบบต้องการไฟล์ Excel เท่านั้น' });
     }
 
     try {
@@ -1739,7 +1769,7 @@ app.get("/register", checkFailModal ,async (req, res) => {
   renderWithLayout(res, "register", { title: "KMUTNB Project - Register" ,failModal: res.locals.failModal}, req.path,req);
 });
 
-app.post("/register", upload.single("profileImage"), async (req, res) => {
+app.post("/register", apiLimiter, upload.single("profileImage"), async (req, res) => {
   console.log("Body data:", req.body); // ต้องมีข้อมูลชื่อ นามสกุล ฯลฯ
   console.log("File data:", req.file);
   let username;
@@ -1849,7 +1879,7 @@ app.get("/api/notifications/unread", requireLogin, async (req, res) => {
     }
 });
 
-app.post("/api/notifications/mark-read/:id", requireLogin, async (req, res) => {
+app.post("/api/notifications/mark-read/:id", apiLimiter,requireLogin, async (req, res) => {
     try {
         const notiId = req.params.id;
         const username = req.session.user.username;
@@ -1915,7 +1945,7 @@ app.get("/addEvent", requireLogin, (req, res) => {
   renderWithLayout(res, "addEvent", { title: "KMUTNB Project - Add Event" }, req.path,req);
 });
 
-app.post("/api/addEvent", requireLogin, upload.single("file"), async (req, res) => {
+app.post("/api/addEvent", apiLimiter, requireLogin, upload.single("file"), async (req, res) => {
     try {
         const { title, date, toDate, description } = req.body;
         const file = req.file;
@@ -2241,10 +2271,15 @@ app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
         
         // 5. ลบตัว Event เอง (ค้นหาด้วยฟิลด์ id แทน _id)
         const result = await Event.findOneAndDelete({ id: uuidFromParams });
+
+        await createLog(req, "DELETE_EVENT", { 
+            eventId: uuidFromParams,
+            eventTitle: event ? event.title : "Unknown" 
+        });
         
 
         if (result) {
-            res.json({ 
+            return res.json({ 
                 success: true, 
                 message: "ลบกิจกรรมและไฟล์ที่เกี่ยวข้องทั้งหมดเรียบร้อยแล้ว",
                 details: {
@@ -2253,19 +2288,14 @@ app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
                 }
             });
         } else {
-            res.status(404).json({ success: false, message: "ไม่พบกิจกรรมนี้ในระบบ" });
+            return res.status(404).json({ success: false, message: "ไม่พบกิจกรรมนี้ในระบบ" });
         }
 
     } catch (err) {
         console.error("❌ Error during full deletion:", err);
         res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดในการลบข้อมูลทั้งหมด" });
     }
-    await createLog(req, "DELETE_EVENT", { 
-        eventId: req.params.id,
-        eventTitle: event.title // ดึงชื่อกิจกรรมมาเก็บไว้ดูย้อนหลังได้
-    });
 
-    res.json({ success: true });
 });
 
 app.get("/paper", requireLogin, async (req, res) => {
@@ -2287,7 +2317,7 @@ app.get("/paper", requireLogin, async (req, res) => {
   }
 });
 
-app.post("/api/PaperUploadFile", requireLogin, async (req, res) => {
+app.post("/api/PaperUploadFile", requireLogin, apiLimiter,async (req, res) => {
     let paperGroup; // ประกาศตัวแปร paperGroup ไว้ข้างนอกเพื่อให้เข้าถึงได้ในส่วนของ createLog หลังจากการบันทึกข้อมูลทั้งหมดแล้ว
     try {
         const { paperId, filesData } = req.body;
@@ -2350,11 +2380,19 @@ app.post("/api/PaperUploadFile", requireLogin, async (req, res) => {
     });
 });
 
-app.post("/api/paper/upload-raw", requireLogin, upload.array("files"), async (req, res) => {
+app.post("/api/paper/upload-raw", requireLogin, apiLimiter,upload.array("files"), async (req, res) => {
     try {
         const results = [];
         if (req.files && req.files.length > 0) {
             for (const file of req.files) {
+
+                if (file.mimetype !== 'application/pdf') {
+                    return res.status(400).send("รองรับเฉพาะไฟล์ PDF เท่านั้น");
+                }
+                // 3. จำกัดขนาด (เช่น 10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    return res.status(400).send("ไฟล์ต้องมีขนาดไม่เกิน 10MB");
+                }
                 const uploadStream = bucket.openUploadStream(file.originalname, { 
                     contentType: file.mimetype 
                 });
@@ -2415,7 +2453,7 @@ app.get("/api/getPaperFiles/:paperId", requireLogin, async (req, res) => {
     }
 });
 
-app.post("/api/submitPaperResult", requireLogin, async (req, res) => {
+app.post("/api/submitPaperResult", apiLimiter,requireLogin, async (req, res) => {
     let group; // ประกาศตัวแปร group ไว้ข้างนอกเพื่อให้เข้าถึงได้ในส่วนของ createLog หลังจากการบันทึกข้อมูลทั้งหมดแล้ว
     try {
         // 1. รับค่าให้ตรงกับที่ Client ส่งมา (paperId, result, comment)
@@ -2532,7 +2570,7 @@ app.get("/admin", requireLogin, async (req, res) => {
   }
 });
 
-app.post("/api/admin", requireLogin, async (req, res) => {
+app.post("/api/admin", requireLogin, apiLimiter,async (req, res) => {
     // 🛡️ 1. เช็คสิทธิ์ Admin ปัจจุบัน
     if (req.session.user.role !== "admin") {
         return res.status(403).json({ error: "Unauthorized" });
@@ -2596,7 +2634,7 @@ app.get("/forgotPassword", (req, res) => {
     renderWithLayout(res, "forgotPassword", { title: "Forgot Password" , failModal: res.locals.failModal}, req.path, req);
 });
 
-app.post("/forgot-password",checkFailModal , async (req, res) => {
+app.post("/forgot-password",checkFailModal , apiLimiter,async (req, res) => {
     let user; // ประกาศตัวแปร user ไว้ข้างนอกเพื่อให้เข้าถึงได้ในส่วนของ createLog หลังจากการดำเนินการทั้งหมดแล้ว
     try {
         const { email } = req.body;
@@ -2674,7 +2712,7 @@ app.get("/reset-password/:token", checkFailModal , async (req, res) => {
     }
 });
 
-app.post("/reset-password/:token", async (req, res) => {
+app.post("/reset-password/:token", apiLimiter,async (req, res) => {
     let user; // ประกาศตัวแปร user ไว้ข้างนอกเพื่อให้เข้าถึงได้ในส่วนของ createLog หลังจากการดำเนินการทั้งหมดแล้ว
     try {
         const { password, passwordConfirm } = req.body;
@@ -2716,7 +2754,7 @@ app.post("/reset-password/:token", async (req, res) => {
 
 });
 
-app.post("/api/groups/mark-ready-for-exam", async (req, res) => {
+app.post("/api/groups/mark-ready-for-exam", apiLimiter,async (req, res) => {
     // ตรวจสอบสิทธิ์ (ต้องเป็นอาจารย์เท่านั้น)
     if (!req.session.user || req.session.user.role !== 'teacher') {
         return res.status(403).json({ error: "คุณไม่มีสิทธิ์ดำเนินการนี้" });
@@ -2733,7 +2771,7 @@ app.post("/api/groups/mark-ready-for-exam", async (req, res) => {
 
         if (group.passTimes === 0) {
           statusCheck = "พร้อมสอบนำเสนอหัวข้อ";
-        } else if(g.passTimes >= 1) {
+        } else if(group.passTimes >= 1) {
           if(mem1.branch === "EnET" || mem2.branch === "EnET"){
             statusCheck = "พร้อมสอบปริญญานิพนธ์";
           }else{
@@ -2836,7 +2874,7 @@ app.get("/userInfo", requireLogin, async (req, res) => {
     }
 });
 
-app.post("/update-exam-schedule", requireLogin, async (req, res) => {
+app.post("/update-exam-schedule", apiLimiter,requireLogin, async (req, res) => {
     if (req.session.user.role !== "admin") return res.status(403).send("สิทธิ์ไม่เพียงพอ");
 
     try {
@@ -2931,7 +2969,7 @@ app.get("/addSecretary", requireLogin, async (req, res) => {
   }
 });
 
-app.post("/api/addSecretary", requireLogin, async (req, res) => {
+app.post("/api/addSecretary", apiLimiter, requireLogin, async (req, res) => {
     // 1. ตรวจสอบสิทธิ์ Admin
     if (req.session.user.role !== "admin") {
         return res.status(403).json({ error: "คุณไม่มีสิทธิ์ดำเนินการในส่วนนี้" });
