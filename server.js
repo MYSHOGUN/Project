@@ -328,7 +328,10 @@ async function createLog(req, action, details = {}) {
             role: req.session.user ? req.session.user.role : "N/A",
             action: action,
             details: details,
-            ip: req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress
+            // ✅ ต้องมี Key ชื่อ 'ip' กำกับ และเปลี่ยน ; เป็น ,
+            ip: req.headers['x-forwarded-for']?.split(',')[0] || 
+                req.ip || 
+                req.connection.remoteAddress
         });
         await newLog.save();
         console.log(`[LOG]: ${action} by ${newLog.username}`);
