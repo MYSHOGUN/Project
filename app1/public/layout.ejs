@@ -132,9 +132,11 @@
         <script src="/vendor/chart.js/Chart.min.js"></script>
 
         <!-- Page level custom scripts -->
-        <script src="/js/demo/chart-area-demo.js"></script>
-        <script src="/js/demo/chart-pie-demo.js"></script>
-        <script>
+        <% if (title === "KMUTNB Project - Main") { %>
+            <script src="/js/demo/chart-area-demo.js"></script>
+            <script src="/js/demo/chart-pie-demo.js"></script>
+        <% } %>
+        <!-- <script>
             // เรียก API จากเซิร์ฟเวอร์
             fetch("/api/message")
                 .then(response => response.json())  // แปลง JSON
@@ -142,7 +144,7 @@
                     document.getElementById("output").innerText = data.message; // แสดงผล
                 })
                 .catch(error => console.error("Error:", error));
-        </script>
+        </script>-->
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script>
             $(document).ready(function() {

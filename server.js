@@ -356,9 +356,10 @@ app.use(helmet());
 app.use(helmet.contentSecurityPolicy({
     directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net" , "code.jquery.com"],
+        scriptSrcAttr: ["'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "fonts.googleapis.com"],
-        fontSrc: ["'self'", "fonts.gstatic.com"]
+        fontSrc: ["'self'", "fonts.gstatic.com" , "cdn.jsdelivr.net"]
     }
 }));
 

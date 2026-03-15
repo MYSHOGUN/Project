@@ -1,7 +1,15 @@
 <style>
   .flowchart-img {
-    width: 700px; /* กำหนดความกว้างเป็น 50% ของ container */
-    height: auto; /* รักษาอัตราส่วนของรูปภาพ */
+    width: 100%;       /* ให้กว้างเต็มที่ตามขนาดจอ */
+    max-width: 750px;  /* แต่กว้างสุดไม่เกิน 750px เพื่อความชัด */
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); /* เพิ่มเงาให้ดูเหมือนแผ่นกระดาษ */
+    margin-bottom: 2rem;
+    transition: transform 0.3s ease;
+  }
+  .flowchart-img:hover {
+    transform: scale(1.02); /* เวลาเอาเมาส์ชี้ให้ขยายขึ้นนิดนึงดูพรีเมียม */
   }
 </style>
 <div class="container-fluid mt-4" style="height: 100%;">               
