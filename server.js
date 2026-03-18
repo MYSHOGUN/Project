@@ -174,7 +174,6 @@ async function saveUsersFromExcel(dataArray) {
         throw error;
     }
 }
-
 let bucket;
 
 /*connectDB().then(() => {
@@ -2639,10 +2638,10 @@ app.get("/forgotPassword", (req, res) => {
 });
 
 app.post("/forgot-password",checkFailModal , apiLimiter,async (req, res) => {
-    let user; // ประกาศตัวแปร user ไว้ข้างนอกเพื่อให้เข้าถึงได้ในส่วนของ createLog หลังจากการดำเนินการทั้งหมดแล้ว
+    const { email } = req.body;
+    const user = await User.findOne({ email });; // ประกาศตัวแปร user ไว้ข้างนอกเพื่อให้เข้าถึงได้ในส่วนของ createLog หลังจากการดำเนินการทั้งหมดแล้ว
     try {
-        const { email } = req.body;
-        user = await User.findOne({ email });
+        
 
         if (!user) return res.status(404).send("ไม่พบผู้ใช้งานนี้");
 
@@ -2847,7 +2846,7 @@ app.get("/groupInfo/:id", async (req, res) => {
 
 app.get("/userInfo", requireLogin, async (req, res) => {
     // 1. ตรวจสอบสิทธิ์ Admin
-    if (req.session.user.role !== "admin") {
+    if (req.session.user.role !== "admin" || req.session.role !== "secretary") {
         return res.redirect("/group");
     }
 
