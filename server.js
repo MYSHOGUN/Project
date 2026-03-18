@@ -1776,9 +1776,9 @@ app.get("/register", checkFailModal ,async (req, res) => {
 app.post("/register", apiLimiter, upload.single("profileImage"), async (req, res) => {
   console.log("Body data:", req.body); // ต้องมีข้อมูลชื่อ นามสกุล ฯลฯ
   console.log("File data:", req.file);
-  let username;
+  let username = (req.body.username || "").toString().trim();
   try {
-    const { username, password, name, lastname, phone ,passwordConfirm} = req.body;
+    const {password, name, lastname, phone ,passwordConfirm} = req.body;
 
     username = String(username).trim(); // ตัดช่องว่างรอบๆ ออก
 
