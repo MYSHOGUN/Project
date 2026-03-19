@@ -1828,7 +1828,7 @@ app.post("/register", apiLimiter, upload.single("profileImage"), async (req, res
       req.session.save(() => res.redirect("/login"));
     }else if (!existingUser) {
       req.session.failModal = "exists"; // ตั้งค่าเพื่อแสดง modal
-      req.session.save(() => res.redirect("/register"));
+      req.session.save(() => res.reload());
     }else{
       req.session.failModal = "complete"; // ตั้งค่าเพื่อแสดง modal
       req.session.save(() => res.redirect("/register"));
@@ -2647,11 +2647,11 @@ app.get("/api/server-time", (req, res) => {
     res.json({ now: new Date().getTime() }); // ส่ง timestamp ปัจจุบันของ Server ไป
 });
 
-app.get("/forgotPassword", (req, res) => {
+app.get("/forgotPassword" ,checkFailModal, (req, res) => {
     renderWithLayout(res, "forgotPassword", { title: "Forgot Password" , failModal: res.locals.failModal}, req.path, req);
 });
 
-app.post("/forgot-password",checkFailModal , apiLimiter,async (req, res) => {
+app.post("/forgot-password" , apiLimiter,async (req, res) => {
     const { email } = req.body;
     const user = await User.findOne({ email }); // ประกาศตัวแปร user ไว้ข้างนอกเพื่อให้เข้าถึงได้ในส่วนของ createLog หลังจากการดำเนินการทั้งหมดแล้ว
     try {
