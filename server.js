@@ -1825,17 +1825,17 @@ app.post("/register", apiLimiter, upload.single("profileImage"), async (req, res
         { password: hashedPassword, name, lastname, phone ,picture: req.file ? img : null}
       );
       req.session.successModal = "success";
-      return req.session.save(() => res.redirect("/login"));
+      req.session.save(() => res.redirect("/login"));
     }else if (!existingUser) {
       req.session.failModal = "exists"; // ตั้งค่าเพื่อแสดง modal
-      return req.session.save(() => res.redirect("/register"));
+      req.session.save(() => res.redirect("/register"));
     }else{
       req.session.failModal = "complete"; // ตั้งค่าเพื่อแสดง modal
-      return req.session.save(() => res.redirect("/register"));
+      req.session.save(() => res.redirect("/register"));
     }
   } catch (err) {
-    console.error("❌ Registration error:", err);
-    res.status(500).send("เกิดข้อผิดพลาดในการลงทะเบียน");
+    req.session.failModal = "error"; // ตั้งค่าเพื่อแสดง modal
+    req.session.save(() => res.redirect("/register"));
   }
     await createLog(req, "REGISTER", {
         username: username // ดึงชื่อผู้ใช้ที่พยายามลงทะเบียนมาเก็บไว้ดูย้อนหลังได้
