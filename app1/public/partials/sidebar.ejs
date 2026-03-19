@@ -67,7 +67,7 @@
         </li>-->
 
         <!-- Divider -->
-         <% if (typeof user !== 'undefined') { %>
+         <% if (typeof user !== 'undefined' && user.role !== 'secretary') { %>
             <hr class="sidebar-divider my-0">
 
             <li class="nav-item <%= currentPath === '/event' || currentPath === '/addEvent' || currentPath.startsWith('/eventInfo') ? 'active' : '' %>">
@@ -88,7 +88,7 @@
         <% } %>
 
         <!-- Divider -->
-        <% if (typeof user !== 'undefined') { %>
+        <% if (typeof user !== 'undefined' && user.role !== 'secretary') { %>
             <hr class="sidebar-divider my-0">
 
             <li class="nav-item <%= currentPath === '/paper' ? 'active' : '' %>">

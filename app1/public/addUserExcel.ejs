@@ -71,8 +71,8 @@
             </div>
 
             <div id="drop-area">
-                <i class="fas fa-cloud-upload-alt"></i>
-                <p id="defaultDropText">ลากไฟล์ Excel มาวางที่นี่ หรือ คลิกเพื่อเลือกไฟล์</p>
+                <i class="fas fa-cloud-upload-alt" id="drop-icon"></i>
+                <p class="ml-2" id="defaultDropText">ลากไฟล์ Excel มาวางที่นี่ หรือ คลิกเพื่อเลือกไฟล์</p>
                 <input type="file" id="file-input" style="display:none;" accept=".xlsx, .xls">
             </div>
 
@@ -97,6 +97,7 @@
     const dropArea = document.getElementById('drop-area');
     const defaultDropText = document.getElementById('defaultDropText');
     const fileInput = document.getElementById('file-input');
+    const dropIcon = document.getElementById('drop-icon');
 
     // จัดการ Drag & Drop Effects
     ['dragenter', 'dragover'].forEach(eventName => {
@@ -130,6 +131,7 @@
                     <strong>เลือกไฟล์สำเร็จ:</strong> ${file.name}
                 </div>`;
             dropArea.style.border = '3px solid #1cc88a';
+            dropIcon.style.display = 'none';
         } else {
             Swal.fire('รูปแบบไฟล์ไม่ถูกต้อง', 'กรุณาเลือกไฟล์ .xlsx หรือ .xls เท่านั้น', 'error');
             fileInput.value = '';

@@ -584,14 +584,20 @@
         .then(async response => {
             const result = await response.json();
             if (response.ok) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'บันทึกกิจกรรมสำเร็จ',
-                    text: 'กิจกรรมได้รับการบันทึกเรียบร้อยแล้ว',
-                    confirmButtonText: 'ตกลง'
-                }).then(() => {
-                    window.location.href = "/event";
-                });
+                if (result.missingGroups && result.missingGroups.length > 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'บันทึกสำเร็จ (แต่ข้อมูลไม่ครบ)',
+                        html: `${result.warning}<br><br><b class="text-danger">${result.missingGroups.join(', ')}</b><br><br>กรุณาตรวจสอบชื่อกลุ่มใน Excel ให้ตรงกับในระบบ`,
+                        confirmButtonText: 'รับทราบ'
+                    }).then(() => window.location.href = "/event");
+                } else {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกสำเร็จ',
+                        confirmButtonText: 'ตกลง'
+                    }).then(() => window.location.href = "/event");
+                }
             } else {
                 // 💡 แสดงผล Error ที่ส่งมาจาก Server ถ้าไม่มีให้ใช้ข้อความ Default
                 const errorMsg = result.message || result.error || "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";

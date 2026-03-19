@@ -1755,6 +1755,7 @@ app.post('/api/excel-upload', apiLimiter,requireLogin, upload.single('file'), as
         // ❌ ไม่ต้องลบไฟล์ชั่วคราว เพราะถูกเก็บในหน่วยความจำ
 
         res.status(200).json({ 
+            success: true,
             message: 'Excel data saved to MongoDB successfully.',
             insertedCount: result.insertedCount
         });
@@ -2058,6 +2059,7 @@ app.post("/api/addEvent", apiLimiter, requireLogin, upload.single("file"), async
             testresultsdate.setDate(testresultsdate.getDate() + 7);
           
             const paperPlatforms = [];
+            const missingGroups = [];
 
             // วนลูปทีละแถวใน Excel (1 แถว = 1 กลุ่ม)
             for (const row of data) {
@@ -2070,12 +2072,15 @@ app.post("/api/addEvent", apiLimiter, requireLogin, upload.single("file"), async
                 const group = await Group.findOne({ projectName: groupNameStr });
 
                 if (!group) {
-                  return res.status(400).json({ error: "ไม่มีกลุ่ม" });
+                  // ✅ ถ้าไม่เจอกลุ่ม ให้เก็บชื่อไว้แล้วข้ามไปทำกลุ่มถัดไป (ไม่ return error ทันที)
+                  missingGroups.push(groupNameStr);
+                  continue; 
                 }
+
                 // 2. จัดการรายชื่อกรรมการจาก Excel: แยกชื่อ / ตัดคำนำหน้า / ตัดนามสกุล
                 let directorslist = row.director || row.Director || row.กรรมการ
                 if(!directorslist){
-                  return res.status(400).json({ error: "ไม่มีกรรมการ" });
+                  return res.status(400).json({ error: "ข้อมูลใน Excel ไม่ถูกต้อง: ไม่มีกรรมการ" });
                 }
 
                 let directors = directorslist.toString().split(/[,\/;]|\sและ\s/).map(s => {
@@ -2084,7 +2089,7 @@ app.post("/api/addEvent", apiLimiter, requireLogin, upload.single("file"), async
                 }).filter(s => s !== "");
 
                 if(!directors || !Array.isArray(directors) || directorslist.length === 0){
-                  return res.status(400).json({ error: "ไม่มีกรรมการ" });
+                  return res.status(400).json({ error: "ข้อมูลใน Excel ไม่ถูกต้อง: ไม่มีกรรมการ" });
                 }
 
                 // 3. ไปดึงชื่อ Advisor จาก Collection User มาเพิ่ม (Add เข้าไป)
@@ -2140,7 +2145,15 @@ app.post("/api/addEvent", apiLimiter, requireLogin, upload.single("file"), async
             eventTitle: req.body.title // เก็บชื่อกิจกรรมที่ถูกเพิ่มเข้ามาใน Log ด้วย
         });
 
-        return res.status(201).json({ message: "บันทึกสำเร็จ" });
+        if (missingGroups.length > 0) {
+            return res.status(201).json({ 
+                message: "บันทึกสำเร็จ", 
+                warning: "ไม่พบข้อมูลกลุ่มดังต่อไปนี้ในระบบ:", 
+                missingGroups: missingGroups 
+            });
+        }else{ 
+            return res.status(201).json({ message: "บันทึกสำเร็จ" });
+        }
        
     } catch (err) {  
         console.error("❌ API Error:", err); 
