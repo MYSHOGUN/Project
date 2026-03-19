@@ -2665,14 +2665,16 @@ app.post("/forgot-password",checkFailModal , apiLimiter,async (req, res) => {
         await user.save();
 
         const transporter = nodemailer.createTransport({
-            service: 'gmail',
             host: 'smtp.gmail.com',
             port: 465,
-            secure: false, // ใช้ false สำหรับ port 587 และต้องมี requireTLS
-            requireTLS: true,
+            secure: true, // ใช้ true สำหรับพอร์ต 465
             auth: {
                 user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS // ต้องเป็น App Password 16 หลัก
+                pass: process.env.EMAIL_PASS
+            },
+            tls: {
+                // ช่วยให้ส่งผ่านได้แม้ระบบรักษาความปลอดภัยของ Server จะเข้มงวด
+                rejectUnauthorized: false 
             }
         });
 
