@@ -108,7 +108,7 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">อีเมล</label>
-                                <input class="form-control" id="updateEmail" value="<%= user.email %>" <%= user.role !== 'teacher' ? 'disabled' : '' %> placeholder="example@email.com">
+                                <input class="form-control" id="updateEmail" value="<%= user.email %>" <%= user.role !== 'teacher' && user.role !== 'admin' && user.role !== 'secretary' ? 'disabled' : '' %> placeholder="example@email.com">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">เบอร์โทรศัพท์</label>
