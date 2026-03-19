@@ -2656,7 +2656,16 @@ app.post("/forgot-password",checkFailModal , apiLimiter,async (req, res) => {
     const user = await User.findOne({ email }); // ประกาศตัวแปร user ไว้ข้างนอกเพื่อให้เข้าถึงได้ในส่วนของ createLog หลังจากการดำเนินการทั้งหมดแล้ว
     try {
 
-        if (!user) return res.status(404).send("ไม่พบผู้ใช้งานนี้");
+        if (!email) {
+            req.session.failModal = "email_failed";
+            req.session.save(() => res.redirect("/forgotPassword"));
+            return;
+        }
+        if (!user) {
+            req.session.failModal = "user_failed";
+            req.session.save(() => res.redirect("/forgotPassword"));
+            return;
+        }
 
         // สร้าง Token (ต้องแก้ Schema เพิ่ม 2 ฟิลด์นี้ก่อนตามที่คุยกัน)
         const token = crypto.randomBytes(20).toString('hex');
@@ -2695,8 +2704,8 @@ app.post("/forgot-password",checkFailModal , apiLimiter,async (req, res) => {
         req.session.successModal = "forget_success";
         req.session.save(() => res.redirect("/login"));
     } catch (err) {
-        console.error("❌ Mail Error:", err);
-        res.status(500).send("เกิดข้อผิดพลาดในการส่งอีเมล");
+        req.session.failModal = "forget_failed";
+        req.session.save(() => res.redirect("/forgotPassword"));
     }
     await createLog(req, "FORGOT_PASSWORD", {
         email: req.body.email,

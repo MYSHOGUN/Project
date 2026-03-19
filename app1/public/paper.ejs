@@ -131,7 +131,13 @@
             const container = document.getElementById('paper-platform-container');
             
             if (!papers || papers.length === 0) {
-                container.innerHTML = `<div class="alert alert-info py-5 text-center" style="grid-column: 1 / -1; border-radius: 15px; width: 100%">ไม่มีรายการส่งเอกสารในขณะนี้</div>`;
+                container.innerHTML = `
+                <div class="card shadow-sm border-0 text-center py-5" style="border-radius: 15px;">
+                        <div class="card-body">
+                            <i class="fas fa-file-alt fa-4x text-gray-200 mb-3"></i>
+                            <h4 class="text-gray-500">ไม่มีรายการส่งเอกสารในขณะนี้</h4>
+                        </div>
+                    </div>`;
                 return;
             }
             
