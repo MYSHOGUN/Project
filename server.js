@@ -1835,7 +1835,7 @@ app.post("/register", apiLimiter, upload.single("profileImage"), async (req, res
     }
   } catch (err) {
     req.session.failModal = "error"; // ตั้งค่าเพื่อแสดง modal
-    req.session.save(() => res.redirect("/register"));
+    return req.session.save(() => res.redirect("/register"));
   }
     await createLog(req, "REGISTER", {
         username: username // ดึงชื่อผู้ใช้ที่พยายามลงทะเบียนมาเก็บไว้ดูย้อนหลังได้
@@ -2658,13 +2658,11 @@ app.post("/forgot-password" , apiLimiter,async (req, res) => {
 
         if (!email) {
             req.session.failModal = "email_failed";
-            req.session.save(() => res.redirect("/forgotPassword"));
-            return;
+            return req.session.save(() => res.redirect("/forgotPassword"));
         }
         if (!user) {
             req.session.failModal = "user_failed";
-            req.session.save(() => res.redirect("/forgotPassword"));
-            return;
+            return req.session.save(() => res.redirect("/forgotPassword"));
         }
 
         // สร้าง Token (ต้องแก้ Schema เพิ่ม 2 ฟิลด์นี้ก่อนตามที่คุยกัน)
@@ -2705,7 +2703,7 @@ app.post("/forgot-password" , apiLimiter,async (req, res) => {
         req.session.save(() => res.redirect("/login"));
     } catch (err) {
         req.session.failModal = "forget_failed";
-        req.session.save(() => res.redirect("/forgotPassword"));
+        return req.session.save(() => res.redirect("/forgotPassword"));
     }
     await createLog(req, "FORGOT_PASSWORD", {
         email: req.body.email,
@@ -2724,7 +2722,7 @@ app.get("/reset-password/:token", checkFailModal , async (req, res) => {
         if (!user) {
             // ถ้า Token ผิดหรือหมดอายุ ให้ส่งกลับไปหน้าลืมรหัสผ่านพร้อมข้อความเตือน
             req.session.failModal = "token_expired"; 
-            return req.session.save(() => res.redirect("/forgot-password"));
+            return req.session.save(() => res.redirect(`/reset-password/${req.params.token}`));
         }
 
         // ถ้า Token ถูกต้อง ให้แสดงหน้าตั้งรหัสผ่านใหม่
@@ -2745,7 +2743,8 @@ app.post("/reset-password/:token", apiLimiter,async (req, res) => {
         const { password, passwordConfirm } = req.body;
 
         if (password !== passwordConfirm) {
-            return res.status(400).send("รหัสผ่านไม่ตรงกัน");
+            req.session.failModal = "password_mismatch";
+            return req.session.save(() => res.redirect(`/reset-password/${req.params.token}`));
         }
 
         user = await User.findOne({
@@ -2754,7 +2753,8 @@ app.post("/reset-password/:token", apiLimiter,async (req, res) => {
         });
 
         if (!user) {
-            return res.status(400).send("Link รีเซ็ตรหัสผ่านไม่ถูกต้องหรือหมดอายุแล้ว");
+            req.session.failModal = "token_expired";
+            return req.session.save(() => res.redirect(`/reset-password/${req.params.token}`));
         }
 
         // 1. Hash รหัสผ่านใหม่
@@ -2770,10 +2770,9 @@ app.post("/reset-password/:token", apiLimiter,async (req, res) => {
         // 3. แจ้งเตือนสำเร็จและให้ไป Login ใหม่
         req.session.successModal = "reset_success";
         req.session.save(() => res.redirect("/login"));
-
     } catch (err) {
-        console.error(err);
-        res.status(500).send("เกิดข้อผิดพลาดในการบันทึกรหัสผ่าน");
+        req.session.failModal = "reset_failed";
+        return req.session.save(() => res.redirect(`/reset-password/${req.params.token}`));
     }
     await createLog(req, "RESET_PASSWORD", {
         username: user ? user.username : null
