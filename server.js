@@ -2667,7 +2667,7 @@ app.post("/forgot-password",checkFailModal , apiLimiter,async (req, res) => {
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             host: 'smtp.gmail.com',
-            port: 587,
+            port: 465,
             secure: false, // ใช้ false สำหรับ port 587 และต้องมี requireTLS
             requireTLS: true,
             auth: {
@@ -2764,9 +2764,9 @@ app.post("/reset-password/:token", apiLimiter,async (req, res) => {
         console.error(err);
         res.status(500).send("เกิดข้อผิดพลาดในการบันทึกรหัสผ่าน");
     }
-        await createLog(req, "RESET_PASSWORD", {
-            username: user ? user.username : null
-        });
+    await createLog(req, "RESET_PASSWORD", {
+        username: user ? user.username : null
+    });
 
 });
 
