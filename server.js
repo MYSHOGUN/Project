@@ -970,12 +970,13 @@ app.get("/search-advisor", requireLogin, async (req, res) => {
 
 // ✅ บันทึกกลุ่มใหม่
 app.post("/groups", apiLimiter,requireLogin, async (req, res) => {
-    let projectName,member1;
+    let {projectName,member1,engName} = req.body;
   try {
-    const { engName, member2, advisor} = req.body;
+    const {member2, advisor} = req.body;
 
     projectName = projectName ? projectName.trim() : "";
     member1 = member1 ? member1.trim() : "";
+    engName = engName ? engName.trim() : "";
 
     const status = "รอนำเสนอหัวข้อ";
 
