@@ -446,135 +446,7 @@ function generateEventId() {
     // ผลลัพธ์จะเป็นแบบ: "123e4567-e89b-12d3-a456-426614174000"
 }
 
-// Routes
-app.get("/" ,requireLogin, async (req, res) => {
-  if(req.session.user.role === "admin" || req.session.user.role === "secretary") {
-    return res.redirect("/userInfo");
-  }else{
-    return res.redirect("/group");
-  }
-  try {
-    const newsList = await News.find().sort({ createdAt: -1 });
-    const newsData = newsList.map(item => ({
-            ...item.toObject(), 
-            imgId: item.img && item.img.id ? item.img.id.toString() : null 
-    }));
-    renderWithLayout(res, "index", { title: "KMUTNB Project - Main" ,news: newsData,user: req.session.user,truncateText: truncateText} , req.path,req);
-  }catch(err){
-    console.error("Error fetching news:", err);
-    res.status(500).send("Error loading news");
-  }
-});
-app.get("/upload", requireLogin, (req, res) => {
-  renderWithLayout(res, "upload", { title: "KMUTNB Project - Upload" }, req.path,req);
-});
-
-app.post("/upload-file/:groupId", requireLogin, apiLimiter, upload.array("files"), async (req, res) => {
-    let group;
-  try {
-    const messages = [];
-
-    const groupId = req.params.groupId;
-    group = await Group.findById(groupId);
-
-    let hasMovement = false;
-
-    let mem1 = null;
-    let mem2 = null;
-    let adv = null;
-
-    if(group.member1 && !group.member1.includes("(Pending)")){
-      const cleanMem1 = group.member1.replace(" (Pending)","");
-      mem1 = cleanMem1;
-    }
-    if(group.member2 && !group.member2.includes("(Pending)")){
-      const cleanMem2 = group.member2.replace(" (Pending)","");
-      mem2 = cleanMem2;
-    }
-    if(group.advisor && !group.advisor.includes("(Pending)")){
-      const cleanAdv = group.advisor.replace(" (Pending)","");
-      adv = cleanAdv;
-    }
-
-    // ถ้ามีข้อความ
-    if(req.body.text && req.body.text.trim() !== ""){
-      const textMessage = new Message({
-        groupId: req.params.groupId,
-        senderUsername: req.session.user.username,
-        senderName: req.session.user.name,
-        type: "text",
-        text: req.body.text.trim(),
-        senderPic: req.session.user.picture,
-        timestamp: new Date(),
-        groupMember: [mem1,mem2,adv]
-      });
-      await textMessage.save();
-      messages.push(textMessage);
-
-      io.to(req.params.groupId).emit("group message", textMessage);
-      await sendGroupNotification('message',groupId, req.session.user.username, req.session.user.name, req.body.text.trim(), req.session.user.picture ? req.session.user.picture : null , null , undefined , null , null , null);
-
-      hasMovement = true;
-    }
-
-    // ถ้ามีไฟล์
-    if(req.files && req.files.length > 0){
-      for (const file of req.files) {
-        const uploadStream = bucket.openUploadStream(file.originalname, { contentType: file.mimetype });
-
-        uploadStream.end(file.buffer);
-
-        await new Promise((resolve, reject) => {
-          uploadStream.on("finish", resolve);
-          uploadStream.on("error", reject);
-        });
-
-        const fileId = uploadStream.id;
-
-        const fileMessage = new Message({
-          groupId: req.params.groupId,
-          senderUsername: req.session.user.username,
-          senderName: req.session.user.name,
-          type: "file",
-          file: {
-            filename: file.originalname,
-            contentType: file.mimetype,
-            length: file.size,
-            uploadDate: new Date(),
-            fileId: fileId
-          },
-          senderPic: req.session.user.picture || null,
-          timestamp: new Date(),
-          groupMember: [mem1,mem2,adv]
-        });
-
-        await fileMessage.save();
-        messages.push(fileMessage);
-
-        io.to(req.params.groupId).emit("group message", fileMessage);
-        await sendGroupNotification('message',groupId, req.session.user.username, req.session.user.name, `ส่งไฟล์: ${file.originalname}`, req.session.user.picture || null , null , undefined , null , null , null);
-
-        hasMovement = true;
-      }
-    }
-
-    if (hasMovement) {
-      await Group.findByIdAndUpdate(groupId, { lastUpdatedTime: new Date() });
-    }
-
-    res.json(messages);
-    } catch(err){
-      console.error(err);
-      res.status(500).json({ error: "Upload error" });
-    }
-
-    await createLog(req, "SENT_CHAT", { 
-        groupName: group.projectName,
-        type: req.body.text && req.body.text.trim() !== "" ? "message" : "file" // ดึงชื่อกิจกรรมมาเก็บไว้ดูย้อนหลังได้
-    });
-  });
-
-  async function sendGroupNotification(type, groupId, senderUsername, sender, messageText, senderPic, mention , expire , member1, member2 , advisor) {
+async function sendGroupNotification(type, groupId, senderUsername, sender, messageText, senderPic, mention , expire , member1, member2 , advisor) {
     try {
         if (type === 'alert') {
             // 1. บันทึกลง DB แค่ 1 อัน (ใช้ recipient: 'ALL')
@@ -704,6 +576,136 @@ app.post("/upload-file/:groupId", requireLogin, apiLimiter, upload.array("files"
         console.error("❌ Notification Error:", err);
     }
 }
+
+// Routes
+app.get("/" ,requireLogin, async (req, res) => {
+  if(req.session.user.role === "admin" || req.session.user.role === "secretary") {
+    return res.redirect("/userInfo");
+  }else{
+    return res.redirect("/group");
+  }
+  try {
+    const newsList = await News.find().sort({ createdAt: -1 });
+    const newsData = newsList.map(item => ({
+            ...item.toObject(), 
+            imgId: item.img && item.img.id ? item.img.id.toString() : null 
+    }));
+    renderWithLayout(res, "index", { title: "KMUTNB Project - Main" ,news: newsData,user: req.session.user,truncateText: truncateText} , req.path,req);
+  }catch(err){
+    console.error("Error fetching news:", err);
+    res.status(500).send("Error loading news");
+  }
+});
+app.get("/upload", requireLogin, (req, res) => {
+  renderWithLayout(res, "upload", { title: "KMUTNB Project - Upload" }, req.path,req);
+});
+
+app.post("/upload-file/:groupId", requireLogin, apiLimiter, upload.array("files"), async (req, res) => {
+    let group;
+  try {
+    const messages = [];
+
+    const groupId = req.params.groupId;
+    group = await Group.findById(groupId);
+
+    let hasMovement = false;
+
+    let mem1 = null;
+    let mem2 = null;
+    let adv = null;
+
+    if(group.member1 && !group.member1.includes("(Pending)")){
+      const cleanMem1 = group.member1.replace(" (Pending)","");
+      mem1 = cleanMem1;
+    }
+    if(group.member2 && !group.member2.includes("(Pending)")){
+      const cleanMem2 = group.member2.replace(" (Pending)","");
+      mem2 = cleanMem2;
+    }
+    if(group.advisor && !group.advisor.includes("(Pending)")){
+      const cleanAdv = group.advisor.replace(" (Pending)","");
+      adv = cleanAdv;
+    }
+
+    // ถ้ามีข้อความ
+    if(req.body.text && req.body.text.trim() !== ""){
+      const textMessage = new Message({
+        groupId: req.params.groupId,
+        senderUsername: req.session.user.username,
+        senderName: req.session.user.name,
+        type: "text",
+        text: req.body.text.trim(),
+        senderPic: req.session.user.picture,
+        timestamp: new Date(),
+        groupMember: [mem1,mem2,adv]
+      });
+      await textMessage.save();
+      messages.push(textMessage);
+
+      io.to(req.params.groupId).emit("group message", textMessage);
+      await sendGroupNotification('message',groupId, req.session.user.username, req.session.user.name, req.body.text.trim(), req.session.user.picture ? req.session.user.picture : null , null , undefined , null , null , null);
+
+      hasMovement = true;
+    }
+
+    // ถ้ามีไฟล์
+    if(req.files && req.files.length > 0){
+      for (const file of req.files) {
+        const uploadStream = bucket.openUploadStream(file.originalname, { contentType: file.mimetype });
+
+        uploadStream.end(file.buffer);
+
+        await new Promise((resolve, reject) => {
+          uploadStream.on("finish", resolve);
+          uploadStream.on("error", reject);
+        });
+
+        const fileId = uploadStream.id;
+
+        const fileMessage = new Message({
+          groupId: req.params.groupId,
+          senderUsername: req.session.user.username,
+          senderName: req.session.user.name,
+          type: "file",
+          file: {
+            filename: file.originalname,
+            contentType: file.mimetype,
+            length: file.size,
+            uploadDate: new Date(),
+            fileId: fileId
+          },
+          senderPic: req.session.user.picture || null,
+          timestamp: new Date(),
+          groupMember: [mem1,mem2,adv]
+        });
+
+        await fileMessage.save();
+        messages.push(fileMessage);
+
+        io.to(req.params.groupId).emit("group message", fileMessage);
+        await sendGroupNotification('message',groupId, req.session.user.username, req.session.user.name, `ส่งไฟล์: ${file.originalname}`, req.session.user.picture || null , null , undefined , null , null , null);
+
+        hasMovement = true;
+      }
+    }
+
+    if (hasMovement) {
+      await Group.findByIdAndUpdate(groupId, { lastUpdatedTime: new Date() });
+    }
+
+    res.json(messages);
+    } catch(err){
+      console.error(err);
+      res.status(500).json({ error: "Upload error" });
+    }
+
+    await createLog(req, "SENT_CHAT", { 
+        groupName: group.projectName,
+        type: req.body.text && req.body.text.trim() !== "" ? "message" : "file" // ดึงชื่อกิจกรรมมาเก็บไว้ดูย้อนหลังได้
+    });
+  });
+
+  
 
 
 app.get("/file/download/:id", requireLogin, async (req, res) => {
@@ -1043,6 +1045,7 @@ app.post("/group/accept-invitation/:groupId/:notiId", apiLimiter,requireLogin, a
   try {
     const { groupId, notiId } = req.params;
     const username = req.session.user.username;
+    const userRole = req.session.user.role;
     const group = await Group.findById(groupId);
 
     if (!group) {
@@ -1050,7 +1053,7 @@ app.post("/group/accept-invitation/:groupId/:notiId", apiLimiter,requireLogin, a
     }
 
     // ตรวจสอบว่ามีคนอื่นมาเสียบแทนไปก่อนหรือยัง
-    if (group.member2 && group.member2 !== `${username} (Pending)`) {
+    if (userRole !== "teacher" && group.member2 && group.member2 !== `${username} (Pending)`) {
       return res.status(400).send("กลุ่มนี้มีสมาชิกครบแล้ว");
     }
     
@@ -1144,7 +1147,6 @@ app.post("/groups-update/:groupId", apiLimiter,requireLogin, async (req, res) =>
     const { member2, advisor } = req.body;
     const { groupId } = req.params;
 
-    // 1. ค้นหากลุ่มด้วย ID ที่ได้มา (ตัวแปร group จะมีค่าแน่นอนถ้าเจอ)
      group = await Group.findById(groupId);
     if (!group) return res.status(404).send("ไม่พบข้อมูลกลุ่ม");
 
@@ -1153,7 +1155,6 @@ app.post("/groups-update/:groupId", apiLimiter,requireLogin, async (req, res) =>
     const mem2 = member2 ? String(member2) : null;
     const adv = advisor ? String(advisor) : null;
 
-    // 2. อัปเดตข้อมูลเฉพาะที่มีการส่งมาใหม่
     if (mem2 && mem2 !== ""  && mem2 !== null && !mem2.includes("(Pending)")) {
         group.member2 = `${member2} (Pending)`;
     }
@@ -1162,10 +1163,8 @@ app.post("/groups-update/:groupId", apiLimiter,requireLogin, async (req, res) =>
         group.advisor = `${advisor} (Pending)`;
     }
 
-    // 3. บันทึก (ใช้ await group.save() มั่นใจว่าไม่ล่มเพราะ group ไม่เป็น null)
     await group.save();
 
-    // 4. ส่งแจ้งเตือน
     await sendGroupNotification(
       "addGroup", groupId, "ระบบ", "ระบบ", 
       `คุณถูกเพิ่มเข้ากลุ่มโดย ${mem1?.name || 'หัวหน้ากลุ่ม'}`, 
@@ -1181,7 +1180,7 @@ app.post("/groups-update/:groupId", apiLimiter,requireLogin, async (req, res) =>
   }
     await createLog(req, "UPDATE_GROUP", {
         groupName: group ? group.projectName : "Unknown Group",
-        updateBy: req.session.user.username // ดึงชื่อกิจกรรมมาเก็บไว้ดูย้อนหลังได้
+        updateBy: req.session.user.username 
     });
 });
 

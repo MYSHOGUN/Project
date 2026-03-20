@@ -331,13 +331,30 @@ async function respondInvitation(event, action, groupId, notiId) {
         const res = await fetch(url, { method: 'POST' });
         if (res.ok) {
             // ถ้าสำเร็จ ให้ Refresh หน้าเพื่ออัปเดตสถานะกลุ่มใน Session/UI
-            window.location.reload();
+            Swal.fire({
+                icon: 'success',
+                title: action === 'accept' ? 'เข้าร่วมกลุ่มสำเร็จ' : 'ปฏิเสธคำเชิญสำเร็จ',
+                text: action === 'accept' ? 'คุณได้เข้าร่วมกลุ่มเรียบร้อยแล้ว' : 'คุณได้ปฏิเสธคำเชิญเข้ากลุ่มแล้ว',
+                confirmButtonText: 'ตกลง'
+            }).then(() => {
+                window.location.reload();
+            });
         } else {
             const errorMsg = await res.text();
-            alert("ผิดพลาด: " + errorMsg);
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาด',
+                text: errorMsg,
+                confirmButtonText: 'ตกลง'
+            });
         }
     } catch (err) {
-        console.error("Error:", err);
+        Swal.fire({
+            icon: 'error',
+            title: 'เกิดข้อผิดพลาด',
+            text: err.message || 'ไม่สามารถตอบรับคำเชิญได้ในขณะนี้',
+            confirmButtonText: 'ตกลง'
+        });
     }
 }
 </script>
