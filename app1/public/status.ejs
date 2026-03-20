@@ -124,7 +124,7 @@
                                             <% 
                                             let badgeClass = "bg-primary text-white"; 
                                             if (g.status.includes("ผ่าน")) badgeClass = "bg-success text-white"; 
-                                            if (g.status.includes("ไม่ผ่าน") || g.status.includes("รากมะม่วง")) badgeClass = "bg-danger text-white";
+                                            if (g.status.includes("ไม่ผ่าน") || g.status.includes("ไม่มีสมาชิก")) badgeClass = "bg-danger text-white";
                                             if (g.status.includes("รอ") || g.status.includes("พร้อมสอบ")) badgeClass = "bg-warning text-dark";
                                             %>
                                             <span class="badge rounded-pill px-4 py-2 badge-status <%= badgeClass %> shadow-sm">

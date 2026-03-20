@@ -1225,7 +1225,7 @@ app.post("/groups/leave/:groupId", apiLimiter,async (req, res) => {
     }
 
     if(group.member1 === null){
-      group.status = "ไปคุยกับรากมะม่วง"
+      group.status = "ไม่มีสมาชิก";
     }
 
     await group.save();
@@ -2007,7 +2007,7 @@ app.post("/api/addEvent", apiLimiter, requireLogin, upload.single("file"), async
               const localBucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: "fs" });
 
               const allGroups = await Group.find({ 
-                  status: { $nin: ["ผ่านการสอบปริญญานิพนธ์", "ไปคุยกับรากมะม่วง"] } 
+                  status: { $nin: ["ผ่านการสอบปริญญานิพนธ์", "ไม่มีสมาชิก"] } 
               });
 
               for (const group of allGroups) {
