@@ -1150,12 +1150,15 @@ app.post("/groups-update/:groupId", apiLimiter,requireLogin, async (req, res) =>
 
     const mem1 = await User.findOne({ username: group.member1 });
 
+    const mem2 = member2 ? String(member2) : null;
+    const adv = advisor ? String(advisor) : null;
+
     // 2. อัปเดตข้อมูลเฉพาะที่มีการส่งมาใหม่
-    if (member2 && member2 !== "" && !String(member2.includes("(Pending)"))) {
+    if (mem2 && mem2 !== ""  && mem2 !== null && !mem2.includes("(Pending)")) {
         group.member2 = `${member2} (Pending)`;
     }
 
-    if (advisor && advisor !== "" && !String(advisor.includes("(Pending)"))) {
+    if (adv && adv !== "" && adv !== null && !adv.includes("(Pending)")) {
         group.advisor = `${advisor} (Pending)`;
     }
 
@@ -1167,8 +1170,8 @@ app.post("/groups-update/:groupId", apiLimiter,requireLogin, async (req, res) =>
       "addGroup", groupId, "ระบบ", "ระบบ", 
       `คุณถูกเพิ่มเข้ากลุ่มโดย ${mem1?.name || 'หัวหน้ากลุ่ม'}`, 
       null, null, undefined, null, 
-      (member2 && !String(member2.includes("(Pending)"))) ? member2 : null, 
-      advisor ? advisor : null
+      mem2, 
+      adv
     );
 
     res.status(201).send("ส่งคำเชิญกลุ่มสำเร็จ");
