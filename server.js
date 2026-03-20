@@ -126,7 +126,7 @@ async function saveUsersFromExcel(dataArray) {
 
     const bulkOps = [];
     const saltRounds = 10;
-    const PENDING_PASS_STRING = 'PENDING_REGISTRATION_FOR_SIGNUP'; 
+    const PENDING_PASS_STRING = crypto.randomBytes(16).toString('hex'); // สร้างรหัสผ่านชั่วคราวแบบสุ่ม
     const pendingHashedPassword = await bcrypt.hash(PENDING_PASS_STRING, saltRounds); 
 
     for (const row of dataArray) {
