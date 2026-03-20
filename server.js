@@ -1145,17 +1145,16 @@ app.post("/groups-update/:groupId", apiLimiter,requireLogin, async (req, res) =>
     const { groupId } = req.params;
 
     // 1. ค้นหากลุ่มด้วย ID ที่ได้มา (ตัวแปร group จะมีค่าแน่นอนถ้าเจอ)
-     group = await Group.findById(groupId);
+    group = await Group.findById(groupId);
     if (!group) return res.status(404).send("ไม่พบข้อมูลกลุ่ม");
 
     const mem1 = await User.findOne({ username: group.member1 });
 
-    // 2. อัปเดตข้อมูลเฉพาะที่มีการส่งมาใหม่
-    if (member2 && member2 !== "" && !member2.includes("(Pending)")) {
+    if (member2 && typeof member2 === 'string' && member2.trim() !== "" && !member2.includes("(Pending)")) {
         group.member2 = `${member2} (Pending)`;
     }
 
-    if (advisor && advisor !== "" && !advisor.includes("(Pending)")) {
+    if (advisor && typeof advisor === 'string' && advisor.trim() !== "" && !advisor.includes("(Pending)")) {
         group.advisor = `${advisor} (Pending)`;
     }
 
@@ -1164,11 +1163,11 @@ app.post("/groups-update/:groupId", apiLimiter,requireLogin, async (req, res) =>
 
     // 4. ส่งแจ้งเตือน
     await sendGroupNotification(
-      "addGroup", groupId, "ระบบ", "ระบบ", 
-      `คุณถูกเพิ่มเข้ากลุ่มโดย ${mem1?.name || 'หัวหน้ากลุ่ม'}`, 
-      null, null, undefined, null, 
-      (member2 && !member2.includes("(Pending)")) ? member2 : null, 
-      advisor
+        "addGroup", groupId, "ระบบ", "ระบบ", 
+        `คุณถูกเพิ่มเข้ากลุ่มโดย ${mem1?.name || 'หัวหน้ากลุ่ม'}`, 
+        null, null, undefined, null, 
+        (typeof member2 === 'string' && !member2.includes("(Pending)")) ? member2 : null, 
+        advisor
     );
 
     res.status(201).send("ส่งคำเชิญกลุ่มสำเร็จ");
