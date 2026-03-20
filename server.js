@@ -972,7 +972,7 @@ app.get("/search-advisor", requireLogin, async (req, res) => {
 app.post("/groups", apiLimiter,requireLogin, async (req, res) => {
     let projectName,member1;
   try {
-    const {  projectName, engName, member1, member2, advisor} = req.body;
+    const { engName, member2, advisor} = req.body;
 
     projectName = projectName ? projectName.trim() : "";
     member1 = member1 ? member1.trim() : "";
