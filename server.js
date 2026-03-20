@@ -1328,7 +1328,7 @@ app.get("/updateGroup", requireLogin, async (req, res) => {
         const cleanM2Username = targetGroup.member2.replace(" (Pending)", "");
         const user2 = await User.findOne({ username: cleanM2Username });
         
-        if (targetGroup.member2.includes("(Pending)")) {
+        if (String(targetGroup.member2.includes("(Pending)"))) {
             mem2 = user2 ? { ...user2.toObject(), lastname: `${user2.lastname} (Pending)` } : null;
         } else {
             mem2 = user2;
@@ -1341,7 +1341,7 @@ app.get("/updateGroup", requireLogin, async (req, res) => {
         const cleanAdUsername = targetGroup.advisor.replace(" (Pending)", "");
         const advisor = await User.findOne({ username: cleanAdUsername });
         
-        if (targetGroup.advisor.includes("(Pending)")) {
+        if ((String(targetGroup.advisor.includes("(Pending)")))) {
             adv = advisor ? { ...advisor.toObject(), lastname: `${advisor.lastname} (Pending)` } : null;
         } else {
             adv = advisor;
