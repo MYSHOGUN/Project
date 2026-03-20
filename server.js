@@ -447,8 +447,11 @@ function generateEventId() {
 
 // Routes
 app.get("/" ,requireLogin, async (req, res) => {
-  if(req.session.user.role === "admin" || req.session.user.role === "secretary") return res.redirect("/userInfo")
-  return res.redirect("/group");
+  if(req.session.user.role === "admin" || req.session.user.role === "secretary") {
+    return res.redirect("/userInfo");
+  }else{
+    return res.redirect("/group");
+  }
   try {
     const newsList = await News.find().sort({ createdAt: -1 });
     const newsData = newsList.map(item => ({
@@ -2869,7 +2872,7 @@ app.get("/groupInfo/:id", async (req, res) => {
 
 app.get("/userInfo", requireLogin, async (req, res) => {
     // 1. ตรวจสอบสิทธิ์ Admin
-    if (req.session.user.role !== "admin") {
+    if (req.session.user.role !== "admin" && req.session.user.role !== "secretary") {
         return res.redirect("/group");
     }
 
