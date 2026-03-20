@@ -141,6 +141,7 @@ async function saveUsersFromExcel(dataArray) {
         const title = (row['คำนำหน้าชื่อ'] || '').trim();
         const firstName = (row['ชื่อ'] || 'Pending').trim();
         const lastName = (row['นามสกุล'] || 'Registration').trim();
+        const role = (row['ตำแหน่ง'] === 'teacher' || row['ตำแหน่ง'] === 'อาจารย์' ? 'teacher' : row['ตำแหน่ง'] === 'secretary' || row['ตำแหน่ง'] === 'เลขานุการ' ? 'secretary' : 'user').trim().toLowerCase();
 
 
         const userData = {
@@ -150,7 +151,7 @@ async function saveUsersFromExcel(dataArray) {
             title: title,
             name: firstName, 
             lastname: lastName,
-            role: 'user',
+            role: role,
             branch: "EnET",
             picture: "",
             group: [],
