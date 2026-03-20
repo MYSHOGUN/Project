@@ -1338,12 +1338,13 @@ app.get("/updateGroup", requireLogin, async (req, res) => {
     
     // เช็คกรณี member2 อาจจะเป็นค่าว่าง หรือเป็น String "(Pending)"
     let mem2 = null;
+    let mem2Username = String(targetGroup.member2);
     if (targetGroup.member2) {
         // ลบคำว่า (Pending) ออกก่อนค้นหาใน DB ถ้ามีการเก็บแบบต่อท้าย string
         const cleanM2Username = targetGroup.member2.replace(" (Pending)", "");
         const user2 = await User.findOne({ username: cleanM2Username });
         
-        if (String(targetGroup.member2.includes("(Pending)"))) {
+        if (mem2Username.includes("(Pending)")) {
             mem2 = user2 ? { ...user2.toObject(), lastname: `${user2.lastname} (Pending)` } : null;
         } else {
             mem2 = user2;
@@ -1351,12 +1352,13 @@ app.get("/updateGroup", requireLogin, async (req, res) => {
     }
 
     let adv = null;
+    let advUsername = String(targetGroup.advisor);
     if (targetGroup.advisor) {
         // ลบคำว่า (Pending) ออกก่อนค้นหาใน DB ถ้ามีการเก็บแบบต่อท้าย string
         const cleanAdUsername = targetGroup.advisor.replace(" (Pending)", "");
         const advisor = await User.findOne({ username: cleanAdUsername });
         
-        if ((String(targetGroup.advisor.includes("(Pending)")))) {
+        if (advUsername.includes("(Pending)")) {
             adv = advisor ? { ...advisor.toObject(), lastname: `${advisor.lastname} (Pending)` } : null;
         } else {
             adv = advisor;
@@ -2851,8 +2853,21 @@ app.get("/groupInfo/:id", async (req, res) => {
         const group = await Group.findById(id).lean();
         if (!group) return res.status(404).send("ไม่พบข้อมูลกลุ่ม");
 
+
+        let member2username ,advisorUsername;
         // 2. ดึงข้อมูลชื่อ-นามสกุลสมาชิกและที่ปรึกษา
-        const memberUsernames = [group.member1, group.member2, group.advisor].filter(Boolean);
+        if(String(group.member2).includes("Pending")){
+          member2username = null; // แปลงค่า Pending เป็น null เพื่อให้แสดง "ไม่มีข้อมูล" ใน getUserFullName
+        }else{
+          member2username = group.member2;
+        }
+
+        if(String(group.advisor).includes("Pending")){
+          advisorUsername = null; // แปลงค่า Pending เป็น null เพื่อให้แสดง "ไม่มีข้อมูล" ใน getUserFullName
+        }else{
+          advisorUsername = group.advisor;
+        }
+        const memberUsernames = [group.member1, member2username, advisorUsername].filter(Boolean);
         const users = await User.find({ username: { $in: memberUsernames } }).lean();
         
         const getUserFullName = (username) => {
