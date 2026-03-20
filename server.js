@@ -1962,6 +1962,7 @@ app.post("/api/addEvent", apiLimiter, requireLogin, upload.single("file"), async
     try {
         const { title, date, toDate, description } = req.body;
         const file = req.file;
+        let missingGroups = [];
 
         if (!title || !date) {
             return res.status(400).json({ error: "ข้อมูลไม่ครบถ้วน" });
@@ -2066,8 +2067,7 @@ app.post("/api/addEvent", apiLimiter, requireLogin, upload.single("file"), async
             const testresultsdate = new Date(expire);
             testresultsdate.setDate(testresultsdate.getDate() + 7);
           
-            const paperPlatforms = [];
-            const missingGroups = [];
+            let paperPlatforms = [];
 
             // วนลูปทีละแถวใน Excel (1 แถว = 1 กลุ่ม)
             for (const row of data) {
