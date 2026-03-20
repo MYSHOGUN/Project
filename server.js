@@ -1072,9 +1072,16 @@ app.post("/group/accept-invitation/:groupId/:notiId", apiLimiter,requireLogin, a
     }
     await group.save();
 
-    // 2. ลบแจ้งเตือนทิ้ง
-    await Notification.findByIdAndDelete(notiId);
+    //แก้ recipient เอา username ออกจาก array recipients ใน DB แต่ถ้าไมมี recipient ก็ลบเอกสารนั้นทิ้งไปเลย
 
+    let noti = await Notification.findById(notiId);
+    noti.recipient.pull(username);
+    if (noti.recipient.length === 0) {
+        await Notification.findByIdAndDelete(notiId);
+    } else {
+        await noti.save();
+    }
+    
     let updatedUser;
     if (req.session.user.role !== "teacher") {
         updatedUser = await User.findOneAndUpdate(
@@ -1124,7 +1131,13 @@ app.post("/group/deny-invitation/:groupId/:notiId", apiLimiter,requireLogin, asy
     await group.save();
 
     // ✅ 2. ลบการแจ้งเตือนทิ้งเพื่อให้หายไปจากหน้าจอผู้ใช้
-    await Notification.findByIdAndDelete(notiId);
+    let noti = await Notification.findById(notiId);
+    noti.recipient.pull(req.session.user.username);
+    if (noti.recipient.length === 0) {
+        await Notification.findByIdAndDelete(notiId);
+    } else {        
+        await noti.save();
+    }
 
     // ✅ 3. อัปเดต Session ของผู้ใช้ที่กดปฏิเสธให้กลับเป็นไม่มีกลุ่ม (null)
     
