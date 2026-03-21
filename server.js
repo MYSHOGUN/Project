@@ -1726,7 +1726,7 @@ app.post("/api/addUserSingle", apiLimiter,requireLogin, async (req, res) => {
         }
 
         // 4. เตรียมข้อมูลก่อนบันทึก
-        const PENDING_PASS_STRING = 'PENDING_REGISTRATION_FOR_SIGNUP'; 
+        const PENDING_PASS_STRING = crypto.randomBytes(16).toString('hex');
         const pendingHashedPassword = await bcrypt.hash(PENDING_PASS_STRING, 10);
         const trimmedUsername = String(username).trim();
         const emailGenerated = "s" + trimmedUsername + "@kmutnb.ac.th";
