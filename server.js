@@ -224,6 +224,9 @@ async function generateAutoFilledPDF(groupData) {
                 const field = form.getField(name);
                 if (field && field.constructor.name === 'PDFTextField') {
                     const textValue = value ? value.toString() : "-";
+
+                    field.setBorderColor(undefined);
+                    field.setBackgroundColor(undefined);
                     
                     // 1. ดึงขนาดความกว้างของช่องจริงใน PDF
                     const widgets = field.acroField.getWidgets();
