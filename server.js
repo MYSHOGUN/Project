@@ -40,7 +40,7 @@ const streamifier = require('streamifier');
 
 const crypto = require('crypto');
 
-const { PDFDocument } = require('pdf-lib');
+const { PDFDocument, PDFName, rgb } = require('pdf-lib');
 
 const userSockets = new Map();
 const mongoose = require("mongoose");
@@ -222,39 +222,39 @@ async function generateAutoFilledPDF(groupData) {
         const smartFill = (name, value) => {
             try {
                 const field = form.getField(name);
-                if (field && field.constructor.name === 'PDFTextField') {
-                    const textValue = value ? value.toString() : "-";
+                if (!field) return;
 
-                    field.setBorderColor(undefined);
-                    field.setBackgroundColor(undefined);
+                const textValue = value ? value.toString() : "-";
+
+                // 1. 🛡️ เช็คว่าเป็น TextField จริงไหมก่อนสั่งงาน
+                // ถ้าเป็นคลาส PDFTextField ถึงจะสั่งงานระดับสูงได้
+                if (field.constructor.name === 'PDFTextField') {
                     
-                    // 1. ดึงขนาดความกว้างของช่องจริงใน PDF
+                    // 2. 🚫 วิธีลบกรอบแบบ Low-level (ใช้ได้กับทุกไฟล์)
                     const widgets = field.acroField.getWidgets();
-                    if (!widgets || widgets.length === 0) return;
+                    widgets.forEach(widget => {
+                        // ลบ Border (BC) และ Background (BG) จาก PDF Dictionary โดยตรง
+                        widget.dict.delete(PDFName.of('BC')); 
+                        widget.dict.delete(PDFName.of('BG'));
+                        widget.dict.set(PDFName.of('BS'), pdfDoc.context.obj({ W: 0 })); // บังคับเส้นหนา 0
+                    });
+
+                    // 3. 📏 คำนวณขนาด Font Auto-fit (เหมือนเดิม)
                     const width = widgets[0].getRectangle().width;
-
-                    // 2. ตั้งค่าเริ่มต้นสำหรับ Auto-fit
-                    let fontSize = 12; // ขนาดเริ่มต้น (หนาและสวย)
-                    field.updateAppearances(thaiFont);
-
-                    // 3. คำนวณขนาดฟอนต์ให้พอดีช่อง (Auto-fit Logic)
+                    let fontSize = 12;
                     let textWidth = thaiFont.widthOfTextAtSize(textValue, fontSize);
-                    while (textWidth > width - 6 && fontSize > 6) { // Margin 6 pt
+                    while (textWidth > width - 6 && fontSize > 6) {
                         fontSize -= 0.5;
                         textWidth = thaiFont.widthOfTextAtSize(textValue, fontSize);
                     }
 
-                    // 4. สั่งกรอกข้อมูลด้วยขนาดที่คำนวณได้
+                    // 4. ✍️ กรอกข้อมูลและอัปเดต
                     field.setFontSize(fontSize);
                     field.setText(textValue);
-                    
-                    // บังคับ Appearance อีกครั้งหลัง SetText
-                    if (typeof field.updateAppearances === 'function') {
-                        field.updateAppearances(thaiFont);
-                    }
+                    field.updateAppearances(thaiFont);
                 }
             } catch (e) {
-                console.warn(`⚠️ ข้ามฟิลด์ ${name}: ${e.message}`);
+                console.error(`⚠️ Error ที่ฟิลด์ ${name}:`, e.message);
             }
         };
 
