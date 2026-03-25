@@ -780,21 +780,17 @@ app.get("/flowchart", requireLogin, requireNotRole('secretary') ,(req, res) => {
 app.get("/file", requireLogin, (req, res) => {
   renderWithLayout(res, "file", { title: "KMUTNB Project - File" }, req.path,req);
 });
-app.get("/group", requireLogin , requireNotRole('secretary') || requireNotRole('admin') ,async (req, res) => {
+app.get("/group", requireLogin , requireNotRole('secretary') ,async (req, res) => {
   try{
 
-    if (req.session.user && Array.isArray(req.session.user.group) && req.session.user.group.length === 0 && req.session.user.role !== "teacher") {
+    if (req.session.user && Array.isArray(req.session.user.group) && req.session.user.group.length === 0 && req.session.user.role !== "teacher" && req.session.user.role !== "admin") {
       return res.redirect("/addGroup");
     }
 
     const username = req.session.user.username;
 
-    let groups;
-    if(req.session.user.role === "admin"){
-      groups = await Group.find().sort({ lastUpdatedTime: -1 });
-    }else{   
-      groups = await Group.find({ allMember: { $in: [username] } }).sort({ lastUpdatedTime: -1 });
-    }
+    let groups;   
+    groups = await Group.find({ allMember: { $in: [username] } }).sort({ lastUpdatedTime: -1 });
 
     let userInfo = []; // เก็บข้อมูลสมาชิกแยกตามกลุ่ม
 
@@ -964,7 +960,7 @@ app.get("/search-advisor", requireLogin, async (req, res) => {
     const users = await User.find({
       $and: [
         { username: { $ne: req.session.user.username } }, // ไม่เอาตัวเอง
-        { role: { $ne: "user"} }, // เอาอาจารย์
+        { role: { $ne: "user" , $ne: "admin" } }, // เอาอาจารย์
         {
           $or: [
             { username: { $regex: keyword, $options: "i" } },
@@ -1064,13 +1060,13 @@ app.post("/group/accept-invitation/:groupId/:notiId", apiLimiter,requireLogin, a
     }
 
     // ตรวจสอบว่ามีคนอื่นมาเสียบแทนไปก่อนหรือยัง
-    if (userRole !== "teacher" && group.member2 && group.member2 !== `${username} (Pending)`) {
+    if ((group.member2 && group.member2 !== `${username} (Pending)`) || (group.advisor && group.advisor !== `${username} (Pending)`)) {
       return res.status(400).send("กลุ่มนี้มีสมาชิกครบแล้ว");
     }
     
     // 1. อัปเดตข้อมูลกลุ่ม
     let user = await User.findOne({ username: username }); // ดึงข้อมูลผู้ใช้จาก DB เพื่อความแน่นอน
-    if(user.role === "teacher"){
+    if(user.role === "teacher" || user.role === "admin"){
       group.advisor = username;
       if (!group.allMember.includes(username)) {
           group.allMember.push(username);
@@ -1094,7 +1090,7 @@ app.post("/group/accept-invitation/:groupId/:notiId", apiLimiter,requireLogin, a
     }
     
     let updatedUser;
-    if (req.session.user.role !== "teacher") {
+    if (req.session.user.role !== "teacher" || req.session.user.role !== "admin") {
         updatedUser = await User.findOneAndUpdate(
             { username: username },
             { $set: { group: group._id } },
@@ -1281,7 +1277,7 @@ app.post("/groups/leave/:groupId", apiLimiter,async (req, res) => {
     });
 });
 
-app.get("/addGroup", requireLogin, requireNotRole('secretary') || requireNotRole('admin'), async (req, res) => {
+app.get("/addGroup", requireLogin, requireRole("user"), async (req, res) => {
   if(req.session.user && Array.isArray(req.session.user.group) && req.session.user.group.length > 0){
     console.log("User already in group, redirecting to /group");
       return res.redirect("/group");
@@ -1323,7 +1319,7 @@ app.get("/addGroup", requireLogin, requireNotRole('secretary') || requireNotRole
   }
 });
 
-app.get("/updateGroup", requireLogin, requireNotRole('secretary') || requireNotRole('admin'), async (req, res) => {
+app.get("/updateGroup", requireLogin, requireRole("user"), async (req, res) => {
   try {
     const username = req.session.user.username;
     
