@@ -104,8 +104,28 @@ const processExcelFile = (buffer) => {
         const sheetName = workbook.SheetNames[0]; // อ่านชีทแรก
         const worksheet = workbook.Sheets[sheetName];
 
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        // 2. กำหนดคำค้นหาที่คาดว่าจะเป็น "หัวตาราง"
+        const targetHeaders = ["เลขประจำตัว", "ชื่อ", "คำนำหน้าชื่อ", "ลำดับ" , "นามสกุล", "ตำแหน่ง"];
+        let startRowIndex = 0;
+
+        // 3. วนลูปหาว่าบรรทัดไหนมีคำสำคัญเหล่านี้
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            // เช็คว่าในแถวนี้ (row) มีคำใดคำหนึ่งใน targetHeaders หรือไม่
+            const isHeaderRow = row.some(cell => 
+                targetHeaders.includes(String(cell).trim())
+            );
+
+            if (isHeaderRow) {
+                startRowIndex = i; // บันทึกตำแหน่งแถวที่เจอหัวตาราง
+                break;
+            }
+        }
+
         // แปลงข้อมูลชีทเป็น JSON Array
-        const data = XLSX.utils.sheet_to_json(worksheet, { range: 8 });
+        const data = XLSX.utils.sheet_to_json(worksheet, { range: startRowIndex });
         
         if (data.length === 0) {
             throw new Error("Excel file is empty or data format is incorrect.");
@@ -131,11 +151,10 @@ async function saveUsersFromExcel(dataArray) {
 
     for (const row of dataArray) {
         // 1. ดึงเลขประจำตัว
-        const rawUsername = row['เลขประจำตัว']; 
-        if (!rawUsername || isNaN(rawUsername)) continue; 
+        const rawUsername = String(row['เลขประจำตัว']).trim();
+        if (!rawUsername) continue; 
 
-        const trimmedUsername = String(rawUsername).trim();
-        const emailExel = `s${trimmedUsername}@kmutnb.ac.th`.toLowerCase();
+        const emailExel = `s${rawUsername}@kmutnb.ac.th`.toLowerCase();
 
         // 2. จัดการเรื่องชื่อ (เอา คำนำหน้า + ชื่อ)
         const title = (row['คำนำหน้าชื่อ'] || '').trim();
@@ -182,25 +201,6 @@ let bucket;
   bucket = new GridFSBucket(mongoose.connection.db, { bucketName: "fs" });
   console.log("✅ GridFSBucket initialized");
 });*/
-
-async (req, res) => {
-    try {
-        // ดึงเฉพาะคนที่เป็น user และเรียงลำดับรหัส
-        const students = await User.find({ role: 'user' }).sort({ username: 1 });
-
-        // Logic การจัดกลุ่ม (Group by Prefix)
-        const groupedData = students.reduce((acc, student) => {
-            const prefix = student.username.substring(0, 2); // ดึง 63, 64...
-            if (!acc[prefix]) acc[prefix] = [];
-            acc[prefix].push(student);
-            return acc;
-        }, {});
-
-        res.render('admin/user-list', { groupedData });
-    } catch (err) {
-        res.status(500).send("Error fetching users");
-    }
-}
 
 async function generateAutoFilledPDF(groupData) {
     try {
@@ -415,8 +415,8 @@ function requireLogin(req, res, next) {
 // Middleware ตรวจ role (ถ้าใช้ role เช่น admin)
 function requireRole(role) {
   return function (req, res, next) {
-    if (!req.session.user || req.session.user.role !== role) {
-      return res.status(403).send("⛔ ไม่ได้รับอนุญาต");
+    if (req.session.user.role !== role) {
+      return res.redirect("/"); // หรือส่งข้อความว่าไม่อนุญาตก็ได้
     }
     next();
   };
@@ -578,6 +578,15 @@ async function sendGroupNotification(type, groupId, senderUsername, sender, mess
     } catch (err) {
         console.error("❌ Notification Error:", err);
     }
+}
+
+function requireNotRole(role) {
+    return (req, res, next) => {
+        if (req.session.user.role === role) {
+            return res.redirect("/"); // หรือส่งข้อความว่าไม่อนุญาตก็ได้
+        }
+        next();
+    };
 }
 
 // Routes
@@ -765,14 +774,13 @@ app.get("/login", checkFailModal, checkSuccessModal, (req, res) => {
   }, req.path, req);
   
 });
-app.get("/flowchart", requireLogin,(req, res) => {
+app.get("/flowchart", requireLogin, requireNotRole('secretary') ,(req, res) => {
   renderWithLayout(res, "flowchart", { title: "KMUTNB Project - Flowchart" }, req.path,req);
 });
 app.get("/file", requireLogin, (req, res) => {
   renderWithLayout(res, "file", { title: "KMUTNB Project - File" }, req.path,req);
 });
-app.get("/group", requireLogin, async (req, res) => {
-  if(req.session.user.role === "admin" || req.session.user.role === "secretary" ) return res.redirect("/userInfo")
+app.get("/group", requireLogin , requireNotRole('secretary') || requireNotRole('admin') ,async (req, res) => {
   try{
 
     if (req.session.user && Array.isArray(req.session.user.group) && req.session.user.group.length === 0 && req.session.user.role !== "teacher") {
@@ -1273,7 +1281,7 @@ app.post("/groups/leave/:groupId", apiLimiter,async (req, res) => {
     });
 });
 
-app.get("/addGroup", requireLogin, async (req, res) => {
+app.get("/addGroup", requireLogin, requireNotRole('secretary') || requireNotRole('admin'), async (req, res) => {
   if(req.session.user && Array.isArray(req.session.user.group) && req.session.user.group.length > 0){
     console.log("User already in group, redirecting to /group");
       return res.redirect("/group");
@@ -1315,7 +1323,7 @@ app.get("/addGroup", requireLogin, async (req, res) => {
   }
 });
 
-app.get("/updateGroup", requireLogin, async (req, res) => {
+app.get("/updateGroup", requireLogin, requireNotRole('secretary') || requireNotRole('admin'), async (req, res) => {
   try {
     const username = req.session.user.username;
     
@@ -1682,24 +1690,15 @@ app.post("/profile/update", requireLogin, apiLimiter,upload.single("profileImage
     });
 });
 
-app.get("/addUser",requireLogin,(req, res) => {
-  if(req.session.user.role !== "admin"){
-    return res.redirect("/");
-  }
+app.get("/addUser",requireLogin,requireRole('admin') ,(req, res) => {
   renderWithLayout(res, "addUser", { title: "KMUTNB Project - Add User" }, req.path,req);
 });
 
-app.get("/addUserExcel",requireLogin,(req, res) => {
-  if(req.session.user.role !== "admin"){
-    return res.redirect("/");
-  }
+app.get("/addUserExcel",requireLogin,requireRole('admin'),(req, res) => {
   renderWithLayout(res, "addUserExcel", { title: "KMUTNB Project - Add User Excel" }, req.path,req);
 });
 
-app.get("/addUserSingle",requireLogin,(req, res) => {
-  if(req.session.user.role !== "admin"){
-    return res.redirect("/");
-  }
+app.get("/addUserSingle",requireLogin,requireRole('admin'),(req, res) => {
   renderWithLayout(res, "addUserSingle", { title: "KMUTNB Project - Add User Single" }, req.path,req);
 });
 
@@ -1964,14 +1963,11 @@ app.get("/api/notifications/count", requireLogin, async (req, res) => {
     }
 });
 
-app.get("/event", requireLogin, (req, res) => {
+app.get("/event", requireLogin,requireNotRole('secretary'),(req, res) => {
   renderWithLayout(res, "event", { title: "KMUTNB Project - Event" }, req.path,req);
 });
 
-app.get("/addEvent", requireLogin, (req, res) => {
-  if(req.session.user.role !== "admin"){
-    return res.redirect("/event");
-  }
+app.get("/addEvent", requireLogin,requireRole('admin') ,(req, res) => {
   renderWithLayout(res, "addEvent", { title: "KMUTNB Project - Add Event" }, req.path,req);
 });
 
@@ -2201,7 +2197,7 @@ app.get("/api/getEvents", requireLogin, async (req, res) => {
     }
 });
 
-app.get("/eventInfo/:id", requireLogin, async (req, res) => {
+app.get("/eventInfo/:id", requireLogin,requireNotRole('secretary'), async (req, res) => {
     try {
         const event = await Event.findOne({ id: req.params.id }); 
         
@@ -2340,7 +2336,7 @@ app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
 
 });
 
-app.get("/paper", requireLogin, async (req, res) => {
+app.get("/paper", requireLogin, requireNotRole('secretary'), async (req, res) => {
   try {
       // 2. เพิ่ม await เพื่อรอให้ดึงข้อมูลจาก MongoDB เสร็จก่อน
       const groups = await Group.find({});
@@ -2600,10 +2596,7 @@ app.post("/api/submitPaperResult", apiLimiter,requireLogin, async (req, res) => 
     });
 });
 
-app.get("/admin", requireLogin, async (req, res) => {
-  if(req.session.user.role !== "admin"){
-    return res.redirect("/");
-  }
+app.get("/admin", requireLogin, requireRole('admin'), async (req, res) => {
   try {
       renderWithLayout(res, "admin", { title: "KMUTNB Project - Admin Panel" }, req.path,req);
   } catch (err) {
@@ -2905,12 +2898,8 @@ app.get("/groupInfo/:id", async (req, res) => {
     }
 });
 
-app.get("/userInfo", requireLogin, async (req, res) => {
+app.get("/userInfo", requireLogin, requireRole('admin')|| requireRole('secretary') ,async (req, res) => {
     // 1. ตรวจสอบสิทธิ์ Admin
-    if (req.session.user.role !== "admin" && req.session.user.role !== "secretary") {
-        return res.redirect("/group");
-    }
-
     try {
         // 2. ดึงเฉพาะคนที่เป็น user และเรียงลำดับรหัส
         const students = await User.find({ role: 'user' }).sort({ username: 1 });
@@ -3021,10 +3010,7 @@ app.post("/update-exam-schedule", apiLimiter,requireLogin, async (req, res) => {
     res.json({ success: true });
 });
 
-app.get("/addSecretary", requireLogin, async (req, res) => {
-  if(req.session.user.role !== "admin"){
-    return res.redirect("/");
-  }
+app.get("/addSecretary", requireLogin, requireRole('admin'), async (req, res) => {
   try {
       renderWithLayout(res, "addSecretary", { title: "KMUTNB Project - Add Secretary" }, req.path,req);
   } catch (err) {

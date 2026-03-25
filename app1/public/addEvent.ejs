@@ -110,16 +110,74 @@
     }
 
     .btn-cancel {
-        background: transparent;
+        background-color: #e74a3b;
         border: 2px solid #e74a3b;
-        color: #e74a3b;
+        color: white;
         border-radius: 12px;
         padding: 12px 30px;
         font-weight: 700;
         margin-left: 10px;
+        transition: all 0.3s ease;
     }
 
-    .btn-cancel:hover { background: #f8d7da; color: #e74a3b; }
+    .btn-cancel:hover { background: #c82333; transform: scale(1.05); }
+
+    .btn-view {
+        background: #4e73df;
+        border: none;
+        border-radius: 12px;
+        padding: 10px 10px;
+        font-weight: 600;
+        color: white;
+        transition: all 0.3s ease;
+    }
+
+    .btn-view:hover {
+        background: #2e59d9;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(78, 115, 223, 0.3);
+    }
+
+    .large-rectangle-image {
+        /* ✅ แสดงผลตามสัดส่วนเดิม 100% ไม่บีบ ไม่ Crop */
+        object-fit: contain !important; 
+        
+        /* ✅ บังคับความสูงสูงสุดไม่ให้ล้นจอ (90% ของความสูงจอ) */
+        max-height: 90vh !important; 
+        
+        /* ✅ เพิ่ม Shadow หนาๆ ให้รูปดูลอยเด่นออกมา */
+        box-shadow: 0 20px 50px rgba(0,0,0,0.8) !important;
+        border-radius: 4px; 
+        margin: 40px !important;
+    }
+
+    /* ลบ Padding และขอบขาวของ SweetAlert ให้เหลือน้อยที่สุด */
+    .swal2-popup {
+        padding: 0 !important; /* ลด padding เพื่อให้ปุ่มอ้างอิงขอบรูปได้แม่นยำ */
+        background: none !important; 
+        width: auto !important;
+        overflow: visible !important; /* สำคัญ: เพื่อให้ปุ่มที่ลอยออกไปไม่โดนตัดทิ้ง */
+    }
+
+    .swal2-close {
+        position: absolute !important;
+        /* ✅ ใช้ค่าติดลบเพื่อดึงปุ่มออกไปนอกขอบรูป */
+        top: -50px !important; 
+        right: -100px !important;
+        
+        /* ตกแต่งปุ่มให้เห็นชัดบนพื้นหลังมืด */
+        color: white !important;
+        font-size: 50px !important; /* ขนาดกากบาท */
+        background: none !important; 
+        border: none !important;
+        outline: none !important;
+        transition: transform 0.2s;
+    }
+
+    .swal2-close:hover {
+        transform: scale(1.2); /* ขยายใหญ่ขึ้นเวลาเอาเมาส์ชี้ */
+        color: #ff4d4d !important; /* เปลี่ยนเป็นสีแดงอ่อนๆ */
+    }
 </style>
 
 <div class="container-fluid add-event-wrapper">
@@ -191,7 +249,12 @@
         </div>
 
         <div id="fileUploadSection" class="mt-4 d-none flex-column">
-            <label class="input-label">ตารางสอบ (Excel)</label>
+            <div class="justify-content-between d-flex align-items-center mb-3">
+                <label class="input-label">ตารางสอบ (Excel)</label>
+                <button id="viewImageBtn" class="btn btn-view shadow-sm">
+                    <i class="fas fa-image"></i> ดูรูปภาพตัวอย่าง Excel เพิ่มข้อมูลตารางสอบ
+                </button>
+            </div>
             <div id="drop-area">
                 <i class="fas fa-file-excel"></i>
                 <p id="defaultDropText" class="mb-0 px-4">ลากไฟล์ Excel มาวาง หรือ คลิกเพื่อเลือกไฟล์</p>
@@ -615,6 +678,22 @@
                 saveEventBtn.innerText = "บันทึกกิจกรรม";
             }
         })
+    });
+
+    document.getElementById('viewImageBtn').addEventListener('click', function() {
+        Swal.fire({
+            imageUrl: '/img/preview.png', // ใส่ URL รูปของคุณที่นี่
+            imageAlt: 'รูปตัวอย่างตารางสอบ',
+            width: '85%',
+            imageWidth: '100%', // ปรับขนาดรูปให้เต็มความกว้างของ Pop-up
+            showConfirmButton: false, // ปิดปุ่มตกลง (เพราะเน้นดูรูป)
+            showCloseButton: true,    // แสดงปุ่มกากบาทมุมบนขวา
+            background: 'transparent', // ทำให้พื้นหลัง Pop-up ใส
+            backdrop: `rgba(0,0,0,0.8)`, // พื้นหลังสีดำจางๆ ด้านนอก
+            customClass: {
+                image: 'large-rectangle-image' // เพิ่ม Class CSS ให้รูปภาพ
+            }
+        });
     });
 
     document.addEventListener("DOMContentLoaded", initDatePicker);
