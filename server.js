@@ -63,7 +63,7 @@ const migrateOldNotis = async () => {
 };
 
 mongoose.connection.once("open", () => {
-    bucket = new GridFSBucket(mongoose.connection.db, { bucketName: "fs" });
+    bucket = new GridFSBucket(mongoose.connection.db, { bucketName: "uploads" });
     console.log("✅ GridFSBucket initialized and ready");
     
     // เรียก Migration แจ้งเตือนเก่าตรงนี้เลย (ถ้าต้องการรัน)
@@ -194,13 +194,6 @@ async function saveUsersFromExcel(dataArray) {
         throw error;
     }
 }
-
-let bucket;
-
-/*connectDB().then(() => {
-  bucket = new GridFSBucket(mongoose.connection.db, { bucketName: "fs" });
-  console.log("✅ GridFSBucket initialized");
-});*/
 
 async function generateAutoFilledPDF(groupData) {
     try {
@@ -415,7 +408,7 @@ function requireLogin(req, res, next) {
 // Middleware ตรวจ role (ถ้าใช้ role เช่น admin)
 function requireRole(role) {
   return function (req, res, next) {
-    if (req.session.user.role !== role) {
+    if (!role.includes(req.session.user.role)) {
       return res.redirect("/"); // หรือส่งข้อความว่าไม่อนุญาตก็ได้
     }
     next();
@@ -582,7 +575,7 @@ async function sendGroupNotification(type, groupId, senderUsername, sender, mess
 
 function requireNotRole(role) {
     return (req, res, next) => {
-        if (req.session.user.role === role) {
+        if (role.includes(req.session.user.role)) {
             return res.redirect("/"); // หรือส่งข้อความว่าไม่อนุญาตก็ได้
         }
         next();
@@ -774,13 +767,13 @@ app.get("/login", checkFailModal, checkSuccessModal, (req, res) => {
   }, req.path, req);
   
 });
-app.get("/flowchart", requireLogin, requireNotRole('secretary') ,(req, res) => {
+app.get("/flowchart", requireLogin, requireNotRole(['secretary']) ,(req, res) => {
   renderWithLayout(res, "flowchart", { title: "KMUTNB Project - Flowchart" }, req.path,req);
 });
 app.get("/file", requireLogin, (req, res) => {
   renderWithLayout(res, "file", { title: "KMUTNB Project - File" }, req.path,req);
 });
-app.get("/group", requireLogin , requireNotRole('secretary') ,async (req, res) => {
+app.get("/group", requireLogin , requireNotRole(['secretary']) ,async (req, res) => {
   try{
 
     if (req.session.user && Array.isArray(req.session.user.group) && req.session.user.group.length === 0 && req.session.user.role !== "teacher" && req.session.user.role !== "admin") {
@@ -1277,7 +1270,7 @@ app.post("/groups/leave/:groupId", apiLimiter,async (req, res) => {
     });
 });
 
-app.get("/addGroup", requireLogin, requireRole("user"), async (req, res) => {
+app.get("/addGroup", requireLogin, requireRole(["user"]), async (req, res) => {
   if(req.session.user && Array.isArray(req.session.user.group) && req.session.user.group.length > 0){
     console.log("User already in group, redirecting to /group");
       return res.redirect("/group");
@@ -1319,7 +1312,7 @@ app.get("/addGroup", requireLogin, requireRole("user"), async (req, res) => {
   }
 });
 
-app.get("/updateGroup", requireLogin, requireRole("user"), async (req, res) => {
+app.get("/updateGroup", requireLogin, requireRole(["user"]), async (req, res) => {
   try {
     const username = req.session.user.username;
     
@@ -1686,20 +1679,20 @@ app.post("/profile/update", requireLogin, apiLimiter,upload.single("profileImage
     });
 });
 
-app.get("/addUser",requireLogin,requireRole('admin') ,(req, res) => {
+app.get("/addUser",requireLogin,requireRole(['admin']) ,(req, res) => {
   renderWithLayout(res, "addUser", { title: "KMUTNB Project - Add User" }, req.path,req);
 });
 
-app.get("/addUserExcel",requireLogin,requireRole('admin'),(req, res) => {
+app.get("/addUserExcel",requireLogin,requireRole(['admin']),(req, res) => {
   renderWithLayout(res, "addUserExcel", { title: "KMUTNB Project - Add User Excel" }, req.path,req);
 });
 
-app.get("/addUserSingle",requireLogin,requireRole('admin'),(req, res) => {
+app.get("/addUserSingle",requireLogin,requireRole(['admin']),(req, res) => {
   renderWithLayout(res, "addUserSingle", { title: "KMUTNB Project - Add User Single" }, req.path,req);
 });
 
 // API สำหรับเพิ่มผู้ใช้รายคน
-app.post("/api/addUserSingle", apiLimiter,requireLogin, async (req, res) => {
+app.post("/api/addUserSingle", apiLimiter,requireLogin , async (req, res) => {
     // 🛡️ เช็คสิทธิ์ Admin
     if (req.session.user.role !== "admin") {
         return res.status(403).json({ success: false, error: "สิทธิ์ไม่เพียงพอ" });
@@ -1819,22 +1812,34 @@ app.post("/register", apiLimiter, upload.single("profileImage"), async (req, res
     let img = {};
 
     if (req.file) {
-      const uploadStream = bucket.openUploadStream(req.file.originalname, { 
-        contentType: req.file.mimetype,
-      });
+        // 1. สร้าง Stream สำหรับอัปโหลด
+        const uploadStream = bucket.openUploadStream(req.file.originalname, { 
+            contentType: req.file.mimetype,
+        });
 
-      img = {
-        filename: req.file.originalname,
-        contentType: req.file.mimetype,
-        id: uploadStream.id
-      };
-      
-      await new Promise((resolve, reject) => {
-        uploadStream.once('finish', resolve);
-        uploadStream.once('error', reject);
-        uploadStream.end(req.file.buffer); 
-      });
+        // 2. ใช้ Promise ครอบการทำงานทั้งหมด
+        await new Promise((resolve, reject) => {
+            // สร้าง Readable Stream จาก Buffer แล้ว Pipe เข้าสู่ GridFS
+            const { Readable } = require('stream');
+            const readableStream = Readable.from(req.file.buffer);
 
+            readableStream.pipe(uploadStream);
+
+            uploadStream.on('finish', () => {
+                // ✅ กำหนดค่า img เฉพาะเมื่ออัปโหลดเสร็จสมบูรณ์เท่านั้น
+                img = {
+                    filename: req.file.originalname,
+                    contentType: req.file.mimetype,
+                    id: uploadStream.id // GridFS จะเจน ID ให้ตั้งแต่เปิด Stream
+                };
+                resolve();
+            });
+
+            uploadStream.on('error', (err) => {
+                console.error("❌ GridFS Upload Error:", err);
+                reject(err);
+            });
+        });
     }
 
     
@@ -1959,11 +1964,11 @@ app.get("/api/notifications/count", requireLogin, async (req, res) => {
     }
 });
 
-app.get("/event", requireLogin,requireNotRole('secretary'),(req, res) => {
+app.get("/event", requireLogin,requireNotRole(['secretary']),(req, res) => {
   renderWithLayout(res, "event", { title: "KMUTNB Project - Event" }, req.path,req);
 });
 
-app.get("/addEvent", requireLogin,requireRole('admin') ,(req, res) => {
+app.get("/addEvent", requireLogin,requireRole(['admin']) ,(req, res) => {
   renderWithLayout(res, "addEvent", { title: "KMUTNB Project - Add Event" }, req.path,req);
 });
 
@@ -1986,8 +1991,6 @@ app.post("/api/addEvent", apiLimiter, requireLogin, upload.single("file"), async
         // --- ส่วนที่แก้ไข: จัดการไฟล์ Excel เข้า GridFS ---
         let uploadedFileId = null;
         if (file) {
-            const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
-            
             // สร้าง Stream เพื่ออัปโหลดไฟล์จาก Buffer
             const uploadStream = bucket.openUploadStream(file.originalname, {
                 contentType: file.mimetype
@@ -2022,7 +2025,6 @@ app.post("/api/addEvent", apiLimiter, requireLogin, upload.single("file"), async
 
         if (title === "วันส่งเอกสาร") {
               // 1. สร้าง bucket เฉพาะกิจตรงนี้เลยเพื่อให้มั่นใจว่าไม่เป็น undefined
-              const localBucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: "fs" });
 
               const allGroups = await Group.find({ 
                   status: { $nin: ["ผ่านการสอบปริญญานิพนธ์", "ไม่มีสมาชิก"] } 
@@ -2036,7 +2038,7 @@ app.post("/api/addEvent", apiLimiter, requireLogin, upload.single("file"), async
 
                       if (autoPdfBuffer) {
                           // 2. ใช้ localBucket ที่สร้างขึ้นใหม่
-                          const uploadStream = localBucket.openUploadStream(`แบบฟอร์ม_${group.projectName}.pdf`, { 
+                          const uploadStream = bucket.openUploadStream(`แบบฟอร์ม_${group.projectName}.pdf`, { 
                               contentType: 'application/pdf' 
                           });
 
@@ -2193,7 +2195,7 @@ app.get("/api/getEvents", requireLogin, async (req, res) => {
     }
 });
 
-app.get("/eventInfo/:id", requireLogin,requireNotRole('secretary'), async (req, res) => {
+app.get("/eventInfo/:id", requireLogin,requireNotRole(['secretary']), async (req, res) => {
     try {
         const event = await Event.findOne({ id: req.params.id }); 
         
@@ -2332,7 +2334,7 @@ app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
 
 });
 
-app.get("/paper", requireLogin, requireNotRole('secretary'), async (req, res) => {
+app.get("/paper", requireLogin, requireNotRole(['secretary']), async (req, res) => {
   try {
       // 2. เพิ่ม await เพื่อรอให้ดึงข้อมูลจาก MongoDB เสร็จก่อน
       const groups = await Group.find({});
@@ -2592,7 +2594,7 @@ app.post("/api/submitPaperResult", apiLimiter,requireLogin, async (req, res) => 
     });
 });
 
-app.get("/admin", requireLogin, requireRole('admin'), async (req, res) => {
+app.get("/admin", requireLogin, requireRole(['admin']), async (req, res) => {
   try {
       renderWithLayout(res, "admin", { title: "KMUTNB Project - Admin Panel" }, req.path,req);
   } catch (err) {
@@ -2894,7 +2896,7 @@ app.get("/groupInfo/:id", async (req, res) => {
     }
 });
 
-app.get("/userInfo", requireLogin, requireRole('admin')|| requireRole('secretary') ,async (req, res) => {
+app.get("/userInfo", requireLogin, requireRole(['admin', 'secretary']) ,async (req, res) => {
     // 1. ตรวจสอบสิทธิ์ Admin
     try {
         // 2. ดึงเฉพาะคนที่เป็น user และเรียงลำดับรหัส
@@ -2937,7 +2939,6 @@ app.post("/update-exam-schedule", apiLimiter,requireLogin, async (req, res) => {
         const newWB = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(newWB, newWS, "Schedule");
         const newBuffer = XLSX.write(newWB, { type: 'buffer', bookType: 'xlsx' });
-        const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
         
         await bucket.delete(new mongoose.Types.ObjectId(event.testTable.fileId));
         const uploadStream = bucket.openUploadStream(event.testTable.filename, { contentType: event.testTable.contentType });
@@ -3006,7 +3007,7 @@ app.post("/update-exam-schedule", apiLimiter,requireLogin, async (req, res) => {
     res.json({ success: true });
 });
 
-app.get("/addSecretary", requireLogin, requireRole('admin'), async (req, res) => {
+app.get("/addSecretary", requireLogin, requireRole(['admin']), async (req, res) => {
   try {
       renderWithLayout(res, "addSecretary", { title: "KMUTNB Project - Add Secretary" }, req.path,req);
   } catch (err) {
