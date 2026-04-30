@@ -868,7 +868,8 @@ app.get("/ownedGroupStatus", requireLogin, async (req, res) => {
     }));
 
     // ✅ ต้องมี return เพื่อป้องกัน Error Headers Sent
-    return renderWithLayout(res, "status", { title: "KMUTNB Project - Group Status", groups: groupsWithData }, req.path, req);
+    console.log("DEBUG GROUPS:", JSON.stringify(groupsWithData));
+    return renderWithLayout(res, "ownedGroupStatus", { title: "KMUTNB Project - Group Status", groups: groupsWithData }, req.path, req);
     
   } catch (err) {
     console.error("Error fetching groups:", err);
@@ -3397,7 +3398,7 @@ app.get("/ownedGroupInfo/:id", async (req, res) => {
             };
         });
 
-        renderWithLayout(res, "groupInfo", { 
+        renderWithLayout(res, "ownedGroupInfo", { 
             title: "รายละเอียดกลุ่ม",
             group,
             member1Name: getUserFullName(group.member1),

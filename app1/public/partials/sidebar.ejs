@@ -82,14 +82,19 @@
             <hr class="sidebar-divider my-0">
 
             <li class="nav-item <%= currentPath === '/ownedGroupStatus' || currentPath.startsWith('/ownedGroupInfo') ? 'active' : '' %>">
-                <a class="nav-link" href="/ownedGroupStatus">
-                        <i class="fas fa-fw fa-table"></i>
-                    <% if (user.role !== 'user') { %>
-                            <span>สถานะปริญญานิพนธ์ของกลุ่มที่เป็นที่ปรึกษา</span>
-                    <% } else { %>
-                            <span>สถานะปริญญานิพนธ์ของกลุ่มผู้ใช้</span>
-                    <% } %>
-                    </a>
+                <a class="nav-link d-flex align-items-start" href="/ownedGroupStatus">
+                    <!-- 1. ใส่ Margin Right ให้ Icon เพื่อเว้นระยะห่างที่คงที่ -->
+                    <i class="fas fa-fw fa-table mt-1 mr-2"></i> 
+                    
+                    <!-- 2. ครอบตัวหนังสือทั้งหมดด้วย span อีกชั้นเพื่อแยกบล็อกออกมา -->
+                    <span style="white-space: normal; line-height: 1.2;">
+                        <% if (user.role !== 'user') { %>
+                            สถานะปริญญานิพนธ์ของกลุ่มที่เป็นที่ปรึกษา
+                        <% } else { %>
+                            สถานะปริญญานิพนธ์ของกลุ่มผู้ใช้
+                        <% } %>
+                    </span>
+                </a>
             </li>
         <% } %>
 
@@ -98,9 +103,9 @@
             <hr class="sidebar-divider my-0">
 
             <li class="nav-item <%= currentPath === '/status' || currentPath.startsWith('/groupInfo') ? 'active' : '' %>">
-                <a class="nav-link" href="/status">
-                    <i class="fas fa-fw fa-table"></i>
-                    <span>สถานะของปริญญานิพนธ์ทั้งหมด</span></a>
+                <a class="nav-link d-flex align-items-start" href="/status">
+                    <i class="fas fa-fw fa-table mt-1 mr-2"></i>
+                    <span style="white-space: normal; line-height: 1.2;">สถานะของปริญญานิพนธ์ทั้งหมด</span></a>
             </li>
         <% } %>
 

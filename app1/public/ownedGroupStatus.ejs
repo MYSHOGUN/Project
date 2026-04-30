@@ -3,14 +3,21 @@
     .status-wrapper {
         display: flex !important;
         flex-direction: column !important;
-        align-items: center !important;
-        min-height: 84vh !important;
+        /* เปลี่ยนจาก align-items: center เป็น stretch เพื่อให้ container ข้างในขยายได้ */
+        align-items: stretch !important; 
+        /* ใช้ min-height แบบคำนวณเพื่อให้ลบส่วนของ Navbar/Footer ออกไป */
+        min-height: calc(100vh - 150px) !important; 
         padding-bottom: 50px !important;
     }
 
     .status-container {
         width: 100% !important;
-        max-width: 1200px !important; /* คุมความกว้างสูงสุดให้ดูพอดีสายตา */
+        max-width: 1200px !important;
+        margin: 0 auto !important; /* จัดกลุ่ม container ให้อยู่กลางแนวนอน */
+        /* เพิ่ม flex เพื่อให้ลูกข้างใน (ไอคอนไม่มีกลุ่ม) ยืดตัวได้ */
+        display: flex !important;
+        flex-direction: column !important;
+        flex-grow: 1 !important;
     }
 
     /* ปรับแต่งช่องค้นหาให้พรีเมียม */
@@ -95,7 +102,7 @@
                 <p class="text-muted">ตรวจสอบความคืบหน้าและสถานะปัจจุบันของแต่ละกลุ่มโครงงาน</p>
             </div>
             <% if (!groups || groups.length === 0 || (groups.length >= 1 && !groups[0]._id)) { %>
-                <div id="group" class="text-center">
+                <div id="group" class="d-flex flex-column justify-content-center align-items-center flex-grow-1" style="min-height: 50vh;">
                     <div class="mb-4">
                         <i class="fas fa-users fa-5x text-gray-300"></i>
                     </div>
