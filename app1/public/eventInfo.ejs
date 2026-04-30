@@ -1,0 +1,280 @@
+<style>
+    /* จัด Layout ให้กึ่งกลางและสมบูรณ์ */
+    .event-detail-wrapper {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-height: 85vh !important;
+        width: 100% !important;
+        padding: 2rem 0 !important;
+    }
+
+    .event-card {
+        width: 100% !important;
+        max-width: 1150px !important;
+        background: #ffffff !important;
+        border-radius: 20px !important;
+        box-shadow: 0 12px 35px rgba(0,0,0,0.1) !important;
+        border: none !important;
+        overflow: hidden !important;
+    }
+
+    .event-header {
+        background: #f8f9fc !important;
+        padding: 2.5rem !important;
+        border-bottom: 2px solid #e3e6f0 !important;
+    }
+
+    .table-responsive {
+        border-radius: 12px !important;
+        border: 1px solid #dee2e6 !important;
+    }
+
+    .table thead {
+        background-color: #4e73df !important;
+        color: white !important;
+    }
+
+    .excel-section {
+        margin-top: 2.5rem !important;
+        padding-top: 2rem !important;
+        border-top: 2px dashed #eaecf4 !important;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="event-detail-wrapper">
+        
+        <div class="d-flex align-items-center justify-content-between mb-4" style="width: 100%; max-width: 1150px;">
+            <h1 class="h3 mb-0 text-gray-800 font-weight-bold">
+                <i class="fas fa-calendar-alt mr-2 text-primary"></i>รายละเอียดกิจกรรม
+            </h1>
+            <% if (user && user.role === 'admin') { %>
+                <button class="btn btn-danger shadow-sm px-4" onclick="deleteEvent()" style="border-radius: 12px;">
+                    <i class="fas fa-trash-alt mr-2"></i> ลบกิจกรรม
+                </button>
+            <% } %>
+        </div>
+
+        <div class="event-card">
+            <div class="event-header text-center">
+                <h2 class="text-primary font-weight-bold mb-2"><%= event.title %></h2>
+                <!-- <p class="text-muted mb-0"><i class="fas fa-info-circle mr-1"></i> รายละเอียดกำหนดการสอบ</p> -->
+            </div>
+            
+            <div class="event-body p-4 p-md-5">
+                <div class="row mb-4" style="justify-content: space-evenly; align-items: center;">
+                    <div class="col-md-8">
+                        <label class="text-primary font-weight-bold small text-uppercase">รายละเอียด</label>
+                        <p class="text-dark" style="font-size: 1.1rem;"><%= event.description || 'ไม่มีรายละเอียด' %></p>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="text-primary font-weight-bold small text-uppercase">วันที่</label>
+                        <p class="h5 font-weight-bold text-gray-800">
+                            <%= event.date ? new Date(event.date).toLocaleDateString('th-TH', { dateStyle: 'long' }) : 'ไม่ระบุ' %>
+                        </p>
+                    </div>
+                </div>
+
+                <% if (typeof tableData !== 'undefined' && tableData && tableData.length > 0) { %>
+                    <div class="excel-section mt-5 pt-4 border-top">
+                        <h5 class="font-weight-bold text-dark mb-4 text-center">
+                            <i class="fas fa-table mr-2 text-primary"></i>ตารางกำหนดการสอบ
+                            <% if (user.role === 'admin') { %>
+                                <small class="text-muted d-block mt-2">(โหมดแก้ไขสำหรับผู้ดูแลระบบ)</small>
+                            <% } %>
+                        </h5>
+                        
+                        <form id="scheduleForm">
+                            <div class="table-responsive shadow-sm">
+                                <table class="table table-bordered table-hover mb-0" id="editableTable">
+                                    <thead class="bg-primary text-white text-center">
+                                        <tr>
+                                            <th style="width: 80px;">ลำดับ</th>
+                                            <th>กลุ่ม</th>
+                                            <th>วันที่</th>
+                                            <th>เริ่มเวลา</th>
+                                            <th>กรรมการ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% tableData.forEach((row, index) => { %>
+                                            <tr class="schedule-row">
+                                                <% if (user.role === 'admin') { %>
+                                                    <td class="p-0"><input type="text" name="data[<%= index %>][ลำดับ]" class="form-control border-0 text-center bg-transparent" value="<%= index+1 %>"></td>
+                                                    <td class="p-0 font-weight-bold"><input type="text" name="data[<%= index %>][ชื่อกลุ่ม]" class="form-control border-0 bg-transparent" value="<%= row.groupName %>"></td>
+                                                    <td class="p-0">
+                                                        <input type="date" name="data[<%= index %>][dateOnly]" 
+                                                            class="form-control border-0 text-center bg-transparent" 
+                                                            value="<%= new Date(row.date).toISOString().split('T')[0] %>">
+                                                    </td>
+                                                    <td class="p-0">
+                                                        <input type="time" name="data[<%= index %>][timeOnly]" 
+                                                            class="form-control border-0 text-center font-weight-bold text-primary bg-transparent" 
+                                                            value="<%= (d => String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))(new Date(row.date)) %>">
+                                                    </td>
+                                                    <td class="p-0"><textarea name="data[<%= index %>][กรรมการ]" class="form-control border-0 bg-transparent small" rows="1"><%= row.directors.join(', '); %></textarea></td>
+                                                <% } else { %>
+                                                    <td class="text-center text-muted"><%= index+1 %></td>
+                                                    <td class="font-weight-bold text-gray-800"><%= row.groupName %></td>
+                                                    <td class="text-center"><%= new Date(row.date).toLocaleDateString('th-TH', { dateStyle: 'long' }) || '-' %></td>
+                                                    <td class="text-center font-weight-bold text-primary"><%= (d => String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))(new Date(row.date)) %></td>
+                                                    <td class="small"><%= row.directors %></td>
+                                                <% } %>
+                                            </tr>
+                                        <% }) %>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <% if (user.role === 'admin') { %>
+                                <div class="text-right mt-3">
+                                    <button type="button" id="saveScheduleBtn" class="btn btn-success shadow-sm">
+                                        <i class="fas fa-save mr-2"></i>บันทึกการแก้ไขทั้งหมด
+                                    </button>
+                                </div>
+                            <% } %>
+                        </form>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <a href="/event" class="btn btn-link text-muted font-weight-bold text-decoration-none">
+                <i class="fas fa-chevron-left mr-2"></i>ย้อนกลับ
+            </a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    async function deleteEvent() {
+        const result = await Swal.fire({
+            title: 'ต้องการลบกิจกรรม?',
+            text: "ข้อมูลกิจกรรมและตารางสอบจะถูกลบถาวร",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e74a3b',
+            cancelButtonColor: '#858796',
+            confirmButtonText: 'ลบเลย',
+            cancelButtonText: 'ยกเลิก',
+            reverseButtons: true
+        });
+
+        if (result.isConfirmed) {
+            // 1. แสดงหน้าจอ Loading
+            Swal.fire({ 
+                title: 'กำลังลบ...', 
+                allowOutsideClick: false, // ป้องกันการกดปิดขณะลบ
+                didOpen: () => Swal.showLoading() 
+            });
+
+            try {
+                const response = await fetch('/deleteEvent/<%= event.id %>', { method: 'DELETE' });
+                
+                // ตรวจสอบว่า response เป็น JSON หรือไม่
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // 2. สำเร็จ
+                    await Swal.fire({
+                        title: 'สำเร็จ',
+                        text: data.message,
+                        icon: 'success',
+                        confirmButtonText: 'ตกลง'
+                    });
+                    window.location.href = '/event';
+                } else {
+                    // 3. กรณี Server ตอบกลับมาว่าไม่สำเร็จ (เช่น หา ID ไม่เจอ)
+                    Swal.fire('ผิดพลาด', data.message || 'ไม่สามารถลบข้อมูลได้', 'error');
+                }
+
+            } catch (error) {
+                // 4. กรณี Network Error หรือ Server ล่ม
+                console.error("Fetch Error:", error);
+                Swal.fire('ผิดพลาด', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ หรือเกิดข้อผิดพลาดภายใน', 'error');
+            }
+        }
+    }
+
+
+    // ในหน้า eventInfo.ejs ส่วน <script>
+    const saveBtn = document.getElementById("saveScheduleBtn");
+    if (saveBtn) {
+        saveBtn.addEventListener("click", async function() {
+            // 1. แสดงหน้าต่างยืนยัน (Confirm Dialog)
+            const confirmResult = await Swal.fire({
+                title: 'ยืนยันการบันทึก?',
+                text: "ข้อมูลในตารางจะถูกอัปเดตข้อมูลระบบทันที",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#1cc88a',
+                cancelButtonColor: '#858796',
+                confirmButtonText: 'ใช่, บันทึกเลย',
+                cancelButtonText: 'ยกเลิก',
+                reverseButtons: true
+            });
+
+            // ถ้าผู้ใช้กด "ยกเลิก" ให้หยุดการทำงาน
+            if (!confirmResult.isConfirmed) return;
+
+            const originalHTML = this.innerHTML;
+            const rows = document.querySelectorAll(".schedule-row");
+            const scheduleData = [];
+
+            // 2. รวบรวมข้อมูลจากตาราง
+            rows.forEach((row) => {
+                const inputs = row.querySelectorAll("input, textarea");
+                const rowObj = {};
+                inputs.forEach(input => {
+                    const nameAttr = input.getAttribute("name");
+                    // ดึง key เช่น [ชื่อกลุ่ม] จาก data[0][ชื่อกลุ่ม]
+                    const keyMatch = nameAttr.match(/\[([^\]]+)\]$/); 
+                    if (keyMatch) {
+                        rowObj[keyMatch[1]] = input.value;
+                    }
+                });
+                scheduleData.push(rowObj);
+            });
+
+            const payload = {
+                eventId: "<%= event.id %>",
+                data: scheduleData
+            };
+
+            // 3. เริ่มส่งข้อมูลไป Server
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>กำลังบันทึก...';
+
+            try {
+                const response = await fetch("/update-exam-schedule", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกสำเร็จ',
+                        text: 'ข้อมูลตารางสอบและไฟล์ Excel ถูกอัปเดตเรียบร้อยแล้ว',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    location.reload();
+                } else {
+                    const errorText = await response.text();
+                    throw new Error(errorText || "เซิร์ฟเวอร์ตอบกลับด้วยข้อผิดพลาด");
+                }
+            } catch (err) {
+                console.error("❌ Save Error:", err);
+                Swal.fire('เกิดข้อผิดพลาด', err.message, 'error');
+                this.disabled = false;
+                this.innerHTML = originalHTML;
+            }
+        });
+    }
+</script>

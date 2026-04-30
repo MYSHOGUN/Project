@@ -1,0 +1,258 @@
+<style>
+    /* 1. Layout & Search Results */
+    #searchContainer, #searchAdvisorContainer { position: relative; width: 100%; max-width: 500px; }
+    
+    #searchMemberResults, #searchAdvisorResults {
+        position: absolute; top: 100%; left: 0; right: 0; z-index: 1050;
+        max-height: 250px; overflow-y: auto; background: white;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        border: 1px solid #e3e6f0; border-radius: 10px; display: none; margin-top: 5px;
+    }
+
+    .list-group-item-action { border: none; padding: 12px 20px; transition: 0.2s; }
+    .list-group-item-action:hover { background-color: #f8f9fc !important; color: #4e73df; padding-left: 25px; }
+
+    /* 2. Styling Components */
+    .create-group-card {
+        background: white; padding: 2rem; border-radius: 20px;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+        max-width: 600px; width: 90%; margin: auto;
+    }
+
+    .member-badge {
+        background: #f0f3ff; border: 1px solid #d1d3e2; padding: 10px 20px;
+        border-radius: 12px; display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .form-control:focus { border-color: #4e73df; box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.1); }
+    
+    .btn-add-dashed {
+        border: 2px dashed #d1d3e2; background: transparent; color: #858796;
+        transition: 0.3s; border-radius: 12px; height: 50px;
+    }
+    .btn-add-dashed:hover { border-color: #4e73df; color: #4e73df; background: #f8f9fc; }
+
+    /* 3. Helper Classes */
+    .step-number {
+        width: 30px; height: 30px; background: #4e73df; color: white;
+        border-radius: 50%; display: inline-flex; align-items: center;
+        justify-content: center; font-size: 14px; margin-right: 10px;
+    }
+</style>
+
+<div class="container-fluid d-flex align-items-center justify-content-center" style="min-height: 85vh; background: #f8f9fc;">
+    <div id="server-data" data-groups='<%- JSON.stringify(groups || []) %>' hidden></div>
+
+    <div id="group" class="text-center">
+        <div class="mb-4">
+            <i class="fas fa-users fa-5x text-gray-300"></i>
+        </div>
+        <h1 class="h3 text-gray-800">คุณยังไม่มีกลุ่มปริญญานิพนธ์</h1>
+        <% if (user.role != 'teacher' && user.role != 'admin') { %>
+            <p class="text-muted">เริ่มต้นด้วยการสร้างกลุ่มของคุณ หรือสมาชิกเพิ่มเข้ากลุ่ม</p>
+            <button type="button" id="createGroupBtn" class="btn btn-primary btn-lg px-5 mt-3 shadow-sm" style="border-radius: 30px;">
+                <i class="fas fa-plus mr-2"></i> สร้างกลุ่มใหม่
+            </button>
+        <% }else{ %>
+            <p class="text-muted">รอนักศึกษาเชิญเข้ากลุ่ม</p>
+        <% } %>
+    </div>
+    
+    <div id="grouping" class="create-group-card d-none flex-column">
+        <h2 class="text-primary font-weight-bold mb-4">ข้อมูลกลุ่มใหม่</h2>
+        
+        <div class="form-group mb-4">
+            <label class="font-weight-bold text-gray-700">ชื่อปริญญานิพนธ์</label>
+            <input type="text" id="projectNameInput" class="form-control form-control-lg" placeholder="กรุณากรอกชื่อหัวข้อ...">
+        </div>
+
+        <div class="form-group mb-4">
+            <label class="font-weight-bold text-gray-700">ชื่อปริญญานิพนธ์ (ภาษาอังกฤษ)</label>
+            <input type="text" id="engNameInput" class="form-control form-control-lg" placeholder="กรุณากรอกชื่อหัวข้อ (ภาษาอังกฤษ)...">
+        </div>
+
+        <div class="mb-4">
+            <label class="font-weight-bold text-gray-700 mb-3">สมาชิกในกลุ่ม</label>
+            
+            <div class="member-badge mb-3">
+                <span><div class="step-number">1</div> <strong><%= user.name %> <%= user.lastname %></strong></span>
+                <span class="badge badge-primary">คุณ</span>
+            </div>
+
+            <button type="button" id="addMemberBtn" class="btn btn-block btn-add-dashed">
+                <i class="fas fa-plus-circle mr-2"></i> เพิ่มสมาชิกคนที่ 2
+            </button>
+
+            <div id="searchContainer" class="d-none mt-2">
+                <div class="input-group shadow-sm">
+                    <input type="text" id="searchUser" class="form-control" placeholder="พิมพ์ชื่อหรือรหัสนักศึกษา...">
+                    <div class="input-group-append">
+                        <button id="clearAddMemberBtn" class="btn btn-outline-danger border-left-0">ยกเลิก</button>
+                    </div>
+                </div>
+                <ul id="searchMemberResults" class="list-group"></ul>
+            </div>
+
+            <div class="d-none member-badge mb-3" id="selectedContainer">
+                <span><div class="step-number">2</div> <strong id="selectedUser"></strong></span>
+                <button id="clearSelection" class="btn btn-sm btn-circle text-danger"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <div class="mb-4">
+            <label class="font-weight-bold text-gray-700 mb-3">อาจารย์ที่ปรึกษา</label>
+            
+            <button type="button" id="addAdvisorBtn" class="btn btn-block btn-add-dashed">
+                <i class="fas fa-user-tie mr-2"></i> เลือกอาจารย์ที่ปรึกษา
+            </button>
+
+            <div id="searchAdvisorContainer" class="d-none mt-2">
+                <div class="input-group shadow-sm">
+                    <input type="text" id="searchAdvisor" class="form-control" placeholder="ค้นหาชื่ออาจารย์...">
+                    <div class="input-group-append">
+                        <button id="clearAddAdvisorBtn" class="btn btn-outline-danger border-left-0">ยกเลิก</button>
+                    </div>
+                </div>
+                <ul id="searchAdvisorResults" class="list-group"></ul>
+            </div>
+
+            <div class="d-none member-badge mb-3" id="selectedAdvisorContainer" style="background: #fff8f0;">
+                <span><i class="fas fa-user-tie text-warning mr-2"></i> <strong id="selectedAdvisor"></strong></span>
+                <button id="clearAdvisorSelection" class="btn btn-sm btn-circle text-danger"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+
+        <div class="mt-4 d-flex" style="gap: 15px;">
+            <button type="submit" id="newGroupBtn" class="btn btn-success flex-grow-1 py-3 font-weight-bold" style="border-radius: 12px;">
+                ยืนยันการสร้างกลุ่ม
+            </button>
+            <button id="cancelGroupBtn" class="btn btn-light border px-4" onclick="window.location.href='/group'" style="border-radius: 12px;">
+                ยกเลิก
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    $(function() {
+        let chosenUser = null;
+        let chosenAdvisor = null;
+        const currentUsername = "<%= user.username %>";
+
+        $("#createGroupBtn").on("click", function() {
+            $("#group").fadeOut(200, function() {
+                $("#grouping").removeClass("d-none").hide().fadeIn(300).css("display", "flex");
+            });
+        });
+
+        // Search Logic
+        function setupSearch(inputId, resultsId, containerId, selectBtnId, displayId, displayContainer, type) {
+            const $input = $(`#${inputId}`);
+            const $results = $(`#${resultsId}`);
+
+            $input.on("input", function() {
+                const keyword = $(this).val().trim();
+                if (keyword.length < 2) { $results.hide(); return; }
+
+                const url = type === 'member' ? "/search-users" : "/search-advisor";
+                $.get(`${url}?keyword=${encodeURIComponent(keyword)}`, function(data) {
+                    $results.empty().show();
+                    if (data && data.length > 0) {
+                        data.forEach(user => {
+                            const $li = $(`<li class="list-group-item list-group-item-action">
+                                <strong>${user.name} ${user.lastname}</strong> <small class="text-muted ml-2">${user.username}</small>
+                            </li>`);
+                            $li.on("click", function() {
+                                if (type === 'member') {
+                                    chosenUser = user.username;
+                                    $(`#${displayId}`).text(`${user.name} ${user.lastname}`);
+                                } else {
+                                    chosenAdvisor = user.username;
+                                    $(`#${displayId}`).text(`อ. ${user.name} ${user.lastname}`);
+                                }
+                                $(`#${containerId}`).addClass("d-none");
+                                $(`#${displayContainer}`).removeClass("d-none").addClass("d-flex");
+                                $results.hide();
+                            });
+                            $results.append($li);
+                        });
+                    } else {
+                        $results.append('<li class="list-group-item text-center py-3">ไม่พบข้อมูล</li>');
+                    }
+                });
+            });
+        }
+
+        setupSearch('searchUser', 'searchMemberResults', 'searchContainer', 'addMemberBtn', 'selectedUser', 'selectedContainer', 'member');
+        setupSearch('searchAdvisor', 'searchAdvisorResults', 'searchAdvisorContainer', 'addAdvisorBtn', 'selectedAdvisor', 'selectedAdvisorContainer', 'advisor');
+
+        // UI Handlers
+        $("#addMemberBtn").click(function() { $(this).hide(); $("#searchContainer").removeClass("d-none"); });
+        $("#addAdvisorBtn").click(function() { $(this).hide(); $("#searchAdvisorContainer").removeClass("d-none"); });
+
+        $("#clearAddMemberBtn").click(function() { $("#searchContainer").addClass("d-none"); $("#addMemberBtn").show(); });
+        $("#clearAddAdvisorBtn").click(function() { $("#searchAdvisorContainer").addClass("d-none"); $("#addAdvisorBtn").show(); });
+
+        $("#clearSelection").click(function() {
+            chosenUser = null;
+            $("#selectedContainer").addClass("d-none");
+            $("#addMemberBtn").show();
+        });
+
+        $("#clearAdvisorSelection").click(function() {
+            chosenAdvisor = null;
+            $("#selectedAdvisorContainer").addClass("d-none");
+            $("#addAdvisorBtn").show();
+        });
+
+        $("#newGroupBtn").on("click", function() {
+            const projectName = $("#projectNameInput").val().trim();
+            const engName = $("#engNameInput").val().trim();
+            if(!projectName) return Swal.fire({
+                icon: 'warning',
+                title: 'กรุณากรอกชื่อปริญญานิพนธ์'
+            });
+            if(!engName) return Swal.fire({
+                icon: 'warning',
+                title: 'กรุณากรอกชื่อปริญญานิพนธ์ (ภาษาอังกฤษ)'
+            });
+
+            $.ajax({
+                url: "/groups",
+                method: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({
+                    projectName: projectName,
+                    engName: engName,
+                    member1: currentUsername,
+                    member2: chosenUser,
+                    advisor: chosenAdvisor
+                }),
+                success: function() {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'สร้างกลุ่มสำเร็จ',
+                        text: 'กลุ่มได้รับการสร้างเรียบร้อยแล้ว',
+                        confirmButtonText: 'ตกลง'
+                    }).then(() => {
+                        window.location.href = "/group";
+                    });
+                },
+                error: function(err) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'สร้างกลุ่มไม่สำเร็จ',
+                        text: err.responseText || 'เกิดข้อผิดพลาด',
+                        confirmButtonText: 'ตกลง'
+                    });
+                }
+            });
+        });
+
+        $(document).click(e => { if (!$(e.target).closest("#searchContainer, #searchAdvisorContainer").length) $(".list-group").hide(); });
+    });
+</script>

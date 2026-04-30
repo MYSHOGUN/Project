@@ -1,0 +1,58 @@
+<!-- Begin Page Content -->
+<div class="container-fluid mt-4" sltyle="height: 85vh;">
+                    
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Upload</h1>
+    </div>
+    <div id="drop-area" class="col-12 mb-4">
+        <p>ลากไฟล์มาวางที่นี่ หรือ คลิกเพื่อเลือกไฟล์</p>
+        <input type="file" id="file-input" style="display:none;">
+    </div>
+
+    <script>
+        const dropArea = document.getElementById('drop-area');
+        const fileInput = document.getElementById('file-input');
+
+        // เมื่อมีการลากไฟล์ไปบนพื้นที่
+        dropArea.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            dropArea.classList.add('hover');
+        });
+
+        // เมื่อไฟล์ถูกลากออกจากพื้นที่
+        dropArea.addEventListener('dragleave', () => {
+            dropArea.classList.remove('hover');
+        });
+
+        // เมื่อปล่อยไฟล์ลงในพื้นที่
+        dropArea.addEventListener('drop', (event) => {
+            event.preventDefault();
+            dropArea.classList.remove('hover');
+            const files = event.dataTransfer.files;
+            handleFiles(files);
+        });
+
+        // เมื่อคลิกพื้นที่และเลือกไฟล์
+        dropArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // เมื่อเลือกไฟล์จากการคลิก
+        fileInput.addEventListener('change', () => {
+            const files = fileInput.files;
+            handleFiles(files);
+        });
+
+        // ฟังก์ชันการจัดการไฟล์
+        function handleFiles(files) {
+            const file = files[0];
+            if (file) {
+                alert('คุณได้เลือกไฟล์: ' + file.name);
+                // สามารถเขียนโค้ดเพื่ออัปโหลดไฟล์ไปยังเซิร์ฟเวอร์ได้ที่นี่
+            }
+        }
+    </script>
+
+</div>
+<!-- /.container-fluid -->

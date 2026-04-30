@@ -1,0 +1,172 @@
+<aside class="sidebar">
+    <!-- Sidebar -->
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar" style="height: 85vh;">
+
+        <!-- Sidebar - Brand -->
+        <a class="sidebar-brand d-flex align-items-center justify-content-center" href="/">
+            <div class="sidebar-brand-icon">
+                <img class="sidebar-icon" src="/img/LOGO-KMUTNB--300x300.png">
+            </div>
+            <div class="sidebar-brand-text mx-3">KMUTNB Project</div>
+        </a>
+
+        <!--<hr class="sidebar-divider my-0">
+
+        <li class="nav-item <%= currentPath === '/chat' ? 'active' : '' %>">
+            <a class="nav-link" href="/chat" aria-disabled="true">
+                <i class="fas fa-comments"></i>
+                <span>แชท</span></a>
+        </li>-->
+        <% if (typeof user !== 'undefined' && (user.role === 'admin' || user.role === 'secretary')) { %>
+        <!-- Divider -->
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/userInfo' ? 'active' : '' %>">
+                <a class="nav-link" href="/userInfo">
+                    <i class="fas fa-users"></i>
+                    <span>ข้อมูลนักศึกษา</span></a>
+            </li>
+        <% } %>
+        
+        <% if (typeof user !== 'undefined' && user.role !== 'secretary') { %>
+        <!-- Divider -->
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/group' || currentPath === '/addGroup' || currentPath === '/updateGroup' ? 'active' : '' %>">
+                <a class="nav-link" href="/group">
+                    <i class="fas fa-users"></i>
+                    <span>กลุ่มโปรเจค</span></a>
+            </li>
+        <% } %>
+
+        <% if (typeof user !== 'undefined' && user.role == 'admin') { %>
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/addUser' || currentPath === '/addUserExcel' || currentPath === '/addUserSingle'? 'active' : '' %>">
+                <a class="nav-link" href="/addUser">
+                    <i class="fas fa-file-excel"></i>
+                    <span>เพิ่มข้อมูลผู้ใช้</span></a>
+            </li>
+        <% } %>
+        
+        <!-- Divider -->
+        <!--<hr class="sidebar-divider my-0">
+
+        <li class="nav-item <%= currentPath.startsWith('/upload') || currentPath === '/file' ? 'active' : '' %>">
+            <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseFile"
+                aria-expanded="true" aria-controls="collapseFile">
+                <i class="fas fa-regular fa-file"></i>
+                <span>ไฟล์</span>
+            </a>
+            <div id="collapseFile" class="collapse" aria-labelledby="headingFile" data-parent="#accordionSidebar" style="z-index: 1000;">
+                <div class="bg-white py-2 collapse-inner rounded"  style="z-index: 1000;">
+                    <a class="collapse-item" href="/file">ไฟล์ที่เก็บไว้</a>
+                    <a class="collapse-item" href="/upload">ไฟล์ที่ต้องการอัปโหลด</a>
+                </div>
+            </div>
+        </li>-->
+
+        <!-- Divider -->
+         <% if (typeof user !== 'undefined' && user.role !== 'secretary') { %>
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/event' || currentPath === '/addEvent' || currentPath.startsWith('/eventInfo') ? 'active' : '' %>">
+                <a class="nav-link" href="/event">
+                    <i class="fas fa-calendar"></i>
+                    <span>ตารางกิจกรรม</span></a>
+            </li>
+        <% } %>
+
+        <!-- Divider -->
+         <% if (typeof user !== 'undefined') { %>
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/ownedGroupStatus' || currentPath.startsWith('/ownedGroupInfo') ? 'active' : '' %>">
+                <a class="nav-link" href="/ownedGroupStatus">
+                        <i class="fas fa-fw fa-table"></i>
+                    <% if (user.role !== 'user') { %>
+                            <span>สถานะปริญญานิพนธ์ของกลุ่มที่เป็นที่ปรึกษา</span>
+                    <% } else { %>
+                            <span>สถานะปริญญานิพนธ์ของกลุ่มผู้ใช้</span>
+                    <% } %>
+                    </a>
+            </li>
+        <% } %>
+
+        <!-- Divider -->
+         <% if (typeof user !== 'undefined') { %>
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/status' || currentPath.startsWith('/groupInfo') ? 'active' : '' %>">
+                <a class="nav-link" href="/status">
+                    <i class="fas fa-fw fa-table"></i>
+                    <span>สถานะของปริญญานิพนธ์ทั้งหมด</span></a>
+            </li>
+        <% } %>
+
+        <!-- Divider -->
+        <% if (typeof user !== 'undefined' && user.role !== 'secretary') { %>
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/paper' ? 'active' : '' %>">
+                <a class="nav-link" href="/paper">
+                    <i class="fas fa-file-alt"></i></i>
+                    <% if (user.role !== 'user') { %>
+                        <span>ส่งเอกสารและผลการสอบ</span></a>
+                    <% } else { %>
+                        <span>ส่งเอกสาร</span></a>
+                    <% } %>
+            </li>
+        <% } %>
+
+        <% if (typeof user !== 'undefined' && user.role === 'admin') { %>
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/admin' ? 'active' : '' %>">
+                <a class="nav-link" href="/admin">
+                    <i class="fas fa-user"></i>
+                    <span>มอบสิทธิ์อาจารย์หัวหน้าแขนง</span></a>
+            </li>
+        <% } %>
+
+        <% if (typeof user !== 'undefined' && user.role === 'admin') { %>
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/addSecretary' ? 'active' : '' %>">
+                <a class="nav-link" href="/addSecretary">
+                    <i class="fas fa-user"></i>
+                    <span>มอบสิทธิ์เลขานุการ</span></a>
+            </li>
+        <% } %>
+
+        <% if (typeof user !== 'undefined' && user.role !== 'secretary') { %>
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/flowchart' ? 'active' : '' %>">
+                <a class="nav-link" href="/flowchart">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>ผังการดำเนินงาน</span></a>
+            </li>
+        <% } %>
+
+        <% if (typeof user !== 'undefined' && user.role === 'admin') { %>
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/logs' ? 'active' : '' %>">
+                <a class="nav-link" href="/logs">
+                    <i class="fas fa-history"></i>
+                    <span>บันทึกกิจกรรม</span></a>
+            </li>
+        <% } %>
+
+        <!-- Divider -->
+        <hr class="sidebar-divider d-none d-md-block">
+
+        <!-- Sidebar Toggler (Sidebar) -->
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+
+    </ul>
+    <!-- End of Sidebar -->
+</aside>

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title><%= title %></title>
+
+    <!-- Custom fonts for this template-->
+    <link href="vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link
+        href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
+        rel="stylesheet">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/img/LOGO-KMUTNB--300x300.png">
+    
+    <!-- Custom styles for this template-->
+    <link href="css/myProject.css" rel="stylesheet">
+
+    <style>
+        .form-group{
+            width: 100%;
+        }
+    </style>
+    <style>
+            #drop-area {
+                width: 95%;
+                height: 300px;
+                border: 2px dashed #ccc;
+                border-radius: 10px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                font-size: 16px;
+                color: #ccc;
+            }
+            #drop-area.hover {
+                background-color: #f0f0f0;
+                border-color: #00aaff;
+            }
+        </style>
+
+</head>
+
+<body class="bg-gradient-primary">
+    <button onclick="window.location.href='/login'" class="btn btn-dark" style="width: fit-content;margin-left: 2vw; margin-top: 2vh;"><i class="fas fa-arrow-left"></i> ย้อนกลับ</button>
+
+    <div class="container">
+        
+
+        <!-- Outer Row -->
+        <div class="row justify-content-center align-items-center">
+            
+
+            <div class="col-xl-10 col-lg-12 col-md-9" style="width: 90%;">
+
+                <div class="card o-hidden border-0 shadow-lg my-5">
+                    <div class="card-header">
+                        <div class="row-12">
+                            <i class="fas fa-tasks"></i>
+                            <span>&nbsp;กรอกข้อมูลสมัครเข้าใช้งาน</span>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="p-5 justify-content-center align-items-center">
+                            <form class="user" action="/register" method="POST" enctype="multipart/form-data">
+                                <div class="d-flex justify-content-center align-items-center"  style="gap: 15px; width: 100%;">
+                                    <div class="form-group">
+                                        <small id="usernameText">รหัสนักศึกษา/ชื่อผู้ใช้ <span style="color: red;">*</span></small>
+                                        <input type="username" name="username" class="form-control"
+                                            id="inputUsername" aria-describedby="usernameText"
+                                            placeholder="Username" oninput="checkRole();">
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center"  style="gap: 15px; width: 100%;">
+                                    <div class="form-group">
+                                        <small id="passwordText">รหัสผ่าน <span style="color: red;">*</span></small>
+                                        <input type="password" name="password" class="form-control"
+                                            id="inputPassword" aria-describedby="passwordText"
+                                            placeholder="Password">
+                                    </div>
+                                    <div class="form-group">
+                                        <small id="passwordConfirm">ยืนยันรหัสผ่าน <span style="color: red;">*</span></small>
+                                        <input type="password" name="passwordConfirm" class="form-control"
+                                            id="inputPasswordConfirm" aria-describedby="passwordConfirm"
+                                            placeholder="Password Confirm">
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center"  style="gap: 15px; width: 100%;">
+                                    <div class="form-group">
+                                        <small id="nameText">ชื่อ <span style="color: red;">*</span></small>
+                                        <input type="text" name="name" class="form-control"
+                                            id="inputName" aria-describedby="nameText"
+                                            placeholder="Name">
+                                    </div>
+                                    <div class="form-group">
+                                        <small id="lastnameText">นามสกุล <span style="color: red;">*</span></small>
+                                        <input type="text" name="lastname" class="form-control"
+                                            id="inputLastname" aria-describedby="lastnameText"
+                                            placeholder="Lastname">
+                                    </div>
+                                </div>
+                                <div id="phondNemail" class="d-flex justify-content-center align-items-center"  style="gap: 15px; width: 49.2%;">
+                                    <div class="form-group">
+                                        <small id="phoneText">เบอร์โทรศัพท์ <span style="color: red;">*</span></small>
+                                        <input type="text" name="phone" class="form-control"
+                                            id="inputPhone" aria-describedby="phoneText"
+                                            placeholder="Phone Number">
+                                    </div>
+                                    <div id="inputEmailContainer" class="form-group animated--grow-in" style="display: none;">
+                                        <small id="emailText">อีเมล <span style="color: red;">*</span></small>
+                                        <input type="email" name="email" class="form-control"
+                                            id="inputEmail" aria-describedby="emailText"
+                                            placeholder="E-Mail">
+                                    </div>
+                                </div>
+                                <div class="row justify-content-center align-items-center">
+                                    <div id="drop-area" class="">
+                                        <p id="defaultDropText">ลากไฟล์รูปภาพมาวางที่นี่ หรือ คลิกเพื่อเลือกไฟล์ (ไม่บังคับ)</p>
+                                        <input type="file" name="profileImage" id="file-input" style="display:none;" accept="image/*">
+                                        <img id="image-preview" src="" alt="">
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center mt-3"  style="gap: 15px; width: 100%;">
+                                    <button type="submit" class="btn btn-success">
+                                        ลงทะเบียน
+                                    </button>
+                                    <button type="reset" class="btn btn-danger">
+                                        ยกเลิก
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="modal fade" id="loginFailModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content border-left-danger">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">ลงทะเบียนไม่สำเร็จ</h5>
+                        <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">×</span>
+                        </button>
+                    </div>
+                    <% if (failModal === "exists") { %>
+                        <div class="modal-body">ไม่มีชื่อผู้ใช้นี้ในระบบ</div>
+                    <% } else if (failModal === "complete") { %>
+                        <div class="modal-body">ผู้ใช้ถูกลงทะเบียนแล้ว</div>
+                    <% } else if (failModal === "mismatch") { %>
+                        <div class="modal-body">รหัสผ่านไม่ตรงกัน</div>
+                    <% }else if (failModal === "incomplete") { %>
+                        <div class="modal-body">กรุณากรอกข้อมูลให้ครบถ้วน</div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+
+    <!-- Bootstrap core JavaScript-->
+    <script src="vendor/jquery/jquery.min.js"></script>
+    <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Core plugin JavaScript-->
+    <script src="vendor/jquery-easing/jquery.easing.min.js"></script>
+
+    <!-- Custom scripts for all pages-->
+    <script src="js/sb-admin-2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        $(document).ready(function() {
+            const failModal = "<%= failModal %>";
+            if (failModal) {
+                console.log(failModal);
+                $(document).ready(function() {
+                $('#loginFailModal').modal('show');
+                });
+            }
+        });
+    </script>
+
+    <script>
+        let data;
+        document.addEventListener("DOMContentLoaded", async function() {
+            try {
+                const res = await fetch('/api/getUsers');
+                data = await res.json(); // เก็บข้อมูลไว้ในตัวแปร Global
+            } catch (err) {
+                console.error("Fetch error:", err);
+            }
+        });
+
+        // 1. ประกาศตัวแปร Global
+        let selectedFile = null; 
+        
+        // อ้างอิง DOM Element
+        const dropArea = document.getElementById('drop-area');
+        const defaultDropText = document.getElementById('defaultDropText'); // ข้อความเริ่มต้น
+        const fileInput = document.getElementById('file-input');
+
+        // MIME Types ของไฟล์ Excel ที่ยอมรับ
+        const allowedTypes = ['image/jpeg', 'image/png',  'image/gif', 'image/webp'];
+
+        // ค่า Border เริ่มต้นของ Drop Area
+        const defaultDropAreaBorder = '2px dashed #ccc'; 
+        
+        // Event Listeners (Drag/Drop/Click)
+        dropArea.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            dropArea.style.border = '2px dashed green'; 
+        });
+
+        dropArea.addEventListener('dragleave', () => {
+            // คืนค่า border เมื่อลากไฟล์ออก
+            if (!selectedFile) {
+                dropArea.style.border = defaultDropAreaBorder; 
+            }
+        });
+
+        dropArea.addEventListener('drop', (event) => {
+            event.preventDefault();
+            const files = event.dataTransfer.files;
+            handleFiles(files);
+        });
+
+        dropArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', () => {
+            const files = fileInput.files;
+            handleFiles(files);
+        });
+
+        // -------------------------------------------------------------
+        // 2. ฟังก์ชันหลัก: จัดการไฟล์และตรวจสอบประเภท (แก้ไขให้แสดงชื่อไฟล์)
+        // -------------------------------------------------------------
+        function handleFiles(files) {
+            const file = files[0];
+            const preview = document.getElementById('image-preview');
+            const dropAreaText = document.getElementById('defaultDropText');
+            const fileInput = document.getElementById('file-input'); // ช่อง input file ที่ซ่อนอยู่
+
+            if (file) {
+                const isAllowedType = allowedTypes.includes(file.type);
+
+                if (isAllowedType) {
+                    selectedFile = file;
+
+                    // ✨ บรรทัดสำคัญ: นำไฟล์เข้าสู่ input field จริงๆ
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    fileInput.files = dataTransfer.files; // ตอนนี้ฟอร์มจะรู้จักไฟล์นี้แล้ว
+
+                    // แสดงตัวอย่างรูปภาพ (Preview)
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        preview.src = e.target.result;
+                        preview.style.display = 'block'; 
+                        dropAreaText.style.display = 'none'; 
+                    }
+                    reader.readAsDataURL(file);
+
+                    dropArea.style.border = 'none';
+                } else {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'ไฟล์ไม่ถูกต้อง',
+                        text: 'กรุณาเลือกไฟล์รูปภาพเท่านั้น',
+                        confirmButtonText: 'ตกลง'
+                    }).then(() => {
+                        resetPreview();
+                    });
+                }
+            }
+        }
+
+        // ฟังก์ชันสำหรับ Reset เวลาเลือกไฟล์ผิดหรือกด Reset Form
+        function resetPreview() {
+            const preview = document.getElementById('image-preview');
+            const dropAreaText = document.getElementById('defaultDropText');
+            preview.src = "";
+            preview.style.display = 'none';
+            dropAreaText.innerHTML = 'ลากไฟล์รูปภาพมาวางที่นี่ หรือ คลิกเพื่อเลือกไฟล์';
+            dropArea.style.border = defaultDropAreaBorder;
+            dropAreaText.style.display = 'block';
+            dropArea.style.backgroundColor = 'transparent';
+        }
+
+        // เพิ่ม Event สำหรับปุ่ม Reset ในฟอร์ม
+        document.querySelector('button[type="reset"]').addEventListener('click', resetPreview);
+
+        function checkRole() {
+            // 🚩 ป้องกันกรณี data ยังโหลดไม่เสร็จ
+            if (!data || !data.users) return; 
+
+            const inputUsername = document.getElementById("inputUsername").value.trim();
+            const inputEmail = document.getElementById("inputEmailContainer");
+            const width = document.getElementById("phondNemail")
+
+            const foundUser = data.users.find(u => u.username === inputUsername);
+
+            if (foundUser && (foundUser.role === "secretary" || foundUser.role === "teacher")) {
+                inputEmail.style.display = "block";
+                width.style.width = "100%"
+            } else {
+                inputEmail.style.display = "none";
+                width.style.width = "49.2%"
+            }
+        }
+    </script>
+</body>
+</html>

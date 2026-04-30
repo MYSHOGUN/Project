@@ -1,0 +1,1411 @@
+<style>
+    /* ✅ 1. Layout & Wrapper */
+    .add-event-wrapper {
+        min-height: 85vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem 0;
+        background-color: #f8f9fc;
+    }
+
+    .glass-card {
+        background: #ffffff;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        padding: 3rem;
+        width: 100%;
+        max-width: 700px;
+        border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+
+    /* ✅ 2. Typography & Header */
+    .header-title {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #4e73df;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .input-label {
+        font-weight: 600;
+        color: #5a5c69;
+        margin-bottom: 0.5rem;
+        display: block;
+        font-size: 0.9rem;
+    }
+
+    /* ✅ 3. Custom Inputs & Selects - Premium Style */
+    .custom-select-modern {
+        height: 50px !important;
+        border-radius: 12px !important;
+        border: 2px solid #eaecf4 !important;
+        padding: 0 40px 0 15px !important;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+        font-weight: 500;
+        font-size: 0.95rem;
+        width: 100% !important;
+        background-color: #fff;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%234e73df' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 16px 12px;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        cursor: pointer;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        transform: none !important;
+    }
+
+    .custom-select-modern:hover {
+        border-color: #4e73df !important;
+        background-color: #f8f9ff;
+        box-shadow: 0 2px 8px rgba(78, 115, 223, 0.12);
+        transform: none;
+    }
+
+    .time-col {
+        width: 100% !important;
+        max-width: 150px !important;
+        flex: 1 1 auto !important;
+    }
+
+    .custom-select-modern:focus {
+        border-color: #4e73df !important;
+        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.15) !important;
+        background-color: #fff;
+        outline: none;
+    }
+
+    /* Styling for dropdown options - Enhanced */
+    .custom-select-modern option {
+        padding: 12px 16px;
+        font-size: 0.95rem;
+        background: #fff;
+        color: #2d3748;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .custom-select-modern option:last-child {
+        border-bottom: none;
+    }
+
+    .custom-select-modern option:checked {
+        background: linear-gradient(90deg, #4e73df 0%, #6b8cff 100%);
+        color: #fff;
+        font-weight: 500;
+    }
+
+    .custom-select-modern option:disabled {
+        color: #a0aec0;
+        background: #f8fafc;
+        font-style: italic;
+        border-bottom: 1px dashed #e2e8f0;
+    }
+
+    .custom-select-modern option[value=""]:disabled {
+        color: #718096;
+        background: linear-gradient(90deg, #f1f5f9 0%, #f8fafc 100%);
+        font-weight: 500;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    /* Disabled state styling */
+    .custom-select-modern:disabled {
+        background: #f1f5f9;
+        border-color: #e2e8f0 !important;
+        color: #94a3b8;
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+
+    .dropdownSelector {
+        background: #4e73df;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        height: 55px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+
+    .dropdownSelector:hover {
+        background: #2e59d9;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(78, 115, 223, 0.3);
+    }
+
+    /* ✅ 4. File Upload (Premium look) */
+    #drop-area {
+        width: 100%;
+        height: 180px;
+        border: 2px dashed #d1d3e2;
+        border-radius: 15px;
+        background: #fdfdfd;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        color: #b7b9cc;
+    }
+
+    #drop-area:hover, #drop-area.hover {
+        background: #f0f3ff;
+        border-color: #4e73df;
+        color: #4e73df;
+    }
+
+    #drop-area i { font-size: 2.5rem; margin-bottom: 10px; }
+
+    /* ✅ 5. Buttons */
+    .btn-save {
+        background: #1cc88a;
+        border: none;
+        border-radius: 12px;
+        padding: 12px 30px;
+        font-weight: 700;
+        color: white;
+        transition: all 0.3s ease;
+    }
+
+    .btn-save:hover {
+        background: #17a673;
+        transform: scale(1.05);
+    }
+
+    .btn-cancel {
+        background-color: #e74a3b;
+        border: 2px solid #e74a3b;
+        color: white;
+        border-radius: 12px;
+        padding: 12px 30px;
+        font-weight: 700;
+        margin-left: 10px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-cancel:hover { background: #c82333; transform: scale(1.05); }
+
+    .btn-view {
+        background: #4e73df;
+        border: none;
+        border-radius: 12px;
+        padding: 10px 10px;
+        font-weight: 600;
+        color: white;
+        transition: all 0.3s ease;
+    }
+
+    .btn-view:hover {
+        background: #2e59d9;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(78, 115, 223, 0.3);
+    }
+
+    .large-rectangle-image {
+        /* ✅ แสดงผลตามสัดส่วนเดิม 100% ไม่บีบ ไม่ Crop */
+        object-fit: contain !important; 
+        
+        /* ✅ บังคับความสูงสูงสุดไม่ให้ล้นจอ (90% ของความสูงจอ) */
+        max-height: 90vh !important; 
+        
+        /* ✅ เพิ่ม Shadow หนาๆ ให้รูปดูลอยเด่นออกมา */
+        box-shadow: 0 20px 50px rgba(0,0,0,0.8) !important;
+        border-radius: 4px; 
+        margin: 40px !important;
+    }
+
+    /* ลบ Padding และขอบขาวของ SweetAlert ให้เหลือน้อยที่สุด */
+    .preview-image-popup {
+        padding: 0 !important; /* ลด padding เพื่อให้ปุ่มอ้างอิงขอบรูปได้แม่นยำ */
+        background: none !important; 
+        width: auto !important;
+        overflow: visible !important; /* สำคัญ: เพื่อให้ปุ่มที่ลอยออกไปไม่โดนตัดทิ้ง */
+    }
+
+    .preview-image-close {
+        position: absolute !important;
+        /* ✅ ใช้ค่าติดลบเพื่อดึงปุ่มออกไปนอกขอบรูป */
+        top: -50px !important; 
+        right: -100px !important;
+        
+        /* ตกแต่งปุ่มให้เห็นชัดบนพื้นหลังมืด */
+        color: white !important;
+        font-size: 50px !important; /* ขนาดกากบาท */
+        background: none !important; 
+        border: none !important;
+        outline: none !important;
+        transition: transform 0.2s;
+    }
+
+    .preview-image-close:hover {
+        transform: scale(1.2); /* ขยายใหญ่ขึ้นเวลาเอาเมาส์ชี้ */
+        color: #ff4d4d !important; /* เปลี่ยนเป็นสีแดงอ่อนๆ */
+    }
+
+    .member-item {
+        display: flex; align-items: center; padding: 12px 18px;
+        background: #fff; border: 1px solid #e3e6f0;
+        border-radius: 12px; margin-bottom: 12px; transition: 0.3s;
+    }
+    select[id^="director-one-"] {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        padding-right: 15px !important; /* ปรับช่องว่างให้ดูสมดุล */
+    }
+
+    /* สำหรับ IE */
+    select[id^="director-one-"]::-ms-expand {
+        display: none;
+    }
+
+    #teacher-summary {
+        display: none; 
+        position: fixed !important; /* บังคับ fixed */
+        right: 20px !important; 
+        top: 90px !important; 
+        width: 25%;
+        min-width: 150px;
+        max-width: 300px;
+        background: white; 
+        border: 1px solid #ccc; 
+        border-radius: 8px; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+        padding: 10px; 
+        z-index: 9999; /* สูงสุดๆ เพื่อให้ทับทุกอย่าง */
+        font-size: 12px;
+        transition: top 0.2s ease; /* ขยับแบบสมูท */
+    }
+
+    /* เพิ่ม Style ให้แถวใน list ดูง่ายขึ้น */
+    #workload-list > div {
+        padding: 6px 0;
+        border-bottom: 1px solid #f8f9fc;
+    }
+    #workload-list > div:last-child {
+        border-bottom: none;
+    }
+</style>
+
+<div class="container-fluid add-event-wrapper">
+    <div class="glass-card">
+        <h1 class="header-title">
+            <i class="fas fa-calendar-plus mr-2"></i> จัดตารางกิจกรรม
+        </h1>
+        <div class="form-group">
+            <div class="d-flex justify-content-between">
+                <label class="input-label">ประเภทกิจกรรม</label>
+                <label class="mb-0" id="onlyGroupSent" style="display: none;">
+                    <input type="checkbox" id="groupOnlyCheckbox" onchange="checkAppear()">
+                        <span class="ml-2" style="color: #5a5c69; font-weight: 600; font-size: 0.9rem; padding-bottom: 0.5rem;">
+                        เฉพาะกลุ่ม
+                        </span>
+                </label>
+            </div>
+            <div class="dropdown">
+                <button class="btn dropdown-toggle dropdownSelector" type="button" id="dropdownMenuButton" data-toggle="dropdown">
+                    เลือกกิจกรรม
+                </button>
+                <div class="dropdown-menu shadow animated--fade-in" style="width: 100%; border-radius: 12px;">
+                    <a class="dropdown-item py-3" href="#" onclick="selectActivity(this); checkAppear();">วันส่งเอกสาร</a>
+                    <a class="dropdown-item py-3" href="#" onclick="selectActivity(this); checkAppear();">วันสอบ</a>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item py-3" href="#" onclick="selectActivity(this); checkAppear();">อื่นๆ</a>
+                </div>
+            </div>
+        </div>
+
+        <div id="start-date" class="form-group mt-4 animated--grow-in" style="display: none;">
+            <label id="start-label" class="input-label">ถึงวันที่</label>
+            <div class="row no-gutters d-flex flex-nowrap align-items-center" style="justify-content: space-evenly;gap: 10px;">
+                <div class="time-col">
+                    <select id="selectYear" class="form-control custom-select-modern" onchange="updateToDateOptions('selectDay', 'selectMonth', 'selectYear');">
+                        <option value="" disabled selected hidden>ปี (พ.ศ.)</option>
+                    </select>
+                </div>
+                <div class="time-col">
+                    <select id="selectMonth" class="form-control custom-select-modern" onchange="updateToDateOptions('selectDay', 'selectMonth', 'selectYear');" disabled>
+                        <option value="" disabled selected hidden>เดือน</option>
+                    </select>
+                </div>
+                <div class="time-col">
+                    <select id="selectDay" class="form-control custom-select-modern" onchange="updateToDateOptions('selectDay', 'selectMonth', 'selectYear');" disabled>
+                        <option value="" disabled selected hidden>วัน</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="extraInfo" class="animated--grow-in">
+            <input id="eventName" type="text" class="form-control custom-select-modern mt-4" placeholder="ชื่อกิจกรรม" style="display:none; height: 50px !important;">
+            <textarea class="form-control mt-3" id="eventDescription" rows="4" placeholder="ระบุรายละเอียดกิจกรรมที่นี่..." style="display:none; border-radius: 12px; border: 2px solid #eaecf4;"></textarea>
+        </div>
+
+        <div id="group-select-number" class="animated--grow-in mt-4" style="display: none;">
+            <label class="input-label">เลือกจำนวนกลุ่มที่จะสร้าง</label>
+            <div class="row no-gutters d-flex flex-nowrap align-items-center" style="justify-content: space-between;gap: 10px;">
+                <div class="time-col">
+                    <select id="select-group-number" class="form-control custom-select-modern" onchange="initGroupSelection(this,0)">
+                        <option value="" disabled selected hidden>จำนวนกลุ่ม</option>
+                    </select>
+                </div>
+            </div>
+            <div id="start-select-date" class="form-group mt-4 animated--grow-in w-100" style="display: none;">
+                <label id="start-select-label" class="input-label">เริ่มวันที่</label>
+                <div class="row no-gutters d-flex flex-nowrap align-items-center" style="justify-content: space-evenly;gap: 10px;">
+                    <div class="time-col">
+                        <select id="start-select-year" class="form-control custom-select-modern" onchange="updateToDateOptions('start-select-day', 'start-select-month', 'start-select-year');">
+                            <option value="" disabled selected hidden>ปี (พ.ศ.)</option>
+                        </select>
+                    </div>
+                    <div class="time-col">
+                        <select id="start-select-month" class="form-control custom-select-modern" onchange="updateToDateOptions('start-select-day', 'start-select-month', 'start-select-year');" disabled>
+                            <option value="" disabled selected hidden>เดือน</option>
+                        </select>
+                    </div>
+                    <div class="time-col">
+                        <select id="start-select-day" class="form-control custom-select-modern" onchange="updateToDateOptions('start-select-day', 'start-select-month', 'start-select-year');" disabled>
+                            <option value="" disabled selected hidden>วัน</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div id="groupCreate" class="animated--grow-in"></div>
+            <button id="addMoreGroupBtn" class="btn btn-view shadow-sm mt-2" style="display: none;" onclick="addMoreGroup();">
+                <i class="fas fa-plus"></i> เพิ่มวันที่สอบ
+            </button>
+        </div>
+
+
+        <div id="searchGroupShip" class="mt-4 d-none animated--grow-in">
+            <label class="input-label">เลือกกลุ่ม</label>
+            <div id="searchGroupContainer" class="mt-2">
+                <div class="input-group">
+                    <input type="text" id="searchGroup" class="form-control" placeholder="ค้นหาชื่อกลุ่ม..." style="border-radius: 12px; border: 2px solid #eaecf4;">
+                </div>
+                <ul id="searchGroupResults" class="list-group"></ul>
+            </div>
+
+            <div class="member-item mb-3 justify-content-between" id="selectedGroupContainer" style="display:none; border-left: 5px solid #3e44f6; background: #f5f6ff; padding: 12px 18px">
+                <span><i class="fas fa-users text-primary mr-2"></i> <strong id="selectedGroup"></strong></span>
+                <button id="clearGroupSelection" class="btn btn-sm btn-circle text-danger"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+
+        <div id="buttons" class="justify-content-center mt-5" style="display: none;">
+            <button class="btn btn-save shadow-sm" id="saveEventBtn">
+                <i class="fas fa-save mr-2"></i> บันทึกกิจกรรม
+            </button>
+            <button class="btn btn-cancel shadow-sm" id="cancelEventBtn" onclick="resetForm()">
+                ยกเลิก
+            </button>
+        </div>
+    </div>
+</div>
+<div id="teacher-summary">
+    <h6 style="margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px;">สรุปภาระงาน (กลุ่ม)</h6>
+    <div id="workload-list" style="max-height: 200px; overflow-y: auto;"></div>
+</div>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    let startLabel = document.getElementById("start-label");
+    let groupSelectNumber = document.getElementById("group-select-number");
+    let selectedValue = "";
+    let chosenGroup = null;
+    let sectionCount = 0;
+    let buttons = document.getElementById("buttons");
+    let data; 
+
+    document.addEventListener("DOMContentLoaded", async function() {
+        try {
+            const res = await fetch('/api/getMyGroups');
+            data = await res.json(); // เก็บข้อมูลไว้ในตัวแปร Global
+            initDatePicker(); // เริ่มทำงานส่วนอื่นต่อ
+        } catch (err) {
+            console.error("Fetch error:", err);
+        }
+    });
+    
+    let selectedFile = null;
+
+    const saveEventBtn = document.getElementById("saveEventBtn");
+    const cancelEventBtn = document.getElementById("cancelEventBtn");
+
+    const eventName = document.getElementById("eventName");
+    const eventDescription = document.getElementById("eventDescription");
+
+    const monthTh = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+
+    const timeTh = [["08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",], ["00","30"]]
+
+    function getEventDateRange() {
+        if(selectedValue !== "วันสอบ"){
+            return {
+                startYear: parseInt(document.getElementById("selectYear").value) || 0,
+                startMonth: parseInt(document.getElementById("selectMonth").value) || 0,
+                startDay: parseInt(document.getElementById("selectDay").value) || 0,
+            };
+        }else if (sectionCount === 1){
+            return {
+                startYear: parseInt(document.getElementById("start-select-year").value) || 0,
+                startMonth: parseInt(document.getElementById("start-select-month").value) || 0,
+                startDay: parseInt(document.getElementById("start-select-day").value) || 0,
+            };
+        }else{
+            return{
+                startYear: parseInt(document.getElementById("start-select-year"+(sectionCount-1)).value) || 0,
+                startMonth: parseInt(document.getElementById("start-select-month"+(sectionCount-1)).value) || 0,
+                startDay: parseInt(document.getElementById("start-select-day"+(sectionCount-1)).value) || 0
+            }
+        }
+    }
+
+    function checkAppear(){
+        const groupOnly = document.getElementById("groupOnlyCheckbox").checked;
+        document.getElementById('searchGroupShip').classList.toggle('d-none', !groupOnly); 
+        document.getElementById('selectedGroupContainer').classList.toggle('d-none', !groupOnly);
+    }
+
+    function removeCount(){
+        sectionCount--;
+        document.getElementById('select-group-number'+sectionCount).style.display = 'none';
+        document.getElementById('select-group-number'+sectionCount+'-label').style.display = 'none';
+        document.getElementById("start-select-date"+sectionCount).style.display = "none";
+        groupNumber("select-group-number"+sectionCount);
+        sourceGroup();
+    }
+
+    function addMoreGroup() {
+        document.getElementById('select-group-number'+sectionCount+'-label').style.display = 'flex';
+        document.getElementById('select-group-number'+sectionCount).style.display = 'flex';
+        document.getElementById('select-group-number'+sectionCount).disabled = false;
+        document.getElementById("addMoreGroupBtn").style.display = "none";
+    }
+
+    async function initGroupSelection(selectElement) {
+        const selectedValue = selectElement.value;
+        const container = document.getElementById("groupCreate");
+        document.getElementById("start-select-date").style.display = "inline-block";
+        container.innerHTML = ''; // ล้างทั้งหมดก่อนเริ่มใหม่
+        sectionCount = 0; 
+        // แสดงปุ่ม "เพิ่ม"
+        document.getElementById("addMoreGroupBtn").style.display = "inline-block";
+        // สร้างชุดที่ 1 ทันที
+        const firstSet = await addNewGroupSection(selectedValue);
+        container.innerHTML = firstSet;
+        groupNumber("select-group-number"+sectionCount);
+    }
+
+    async function initGroupSelectionMore(selectElement,currentSectionCount) {
+        const selectedValue = selectElement.value;
+        const container = document.getElementById("sub-container-"+currentSectionCount);
+        document.getElementById("start-select-date"+sectionCount).style.display = "inline-block";
+        const td = document.getElementById("start-select-day"+currentSectionCount);
+        const tm = document.getElementById("start-select-month"+currentSectionCount);
+        const ty = document.getElementById("start-select-year"+currentSectionCount);
+        container.innerHTML = '';
+        sectionCount = currentSectionCount === sectionCount && (currentSectionCount - sectionCount === 1 || sectionCount - currentSectionCount === 1) ?  currentSectionCount-1 : currentSectionCount;
+        const more = await addNewGroupSection(selectedValue);
+        container.insertAdjacentHTML('beforeend', more);
+        groupNumber("select-group-number"+sectionCount);
+        document.getElementById("select-group-number"+(sectionCount-1)).selectedIndex = selectedValue;
+        document.getElementById("addMoreGroupBtn").style.display = "inline-block";
+        ty.value = "";
+        tm.value = "";
+        td.value = "";
+        tm.disabled = true;
+        td.disabled = true;
+    }
+
+    function addNewGroupSection(selectedValue) {
+        sectionCount++; // เพิ่มลำดับชุด
+
+        const groups = data.groups;
+        const teachers = data.teachers;
+        
+        const groupsOptions = (groups && groups.length > 0)
+            ? groups.map(g => `<option value="${g._id}">${g.projectName}</option>`).join('')
+            : `<option value="" disabled style="color: #a0aec0; font-style: italic;">-- ไม่มีกลุ่มให้เลือก --</option>`;
+
+        const teachersOptions = (teachers && teachers.length > 0)
+            ? teachers.map(t => `<option value="${t.username}">${t.title || ""} ${t.name}</option>`).join('')
+            : `<option value="" disabled>ไม่มีอาจารย์</option>`;
+
+        
+        const timesOptions = timeTh[0].flatMap(hour => {
+            const minutesArray = timeTh[1];
+            
+            const activeMinutes = (hour === "20") ? minutesArray.slice(0, 1) : minutesArray;
+
+            return activeMinutes.map(m => {
+                const timeStr = `${hour}:${m}`;
+                const totalMinutes = (parseInt(hour) * 60) + parseInt(m);
+                return `<option value="${totalMinutes}">${timeStr}</option>`;
+            });
+        }).join('');
+
+        // สร้าง HTML สำหรับ 1 ชุด (Section)
+        let sectionHTML = `
+        <div class="group-section border p-3 rounded mt-3 animated--grow-in" id="section-${sectionCount}" style="background: #f8f9fc;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="m-0 font-weight-bold text-primary">ชุดที่ ${sectionCount}</h6>
+                ${sectionCount > 1 ? `<button class="btn btn-sm btn-danger" onclick="this.parentElement.parentElement.remove(); removeCount();">ลบชุดนี้</button>` : ''}
+            </div>
+            <div class="d-flex flex-column align-items-center">`;
+
+        for (let i = 1; i <= selectedValue; i++) {
+            sectionHTML += `
+            <div class="w-100 mb-3">
+                <div class="d-flex flex-row align-items-start"> <div class="d-flex align-items-center pt-2">
+                        <span class="mr-2">${i}.</span>
+                    </div>
+                    <div class="d-flex flex-column w-100" style="gap: 7px;">
+                        <div class="d-flex align-items-center w-100" style="gap: 7px;">
+                            <select id="group${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="sourceGroup(this,${sectionCount},${selectedValue},${i}); updateWorkloadUI();">
+                                <option value="" disabled selected hidden>เลือกกลุ่ม</option>
+                                ${groupsOptions}
+                            </select>
+                            <select id="time${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="populateTime(this,${sectionCount},${selectedValue},${i});">
+                                <option value="" disabled selected hidden>เลือกเวลา</option>
+                                ${timesOptions}
+                            </select>
+                        </div>
+                        
+                        <div class="teacher-grid-container" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; width: 100%;">
+                            <select id="director-one-${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="sourceTeacher(this,${sectionCount},${i}); updateWorkloadUI();" style="background-color: #e9ecef; pointer-events: none;">
+                                <option value="" disabled selected hidden>อาจารย์ที่ปรึกษา</option>
+                                ${teachersOptions}
+                            </select>
+                            <select id="director-two-${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="sourceTeacher(this,${sectionCount},${i}); updateWorkloadUI();">
+                                <option value="" disabled selected hidden>เลือกกรรมการ</option>
+                                ${teachersOptions}
+                            </select>
+                            <select id="director-three-${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="sourceTeacher(this,${sectionCount},${i}); updateWorkloadUI();">
+                                <option value="" disabled selected hidden>เลือกประธานกรรมการ</option>
+                                ${teachersOptions}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        sectionHTML += `</div></div>
+                <label class="input-label mt-2" id="select-group-number${sectionCount}-label" style="display: none;">เลือกจำนวนกลุ่มที่จะสร้าง</label>
+                <div class="time-col mt-2">
+                    <select id="select-group-number${sectionCount}" class="form-control custom-select-modern" disabled style="display: none;" onchange="initGroupSelectionMore(this,${sectionCount}); sourceGroup();">
+                        <option value="" disabled selected hidden>จำนวนกลุ่ม</option>
+                    </select>
+                </div>
+                <div id="start-select-date${sectionCount}" class="form-group mt-4 animated--grow-in w-100" style="display: none;">
+                <label id="start-select-label${sectionCount}" class="input-label">เริ่มวันที่</label>
+                <div class="row no-gutters d-flex flex-nowrap align-items-center" style="justify-content: space-evenly;gap: 10px;">
+                    <div class="time-col">
+                        <select id="start-select-year${sectionCount}" class="form-control custom-select-modern" onchange="updateToDateOptions('start-select-day${sectionCount}', 'start-select-month${sectionCount}', 'start-select-year${sectionCount}');">
+                            <option value="" disabled selected hidden>ปี (พ.ศ.)</option>
+                        </select>
+                    </div>
+                    <div class="time-col">
+                        <select id="start-select-month${sectionCount}" class="form-control custom-select-modern" onchange="updateToDateOptions('start-select-day${sectionCount}', 'start-select-month${sectionCount}', 'start-select-year${sectionCount}');" disabled>
+                            <option value="" disabled selected hidden>เดือน</option>
+                        </select>
+                    </div>
+                    <div class="time-col">
+                        <select id="start-select-day${sectionCount}" class="form-control custom-select-modern" onchange="updateToDateOptions('start-select-day${sectionCount}', 'start-select-month${sectionCount}', 'start-select-year${sectionCount}');" disabled>
+                            <option value="" disabled selected hidden>วัน</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div id="sub-container-${sectionCount}" class="animated--grow-in"></div>`;
+
+        // 🚩 ใช้ insertAdjacentHTML เพื่อ "ต่อท้าย" โดยไม่ล้างของเก่า
+        return sectionHTML;
+    }
+
+    function sourceGroup(selectedElement, sectionCount, selectValue, selfNum) {
+        const groups = data.groups; // ข้อมูลกลุ่มทั้งหมดจาก API
+
+        // 1. หา Select กลุ่มทุกตัวในหน้าจอ (ทั้งชุดปัจจุบันและชุดอื่นๆ)
+        const allGroupSelects = Array.from(document.querySelectorAll('select[id^="group"]'))
+            .filter(el => /group\d+-s\d+/.test(el.id));
+
+        // 2. รวบรวม ID กลุ่มที่ถูกเลือกไว้แล้ว "ทั้งหมด" ในขณะนี้
+        const globalSelectedValues = allGroupSelects
+            .map(s => s.value)
+            .filter(v => v !== "");
+
+        // 3. สั่งให้ทุกช่องอัปเดตรายการใหม่ (เพื่อให้กลุ่มที่ถูกเลือกหายไปจากทุกช่อง)
+        allGroupSelects.forEach((currentSelect) => {
+            const currentValue = currentSelect.value; // เก็บค่าที่ช่องนี้เลือกอยู่ปัจจุบัน
+
+            // ล้างรายการเก่า และใส่ "เลือกกลุ่ม" กลับเข้าไป
+            currentSelect.innerHTML = `<option value="" disabled ${!currentValue ? 'selected' : ''} hidden>เลือกกลุ่ม</option>`;
+            
+            // 🚩 วนลูปจากข้อมูลดิบ (groups) เพื่อสร้าง Option ใหม่
+            groups.forEach(g => {
+                // เงื่อนไขในการยอมให้ชื่อกลุ่มปรากฏในรายการ:
+                // - กลุ่มนี้ยังไม่ถูกใครเลือกเลย (!globalSelectedValues.includes)
+                // - หรือ เป็นกลุ่มที่ช่องนี้เลือกอยู่เดิม (g._id === currentValue)
+                if (!globalSelectedValues.includes(g._id) || g._id === currentValue) {
+                    const opt = new Option(g.projectName, g._id);
+                    if (g._id === currentValue) opt.selected = true;
+                    currentSelect.add(opt);
+                }
+            });
+
+            // บังคับคืนค่าเดิม (กันพลาด)
+            currentSelect.value = currentValue;
+        });
+
+        // เรียกจัดการรายชื่ออาจารย์เฉพาะแถวที่เกิด Event
+        if (typeof sourceTeacher === "function") {
+            sourceTeacher(selectedElement, sectionCount, selfNum);
+        }
+    }
+
+    function sourceTeacher(selectedElement, sectionCount, selfNum) {
+        const groups = data.groups;
+        const teachers = data.teachers;
+
+        // 🚩 แก้ไขจุดที่ 1: ตรวจสอบก่อนว่า Select กลุ่มตัวนี้มีอยู่จริงไหม
+        const groupEl = document.getElementById(`group${sectionCount}-s${selfNum}`);
+        if (!groupEl) return; // ถ้าไม่เจอให้หยุดทำงานทันที
+
+        const selectedGroupId = groupEl.value;
+        
+        // 🚩 แก้ไขจุดที่ 2: ตรวจสอบ Array ของ Directors
+        const d1 = document.getElementById(`director-one-${sectionCount}-s${selfNum}`);
+        const d2 = document.getElementById(`director-two-${sectionCount}-s${selfNum}`);
+        const d3 = document.getElementById(`director-three-${sectionCount}-s${selfNum}`);
+
+        // ถ้าไม่มีกรรมการครบ (เช่น ยังไม่ได้วาด HTML ชุดนั้น) ให้หยุดทำงาน
+        if (!d1 || !d2 || !d3) return;
+
+        const directors = [d1, d2, d3];
+
+        let groupLeadUsername = "";
+        let groupLeadDisplay = "";
+
+        if (selectedGroupId) {
+            const chosenGroup = groups.find(g => g._id === selectedGroupId);
+            // ตรวจสอบโครงสร้างข้อมูล advisor (บางครั้งอาจเป็น string หรือ array)
+            if (chosenGroup && chosenGroup.advisor) {
+                const advisorUsername = Array.isArray(chosenGroup.advisor) ? chosenGroup.advisor[0] : chosenGroup.advisor;
+                const leadInfo = teachers.find(t => t.username === advisorUsername);
+                
+                if (leadInfo) {
+                    groupLeadUsername = leadInfo.username;
+                    groupLeadDisplay = `${leadInfo.title || ""} ${leadInfo.name}`;
+                }
+            }
+        }
+
+    directors.forEach((currentSelect, index) => {
+        if (!currentSelect) return; // กัน Error กรณีหา Element ไม่เจอ
+
+        if (index === 0 && groupLeadUsername !== "") {
+            currentSelect.innerHTML = `<option value="${groupLeadUsername}" selected>${groupLeadDisplay}</option>`;
+            return; // หยุดลูปรอบ index 0 ไว้แค่นี้
+        }
+
+        const currentValue = currentSelect.value;
+        const otherValues = directors
+            .filter((s, i) => s && i !== index) // กัน Error ถ้า s เป็น null
+            .map(s => s.value)
+            .filter(v => v !== "");
+
+        let optionsHTML = "";
+        if (index === 0) optionsHTML = `<option value="" disabled selected hidden>อาจารย์ที่ปรึกษา</option>`;
+        else if (index === 1) optionsHTML = `<option value="" disabled selected hidden>เลือกกรรมการ</option>`;
+        else optionsHTML = `<option value="" disabled selected hidden>เลือกประธานกรรมการ</option>`;
+        
+        teachers.forEach(t => {
+            if (!otherValues.includes(t.username)) {
+                optionsHTML += `<option value="${t.username}">${t.title || ""} ${t.name}</option>`;
+            }
+        });
+
+        // 🚩 อัปเดต HTML เสมอ
+        currentSelect.innerHTML = optionsHTML;
+        if (index === 0) {
+            currentSelect.value = groupLeadUsername;
+            currentSelect.style.backgroundColor = "#e9ecef";
+            currentSelect.style.pointerEvents = "none";
+        }
+
+        // คืนค่าเดิมถ้าเป็นไปได้
+        if (currentValue && !otherValues.includes(currentValue)) {
+            currentSelect.value = currentValue;
+        } else {
+            currentSelect.value = "";
+        }
+    });
+}
+
+    function groupNumber(groupNumber) {
+        const groupCount = document.getElementById(groupNumber);
+        groupCount.innerHTML = '<option value="" disabled selected hidden>จำนวนกลุ่ม</option>';
+        for (let i = 1; i <= 20; i++) {
+            groupCount.add(new Option(i.toString()));
+        }
+    }
+    groupNumber("select-group-number");
+
+    function populateTime(selectElement, timeSectionCount, selectValue, selfNum) {
+        const selectedValue = parseInt(selectElement.value); 
+        
+        for (let i = 1; i <= selectValue; i++) {
+            if (i <= selfNum) continue;
+
+            const timeElement = document.getElementById("time" + timeSectionCount + "-s" + i);
+            if (!timeElement) continue;
+
+            const currentValue = parseInt(timeElement.value) || 0;
+            timeElement.innerHTML = '<option value="" disabled selected hidden>เลือกเวลา</option>';
+
+            // 🚩 1. ถ้าตัวก่อนหน้าเลือก 20:00 (1200) หรือมากกว่าไปแล้ว ให้จบงานทันที
+            if (selectedValue >= 1140) {
+                const opt = new Option("ไม่เหลือเวลาว่าง", "");
+                opt.disabled = true;
+                timeElement.add(opt);
+                timeElement.value = ""; 
+                continue; 
+            }
+
+            let hasValidTime = false; // ตัวแปรเช็คว่ามีเวลาให้เลือกไหม
+
+            outerLoop: for (let hour of timeTh[0]) {
+                for (let minute of timeTh[1]) {
+                    const totalMinutes = (parseInt(hour) * 60) + parseInt(minute);
+
+                    // 🚩 2. ต้อง "มากกว่า" เท่านั้น (ถ้า 19:30 จะไม่ขึ้นในแถวถัดไป)
+                    if (totalMinutes <= selectedValue) continue;
+
+                    if (totalMinutes <= 1200) {
+                        timeElement.add(new Option(`${hour}:${minute}`, totalMinutes));
+                        hasValidTime = true; // มีเวลาให้เลือกแล้วอย่างน้อย 1 อัน
+                        
+                        // ถ้าแวะมาถึง 20:00 แล้ว ให้หยุดสร้าง Option ทันที
+                        if (totalMinutes === 1200) break outerLoop;
+                    }
+                }
+            }
+
+            // 🚩 3. ถ้าวนลูปจนจบแล้ว "ไม่มีเวลาที่สายกว่า" ให้เลือกเลย
+            if (!hasValidTime) {
+                const opt = new Option("ไม่เหลือเวลาว่าง", "");
+                opt.disabled = true;
+                timeElement.add(opt);
+            }
+
+            if (currentValue <= selectedValue) {
+                timeElement.value = "";
+            }
+        }
+    }
+    
+    function initDatePicker() {
+        let pickerSets = [];
+        if (!sectionCount || sectionCount === 0 ){
+            pickerSets = [
+                { year: "selectYear", month: "selectMonth", day: "selectDay"},
+                { year:"start-select-year", month:"start-select-month", day:"start-select-day"}
+            ];
+        }else{
+             pickerSets = [{ year: "start-select-year"+sectionCount, month: "start-select-month"+sectionCount, day: "start-select-day"+sectionCount}]; 
+        }
+
+        const now = new Date();
+        const currentYear = document.getElementById("start-select-year").value ? parseInt(document.getElementById("start-select-year").value) : now.getFullYear();
+        const currentMonth = now.getMonth() + 1; // 1-12
+
+        pickerSets.forEach(set => {
+            const sYear = document.getElementById(set.year);
+            if (!sYear) return;
+
+            sYear.innerHTML = '<option value="" disabled selected hidden>ปี (พ.ศ.)</option>';
+
+            // ปี: วนจากปัจจุบันไปอีก 10 ปี
+            for (let i = currentYear; i <= currentYear + 10; i++) {
+                sYear.add(new Option(i + 543, i));
+            }
+        });
+    }
+
+    function populateDays(dayId, monthId, yearId) {
+        const sYear = document.getElementById(yearId);
+        const sMonth = document.getElementById(monthId);
+        const sDay = document.getElementById(dayId);
+        if (!sDay || !sMonth || !sYear) return;
+
+        // [1] หาลำดับของตัวเองและค่าปัจจุบัน
+        const match = dayId.match(/\d+/);
+        const myNum = match ? parseInt(match[0]) : 0; 
+        const sYearValue = parseInt(sYear.value) || 0;
+        const sMonthValue = parseInt(sMonth.value) || 0;
+        const sDayValue = parseInt(sDay.value) || 0;
+
+        // ดึงค่าวันที่ปัจจุบันมาใช้เฉพาะชุดแรก หรือใช้กรองพื้นฐาน
+        const now = new Date();
+        const nowDate = now.getDate();
+        const nowMonth = now.getMonth() + 1;
+        const nowYear = now.getFullYear();
+
+        if(sYearValue > 0 && sMonthValue > 0) sDay.disabled = false;
+
+        // --- ส่วนที่ 1: เติมวันให้ตัวเอง (sDay) ---
+        const currentDay = sDay.value;
+        const daysInMainMonth = new Date(sYearValue, sMonthValue, 0).getDate();
+        sDay.innerHTML = '<option value="" disabled selected hidden>วัน</option>';
+
+        // หา ID ของ "ชุดก่อนหน้า"
+        let prevSuffix = "";
+        if (myNum > 0) {
+            prevSuffix = (myNum === 1) ? "" : (myNum - 1);
+        }
+        const pYear = document.getElementById("start-select-year" + prevSuffix);
+        const pMonth = document.getElementById("start-select-month" + prevSuffix);
+        const pDay = document.getElementById("start-select-day" + prevSuffix);
+
+        for (let d = 1; d <= daysInMainMonth; d++) {
+            // 🚩 เงื่อนไข A: สำหรับทุกชุด (รวมชุดแรก) ห้ามเก่ากว่าวันปัจจุบัน
+            if (sYearValue === nowYear && sMonthValue === nowMonth && d < nowDate) {
+                continue;
+            }
+
+            // 🚩 เงื่อนไข B: สำหรับชุดที่ 2 เป็นต้นไป ห้ามเก่ากว่าชุดก่อนหน้า
+            if (selectedValue === "วันสอบ" && pYear && pMonth && pDay) {
+                const pyVal = parseInt(pYear.value) || 0;
+                const pmVal = parseInt(pMonth.value) || 0;
+                const pdVal = parseInt(pDay.value) || 0;
+
+                if (sYearValue === pyVal && sMonthValue === pmVal && pdVal > 0 && d <= pdVal) continue;
+                if (sYearValue < pyVal || (sYearValue === pyVal && sMonthValue < pmVal)) continue;
+            }
+            
+            sDay.add(new Option(d, d));
+        }
+        sDay.value = currentDay;
+        if (sDay.selectedIndex === -1) sDay.value = "";
+
+
+        // --- ส่วนที่ 2: สั่งให้ "ชุดถัดไป" อัปเดตตามเรา ---
+        if (selectedValue === "วันสอบ") {
+            for (let i = myNum + 1; i <= sectionCount; i++) {
+                const suffix = i === 0 ? "" : i;
+                const ty = document.getElementById("start-select-year" + suffix);
+                const tm = document.getElementById("start-select-month" + suffix);
+                const td = document.getElementById("start-select-day" + suffix);
+
+                if (!td || !tm || !ty || td === sDay) continue;
+
+                const targetYearValue = parseInt(ty.value) || 0;
+                const targetMonthValue = parseInt(tm.value) || 0;
+                const currentSelectedDay = td.value;
+
+                const daysInTargetMonth = new Date(targetYearValue, targetMonthValue, 0).getDate();
+                td.innerHTML = '<option value="" disabled selected hidden>วัน</option>';
+
+                for (let d = 1; d <= daysInTargetMonth; d++) {
+                    // กรองวันปัจจุบัน (กันเหนียวให้ชุดลูกด้วย)
+                    if (targetYearValue === nowYear && targetMonthValue === nowMonth && d < nowDate) continue;
+
+                    // กรองตามวันของชุดแม่ (เรา)
+                    if (targetYearValue === sYearValue && targetMonthValue === sMonthValue) {
+                        if (sDayValue > 0 && d <= sDayValue) continue;
+                    }
+
+                    if (targetYearValue < sYearValue || (targetYearValue === sYearValue && targetMonthValue < sMonthValue)) {
+                        continue;
+                    }
+
+                    td.add(new Option(d, d));
+                }
+                td.value = currentSelectedDay;
+                if (td.selectedIndex === -1) td.value = "";
+            }
+        }
+    }
+
+    function updateMonthOptions(monthId, yearId) {
+        const sYear = document.getElementById(yearId);
+        const sMonth = document.getElementById(monthId);
+        if (!sMonth || !sYear) return;
+
+        // [1] หาลำดับของตัวเองและค่าปัจจุบัน
+        const match = monthId.match(/\d+/);
+        const myNum = match ? parseInt(match[0]) : 0; 
+        const sYearValue = parseInt(sYear.value) || 0;
+        const sMonthValue = parseInt(sMonth.value) || 0;
+
+        // ดึงค่าวันที่ปัจจุบันมาใช้เฉพาะชุดแรก หรือใช้กรองพื้นฐาน
+        const now = new Date();
+        const nowMonth = now.getMonth() + 1;
+        const nowYear = now.getFullYear();
+
+        if(sYearValue > 0 ) sMonth.disabled = false;
+
+        // --- ส่วนที่ 1: เติมเดือนให้ตัวเอง (sMonth) ---
+        const currentMonth = sMonth.value;
+        sMonth.innerHTML = '<option value="" disabled selected hidden>เดือน</option>';
+
+        // หา ID ของ "ชุดก่อนหน้า"
+        let prevSuffix = "";
+        if (myNum > 0) {
+            prevSuffix = (myNum === 1) ? "" : (myNum - 1);
+        }
+        const pYear = document.getElementById("start-select-year" + prevSuffix);
+        const pMonth = document.getElementById("start-select-month" + prevSuffix);
+        const pDay = document.getElementById("start-select-day" + prevSuffix);
+
+        for (let m = 1; m <= 12; m++) {
+            // 🚩 เงื่อนไข A: สำหรับทุกชุด (รวมชุดแรก) ห้ามเก่ากว่าเดือนปัจจุบัน
+            if (sYearValue === nowYear && m < nowMonth) {
+                continue;
+            }
+
+            // 🚩 เงื่อนไข B: สำหรับชุดที่ 2 เป็นต้นไป ห้ามเก่ากว่าชุดก่อนหน้า
+            if (selectedValue === "วันสอบ" && pYear && pMonth) {
+                const pyVal = parseInt(pYear.value) || 0;
+                const pmVal = parseInt(pMonth.value) || 0;
+
+                if (sYearValue === pyVal &&  pmVal > 0 && m <= pmVal) continue;
+                if (sYearValue < pyVal ) continue;
+            }
+            
+            sMonth.add(new Option(monthTh[m-1], m));
+        }
+        sMonth.value = currentMonth;
+        if (sMonth.selectedIndex === -1) sMonth.value = "";
+
+
+        // --- ส่วนที่ 2: สั่งให้ "ชุดถัดไป" อัปเดตตามเรา ---
+        if (selectedValue === "วันสอบ") {
+            for (let i = myNum + 1; i <= sectionCount; i++) {
+                const suffix = i === 0 ? "" : i;
+                const ty = document.getElementById("start-select-year" + suffix);
+                const tm = document.getElementById("start-select-month" + suffix);
+                const td = document.getElementById("start-select-day" + suffix);
+
+                if (!tm || !ty || tm === sMonth) continue;
+
+                const targetYearValue = parseInt(ty.value) || 0;
+                const currentSelectedMonth = tm.value;
+
+                tm.innerHTML = '<option value="" disabled selected hidden>เดือน</option>';
+
+                for (let m = 1; m <= 12; m++) {
+                    // กรองวันปัจจุบัน (กันเหนียวให้ชุดลูกด้วย)
+                    if (targetYearValue === nowYear && m < nowMonth) continue;
+
+                    // กรองตามวันของชุดแม่ (เรา)
+                    if (targetYearValue === sYearValue ) {
+                        if (sMonthValue > 0 && m <= sMonthValue) continue;
+                    }
+
+                    if (targetYearValue < sYearValue) {
+                        continue;
+                    }
+
+                    tm.add(new Option(monthTh[m-1], m));
+                }
+                tm.value = currentSelectedMonth;
+                if (tm.selectedIndex === -1) {
+                    tm.value = "";
+                    td.value = "";
+                    td.disabled = true;
+                }
+            }
+        }
+    }
+
+    function updateYearOptions(yearId) {
+        const sYear = document.getElementById(yearId);
+        if (!sYear) return;
+
+        // หาลำดับตัวเอง (ถ้าไม่มีเลขคือชุดที่ 0)
+        const match = yearId.match(/\d+/);
+        const selfNum = match ? parseInt(match[0]) : 0;
+        const sYearValue = parseInt(sYear.value) || 0;
+        const currentYear = new Date().getFullYear();
+        // เติมปีให้ตัวเองถ้าว่าง
+        if (sYear.options.length <= 1) {
+            sYear.innerHTML = '<option value="" disabled selected hidden>ปี (พ.ศ.)</option>';
+            for (let j = currentYear; j <= currentYear + 10; j++) {
+                sYear.add(new Option(j + 543, j));
+            }
+        }
+
+        if (selectedValue === "วันสอบ") {
+            // 🚩 แก้ไข: เริ่มลูปที่ตัวถัดไปเท่านั้น (i = selfNum + 1)
+            for (let i = selfNum + 1; i <= sectionCount; i++) {
+                const ty = document.getElementById("start-select-year" + i);
+                const tm = document.getElementById("start-select-month" + i);
+                const td = document.getElementById("start-select-day" + i);
+
+                if (!ty) continue;
+
+                const targetValue = ty.value;
+                ty.innerHTML = '<option value="" disabled selected hidden>ปี (พ.ศ.)</option>';
+                let startY = sYearValue || new Date().getFullYear();
+                for (let j = startY; j <= startY + 10; j++) {
+                    ty.add(new Option(j + 543, j));
+                }
+
+                // ถ้าปีเดิมของชุดหลังยังใช้ได้ (ไม่น้อยกว่าตัวแม่) ให้เก็บไว้
+                if (targetValue && parseInt(targetValue) >= sYearValue) {
+                    ty.value = targetValue;
+                } else {
+                    ty.value = ""; if(tm) tm.value = ""; if(td) td.value = "";
+                    tm.disabled = true;
+                    td.disabled = true;
+                }
+            }
+        }
+    }
+
+    function updateToDateOptions(sDay, sMonth, sYear) {
+        updateYearOptions(sYear);
+        updateMonthOptions(sMonth, sYear);
+        populateDays(sDay, sMonth, sYear);
+    }
+
+    function selectActivity(element) {
+        selectedValue = element.innerText;
+        document.getElementById("dropdownMenuButton").innerText = selectedValue;
+        const groupOnly = document.getElementById("groupOnlyCheckbox").checked;
+        const startDate = document.getElementById("start-date");
+        const onlyGroup = document.getElementById("onlyGroupSent")
+        const teacherSum = document.getElementById("teacher-summary")
+        startDate.style.display = "none";
+        buttons.style.display = "flex";
+
+        if(selectedValue === "วันสอบ") {
+            teacherSum.style.display = "block";
+            onlyGroup.style.display = "none";
+            startLabel.innerText = "เริ่มวันที่"
+            groupSelectNumber.style.display = "block";
+            eventDescription.style.display = "none";
+            eventName.style.display = "none";
+            startDate.style.display = "none";
+            document.getElementById("groupOnlyCheckbox").checked = false;
+        } else {
+            teacherSum.style.display = "none";
+            onlyGroup.style.display = "block";
+            startLabel.innerText = "ถึงวันที่"
+            startDate.style.display = "block";
+            groupSelectNumber.style.display = "none";
+            
+            if (selectedValue === "อื่นๆ") {
+                eventName.style.display = "block";
+                eventDescription.style.display = "block";
+            } else {
+                eventName.style.display = "none";
+                eventDescription.style.display = "none";
+            }
+        }
+    }
+
+    function updateWorkloadUI() {
+        const list = document.getElementById("workload-list");
+        if (!list) return;
+        list.innerHTML = ""; 
+
+        const counts = {};
+
+        // นับจากช่องกรรมการทั้งหมด (รวมที่ปรึกษาที่ถูกล็อกค่าไว้)
+        document.querySelectorAll('select[id^="director"]').forEach(sel => {
+            if (sel.value) {
+                counts[sel.value] = (counts[sel.value] || 0) + 1;
+            }
+        });
+
+        // เรียงลำดับคนงานเยอะขึ้นก่อน
+        const sortedUsernames = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+
+        if (sortedUsernames.length === 0) {
+            list.innerHTML = '<div class="text-center text-muted py-2">ยังไม่มีการเลือกอาจารย์</div>';
+            return;
+        }
+
+        sortedUsernames.forEach(username => {
+            const teacher = data.teachers.find(t => t.username === username);
+            if (teacher) {
+                const total = counts[username];
+                // ไล่สีตามระดับภาระงาน (Bootstrap classes)
+                let colorClass = "text-success";
+                if (total > 10) colorClass = "text-danger font-weight-bold";
+                else if (total > 7) colorClass = "text-warning";
+                else if (total > 4) colorClass = "text-info";
+
+                list.innerHTML += `
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-truncate" style="max-width: 110px;">${teacher.name.split(' ')[0]}</span> 
+                        <span class="${colorClass}">${total} กลุ่ม</span>
+                    </div>`;
+            }
+        });
+    }
+    updateWorkloadUI()
+
+    function resetForm() {
+        document.getElementById("dropdownMenuButton").innerText = "เลือกกิจกรรม";
+        selectedValue = "";
+        eventDescription.style.display = "none";
+        eventDescription.value = "";
+        eventName.style.display = "none";
+        eventName.value = "";
+        initDatePicker(); 
+        saveEventBtn.disabled = false;
+        saveEventBtn.innerText = "บันทึกกิจกรรม";
+        window.location.href = "/event"
+    }
+
+
+    saveEventBtn.addEventListener("click", () => {
+        const day = document.getElementById("selectDay").value;
+        const month = document.getElementById("selectMonth").value;
+        const year = document.getElementById("selectYear").value;
+        const groupOnly = document.getElementById("groupOnlyCheckbox").checked;
+
+        if (groupOnly && !chosenGroup) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'ข้อมูลไม่ครบถ้วน',
+                text: 'กรุณาเลือกกลุ่มสำหรับกิจกรรมเฉพาะกลุ่ม',
+                confirmButtonText: 'ตกลง'
+            });
+            return;
+        }
+
+        if (!selectedValue || selectedValue === "เลือกกิจกรรม"  || (selectedValue !== "วันสอบ" && (!day || !month || !year))) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'ข้อมูลไม่ครบถ้วน',
+                text: 'กรุณาเลือกกิจกรรมและวันที่ให้ครบถ้วนก่อนบันทึก',
+                confirmButtonText: 'ตกลง'
+            });
+            return;
+        }
+
+        // ตั้งค่า Description อัตโนมัติ
+        const Name = eventName.value.trim();
+        let desc = eventDescription.value.trim();
+        if (selectedValue === "วันสอบ") desc = "จะมีการจัดสอบในวันที่กำหนด โปรดเตรียมเอกสารในการสอบให้เรียบร้อย";
+        else if (selectedValue === "วันส่งเอกสาร") desc = "โปรดส่งเอกสารภายในวันที่กำหนด";
+        else if (selectedValue === "อื่นๆ" && !desc && !eventName.value.trim()) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'ข้อมูลไม่ครบถ้วน',
+                text: 'กรุณากรอกชื่อและรายละเอียดกิจกรรมสำหรับกิจกรรมอื่นๆ',
+                confirmButtonText: 'ตกลง'
+            });
+            return;
+        }
+        // 1. ใช้ FormData แทน JSON ปกติเพื่อส่งไฟล์
+        const formData = new FormData();
+        formData.append("title", Name || selectedValue);
+        formData.append("description", desc);
+        formData.append("date", `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+        if(groupOnly) formData.append("chosenGroup", chosenGroup);
+
+        if (selectedValue === "วันสอบ") {
+            let examData = []; // ก้อนข้อมูลหลัก
+
+            for (let i = 1; i <= sectionCount; i++) {
+                const year = document.getElementById(`start-select-year${i === 1 ? '' : i-1}`).value;
+                const month = document.getElementById(`start-select-month${i === 1 ? '' : i-1}`).value;
+                const day = document.getElementById(`start-select-day${i === 1 ? '' : i-1}`).value;
+                const dateString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+
+                // 2. ดึงจำนวนแถว (selectedValue) ของชุดนั้น (สมมติเก็บไว้ใน attribute หรือตัวแปร)
+                // ในที่นี้ต้องระวังว่าแต่ละ Section อาจมีจำนวนแถวไม่เท่ากัน 
+                // แนะนำให้ดึงจากค่าของ select-group-number ในชุดนั้นๆ
+                const rowsCount = parseInt(document.getElementById(`select-group-number${i === 1 ? '' : i-1}`).value);
+
+                let details = [];
+                for (let j = 1; j <= rowsCount; j++) {
+                    const groupId = document.getElementById(`group${i}-s${j}`).value;
+                    const timeValue = document.getElementById(`time${i}-s${j}`).value;
+                    const d1 = document.getElementById(`director-one-${i}-s${j}`).value;
+                    const d2 = document.getElementById(`director-two-${i}-s${j}`).value;
+                    const d3 = document.getElementById(`director-three-${i}-s${j}`).value;
+
+                    if(!groupId || !timeValue || !d1 || !d2 || !d3){
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'ข้อมูลไม่ครบถ้วน',
+                            text: "กรุณากรอกข้อมูลทุกช่องให้ครบถ้วน",
+                            confirmButtonText: 'ตกลง'
+                        });
+                        return;
+                    }
+
+                    if (groupId) { // ส่งเฉพาะแถวที่มีการเลือกกลุ่ม
+                        details.push({
+                            group: groupId,
+                            time: timeValue,
+                            directors: [d1, d2, d3]
+                        });
+                    }
+                }
+
+                examData.push({
+                    date: dateString,
+                    slots: details
+                });
+            }
+
+            // เตรียมส่งก้อนใหญ่
+            console.log(examData)
+            formData.append("examSchedule", JSON.stringify(examData));
+        }
+
+        saveEventBtn.disabled = true;
+        saveEventBtn.innerText = "กำลังบันทึก...";
+
+        Swal.fire({
+            title: 'กำลังบันทึกกิจกรรม...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        let link;
+        // 2. ส่งข้อมูลไปยัง API
+        if (groupOnly && selectedValue !== "วันสอบ") {
+            link = '/api/addEventForGroup';
+        }else{
+            link = '/api/addEvent';
+        }
+        fetch(link, {
+            method: 'POST',
+            // หมายเหตุ: ไม่ต้องตั้ง Content-Type เมื่อใช้ FormData เบราว์เซอร์จะจัดการให้เอง
+            body: formData 
+        })
+        .then(async response => {
+            const result = await response.json();
+            if (response.ok) {
+                if (result.missingGroups && result.missingGroups.length > 0) {
+                    Swal.close();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'บันทึกสำเร็จ (แต่ข้อมูลไม่ครบ)',
+                        html: `${result.warning}<br><br><b class="text-danger">${result.missingGroups.join(', ')}</b><br><br>กลุ่มเหล่านี้ยังไม่พร้อมสอบหรือกรุณาตรวจสอบชื่อกลุ่มใน Excel ให้ตรงกับในระบบ`,
+                        confirmButtonText: 'รับทราบ'
+                    }).then(() => window.location.href = "/event");
+                } else {
+                    Swal.close();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกสำเร็จ',
+                        confirmButtonText: 'ตกลง'
+                    }).then(() => window.location.href = "/event");
+                }
+            } else {
+                // 💡 แสดงผล Error ที่ส่งมาจาก Server ถ้าไม่มีให้ใช้ข้อความ Default
+                const errorMsg = result.message || result.error || "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
+                Swal.close();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'บันทึกกิจกรรมไม่สำเร็จ',
+                    text: errorMsg,
+                    confirmButtonText: 'ตกลง'
+                });
+
+                // 💡 พิมพ์ลง Console ของ Browser ไว้เช็คละเอียดๆ
+                console.error("Server Result:", result); 
+
+                saveEventBtn.disabled = false;
+                saveEventBtn.innerText = "บันทึกกิจกรรม";
+            }
+        })
+    });
+
+    $(document).ready(function() {
+        // 1. ตรวจจับการพิมพ์
+        $("#searchGroup").on("input", function() {
+            const keyword = $(this).val().trim();
+            const $results = $("#searchGroupResults");           
+
+            if (keyword.length > 1) {
+                $.get("/search-group?keyword=" + encodeURIComponent(keyword), function(data) {
+                    $results.empty().show();
+                    
+                    if (data && data.length > 0) {
+                        data.forEach(group => {
+                            $results.append(`
+                                <li class="list-group-item list-group-item-action group-li" 
+                                    data-groupname="${group.projectName}" 
+                                    data-groupid="${group._id}" 
+                                    style="cursor:pointer; border-radius: 12px;">
+                                    <strong>${group.projectName}</strong>
+                                </li>`);
+                        });
+                    } else {
+                        $results.append(`<li class="list-group-item text-muted">ไม่พบข้อมูล</li>`);
+                    }
+                }).fail(function(err) {
+                    console.error("API Error:", err);
+                });
+            } else {
+                $results.hide().empty();
+            }
+        });
+
+        // 2. คลิกเลือกกลุ่ม
+        $(document).on("click", ".group-li", function() {
+            const groupName = $(this).data("groupname");
+            const groupId = $(this).data("groupid");
+            
+            chosenGroup = groupId;
+            $("#selectedGroup").text(groupName);
+            
+            // จัดการ UI
+            $("#searchGroupResults").hide().empty();
+            $("#searchGroup").val(""); // ล้างช่องค้นหา
+            $("#searchGroupContainer").hide();
+            $("#selectedGroupContainer").css("display", "flex").show();
+        });
+
+        // 3. ยกเลิกการเลือก
+        $("#clearGroupSelection").on("click", function() {
+            chosenGroup = null;
+            $("#selectedGroup").text("");
+            $("#selectedGroupContainer").hide();
+            $("#searchGroupContainer").show();
+            $("#searchGroup").focus(); // ให้ Cursor ไปรอที่ช่องพิมพ์
+        });
+    });
+
+    function updatePosition(target) {
+        const summaryCard = document.getElementById("teacher-summary");
+        if (!summaryCard || summaryCard.style.display === "none") return;
+
+        // ดึงค่า Scroll จากตัวที่ส่งมา
+        const scrollTop = target.scrollTop;
+
+        if (scrollTop > 60) {
+            summaryCard.style.setProperty("top", "20px", "important");
+        } else {
+            summaryCard.style.setProperty("top", "90px", "important");
+        }
+    }
+
+    // 🚩 ตรวจสอบว่าตัวไหนในหน้าเว็บที่เป็นคน Scroll
+    document.addEventListener('scroll', function(e) {
+        // e.target คือตัวที่กำลังโดนไถอยู่
+        updatePosition(e.target);
+    }, true);
+
+</script>

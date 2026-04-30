@@ -1,0 +1,337 @@
+<style>
+    /* 1. Profile Page Styling */
+    .profile-card {
+        width: 100% !important;
+        max-width: none !important;
+        border: none; border-radius: 20px;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+        overflow: hidden; background: white;
+    }
+
+    .col-xl-10.col-lg-12.col-md-9 {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+    }
+
+    .profile-header-bg {
+        height: 120px; background: linear-gradient(90deg, #4e73df 0%, #224abe 100%);
+    }
+
+    .avatar-wrapper {
+        margin-top: -60px; position: relative; display: inline-block;
+    }
+
+    .avatar-img {
+        width: 150px; height: 150px; object-fit: cover;
+        border-radius: 50%; border: 5px solid white;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    /* 2. Update Form Styling */
+    #drop-area {
+        width: 100%; max-width: 400px; padding: 30px;
+        border: 2px dashed #d1d3e2; border-radius: 15px;
+        background: #f8f9fc; cursor: pointer; transition: 0.3s;
+        text-align: center; margin: 0 auto;
+    }
+    #drop-area:hover { background: #f0f3ff; border-color: #4e73df; }
+    #drop-area i { font-size: 2.5rem; color: #4e73df; margin-bottom: 15px; }
+
+    #image-preview {
+        display: none; width: 150px; height: 150px;
+        object-fit: cover; border-radius: 50%; margin: 0 auto;
+    }
+
+    .form-label { font-weight: bold; color: #4e73df; font-size: 0.9rem; }
+    .input-readonly { background-color: #f8f9fc !important; border-color: #eaecf4; color: #858796; }
+</style>
+
+<div class="container-fluid py-4" style="min-height: 84vh; background: #f4f7f6;">
+    
+    <div id="profile" class="fade-in">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <h1 class="h3 mb-0 text-gray-800">โปรไฟล์ผู้ใช้งาน</h1>
+            <button type="button" id="updateProfileBtn" class="btn btn-primary shadow-sm">
+                <i class="fas fa-user-edit mr-2"></i> แก้ไขโปรไฟล์
+            </button>
+        </div>
+
+        <div class="row justify-content-center align-items-center">
+            <div class="col-lg-12">
+                <div class="card profile-card">
+                    <div class="profile-header-bg"></div>
+                    <div class="card-body text-center">
+                        <div class="avatar-wrapper">
+                            <% if (user.picture && user.picture !== "null" && user.picture !== "") { %>
+                                <img src="/image/<%= user.picture %>" class="avatar-img" alt="Profile">
+                            <% } else { %>
+                                <img src="/img/undraw_profile.svg" class="avatar-img" alt="Default Profile">
+                            <% } %>
+                        </div>
+                        
+                        <h3 class="mt-3 font-weight-bold text-gray-800"><%= user.name %> <%= user.lastname %></h3>
+                        <p class="text-muted"><i class="fas fa-id-card mr-2"></i> รหัสนักศึกษา: <%= user.username %></p>
+
+                        <div class="row text-left mt-5 px-lg-5">
+                            <div class="col-md-6 mb-4 mr-3">
+                                <label class="form-label">อีเมล</label>
+                                <div class="h6 text-gray-800 border-bottom pb-2"><%= user.email || '-' %></div>
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label">เบอร์โทรศัพท์</label>
+                                <div class="h6 text-gray-800 border-bottom pb-2"><%= user.phone || '-' %></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="updateProfile" class="d-none">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <h1 class="h3 mb-0 text-gray-800">ตั้งค่าข้อมูลส่วนตัว</h1>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-12">
+                <div class="card profile-card shadow p-4">
+                    <div class="row justify-content-center align-items-center">
+                        <div class="col-md-5 text-center mr-3">
+                            <label class="form-label d-block mb-3">รูปโปรไฟล์</label>
+                            <div id="drop-area">
+                                <i class="fas fa-cloud-upload-alt" id="image-icon"></i>&nbsp;
+                                <p id="defaultDropText" class="small mb-0">ลากรูปมาวางที่นี่ หรือคลิกเพื่อเลือก</p>
+                                <img id="image-preview" src="" alt="Preview">
+                                <input type="file" name="profileImage" id="pic-input" hidden accept="image/*">
+                            </div>
+                            <p class="small text-muted mt-2">แนะนำ: รูปทรงจัตุรัส ขนาดไม่เกิน 2MB</p>
+                        </div>
+
+                        <div class="col-md-7">
+                            <div class="form-group">
+                                <label class="form-label">ชื่อ-นามสกุล (แก้ไขไม่ได้)</label>
+                                <input class="form-control input-readonly" value="<%= user.name %> <%= user.lastname %>" disabled>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">อีเมล</label>
+                                <input class="form-control" id="updateEmail" value="<%= user.email %>" <%= user.role !== 'teacher' && user.role !== 'admin' && user.role !== 'secretary' ? 'disabled' : '' %> placeholder="example@email.com">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">เบอร์โทรศัพท์</label>
+                                <input class="form-control" id="updatePhone" value="<%= user.phone %>" placeholder="08x-xxx-xxxx">
+                            </div>
+                            <div class="form-group">
+                                <button type="button" id="updatePassword" class="btn btn-primary btn-block py-2 mr-2 shadow-sm" onclick="changePassword();">
+                                    <i class="fas fa-key"></i> เปลี่ยนรหัสผ่าน
+                                </button>
+                            </div>
+
+                            <div class="mt-4 d-flex">
+                                <button type="button" id="saveProfileBtn" class="btn btn-success btn-block py-2 mr-2 shadow-sm">
+                                    <i class="fas fa-save mr-2"></i> บันทึกข้อมูล
+                                </button>
+                                <button type="button" id="cancelProfileBtn" class="btn btn-light border py-2 flex-shrink-1 px-4">
+                                    ยกเลิก
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // ส่วนประกาศตัวแปร
+    const profile = document.getElementById('profile');
+    const updateProfile = document.getElementById('updateProfile');
+    const updateEmail = document.getElementById('updateEmail');
+    const updatePhone = document.getElementById('updatePhone');
+    
+    const dropArea = document.getElementById('drop-area');
+    const picIcon = document.getElementById('image-icon')
+    const picText = document.getElementById('defaultDropText');
+    const picInput = document.getElementById('pic-input'); // ใช้ ID pic-input ตาม HTML
+    const imagePreview = document.getElementById('image-preview');
+
+    const saveProfileBtn = document.getElementById('saveProfileBtn');
+    const updateProfileBtn = document.getElementById('updateProfileBtn');
+    
+    let selectedFile = null; // เพิ่มการประกาศตัวแปรเก็บไฟล์
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const defaultDropAreaBorder = '2px dashed #ccc';
+
+    // จัดการแสดงผลรูปเดิมถ้ามี
+    const initialPic = "<%= user.picture %>";
+    if(initialPic && initialPic !== "null" && initialPic !== "") {
+        dropArea.style.border = 'none';
+        imagePreview.src = "/image/" + initialPic;
+        picText.style.display = "none";
+        picIcon.style.display = "none";
+        imagePreview.style.display = "block";
+        imagePreview.style.border = "2px solid #ccc";
+        imagePreview.style.maxWidth = "200px";
+        imagePreview.style.maxHeight = "200px";
+        imagePreview.style.borderRadius = "50%";
+    }
+
+    // --- Drag & Drop Logic ---
+    dropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropArea.style.border = '2px dashed green'; 
+    });
+
+    dropArea.addEventListener('dragleave', () => {
+        if (!selectedFile) dropArea.style.border = defaultDropAreaBorder;
+    });
+
+    dropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        handleFiles(e.dataTransfer.files);
+    });
+
+    dropArea.addEventListener('click', () => picInput.click());
+
+    picInput.addEventListener('change', () => handleFiles(picInput.files));
+
+    function handleFiles(files) {
+        const file = files[0];
+        if (file) {
+            if (allowedTypes.includes(file.type)) {
+                selectedFile = file;
+                
+                // จำลองไฟล์ใส่ลงใน input เพื่อให้ส่งไปพร้อม Form (ถ้าต้องการ)
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                picInput.files = dataTransfer.files;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block'; 
+                    imagePreview.style.border = '2px solid #ccc';
+                    imagePreview.style.maxWidth = "200px";
+                    imagePreview.style.borderRadius = "50%";
+                    picText.style.display = 'none'; 
+                    picIcon.style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+                dropArea.style.border = 'none';
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ไฟล์ไม่ถูกต้อง',
+                    text: 'กรุณาเลือกไฟล์รูปภาพเท่านั้น',
+                    confirmButtonText: 'ตกลง'
+                });
+            }
+        }
+    }
+
+    // --- Action Buttons ---
+    $(updateProfileBtn).on('click', () => {
+        profile.classList.add('d-none');
+        updateProfile.classList.remove('d-none');
+    });
+
+    $(saveProfileBtn).on('click', function() {
+        // ใช้ FormData เพื่อให้ส่งไฟล์ได้
+        const formData = new FormData();
+        formData.append('email', updateEmail.value);
+        formData.append('phone', updatePhone.value);
+        
+        // ถ้ามีการเลือกไฟล์ใหม่ ให้เพิ่มเข้าไปใน formData
+        if (picInput.files[0]) {
+            formData.append('profileImage', picInput.files[0]);
+        }
+
+        $.ajax({
+            url: '/profile/update',
+            type: 'POST',
+            data: formData,
+            processData: false, // สำคัญมาก: ห้าม jQuery แปลงข้อมูล
+            contentType: false, // สำคัญมาก: ให้ Browser ตั้งค่า boundary เอง
+            success: function(response) {
+                if (response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกข้อมูลสำเร็จ',
+                        text: 'ข้อมูลได้รับการบันทึกเรียบร้อยแล้ว',
+                        confirmButtonText: 'ตกลง'
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'บันทึกข้อมูลไม่สำเร็จ',
+                        text: response.message || 'เกิดข้อผิดพลาด',
+                        confirmButtonText: 'ตกลง'
+                    });
+                }
+            },
+            error: function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'บันทึกข้อมูลไม่สำเร็จ',
+                    text: 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์',
+                    confirmButtonText: 'ตกลง'
+                });
+            }
+        });
+    });
+
+    $('#cancelProfileBtn').on('click', () => location.reload());
+
+    async function changePassword(){
+        const username = "<%= user.username %>";
+        const result = await Swal.fire({
+            icon: 'warning',
+            title: 'เปลี่ยนรหัสผ่าน?',
+            text: 'ต้องการเปลี่ยนรหัสผ่านใช่หรือไม่',
+            confirmButtonText: 'ตกลง',
+            cancelButtonText: 'ยกเลิก',
+            showCancelButton: true,
+            confirmButtonColor: '#1cc88a',
+            cancelButtonColor: '#e74a3b',
+            reverseButtons: true
+        });
+
+        if (result.isConfirmed) {
+            // แสดงสถานะ Loading
+            Swal.fire({
+                title: 'กำลังบันทึกข้อมูล...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            $.ajax({
+                url: "/change-password", // Backend API ของคุณ
+                method: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ username: username }),
+                success: function(res) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'สำเร็จ!',
+                        text: 'ขอการเปลี่ยนรหัสผ่านเรียบร้อย กรุณาเช็คแจ้งเตือนในอีเมล',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload(); 
+                    });
+                },
+                error: function(err) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: err.responseText || "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้"
+                    });
+                }
+            });
+        }
+    }
+</script>

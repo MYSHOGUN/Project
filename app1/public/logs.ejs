@@ -1,0 +1,115 @@
+<style>
+    .log-container {
+        height: 90vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .log-table-wrapper {
+        flex-grow: 1;
+        overflow-y: auto;
+        border-radius: 12px;
+        background: white;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .log-row { transition: background 0.2s; }
+    .log-row:hover { background-color: #f8f9fc !important; }
+    
+    /* Badge สีตามประเภท Action */
+    .badge-update { background-color: #4e73df; color: white; }
+    .badge-delete { background-color: #e74a3b; color: white; }
+    .badge-create { background-color: #1cc88a; color: white; }
+    .badge-error { background-color: #f6c23e; color: #333; }
+    .badge-auth { background-color: #36b9cc; color: white; }
+
+    .sticky-thead th {
+        position: sticky;
+        top: 0;
+        background: #4e73df !important;
+        color: white;
+        z-index: 10;
+        border: none !important;
+    }
+</style>
+
+<div class="container-fluid log-container">
+    <div class="d-flex align-items-center justify-content-between py-3">
+        <div>
+            <h2 class="font-weight-bold text-primary mb-0"><i class="fas fa-history mr-2"></i>System Logs</h2>
+            <p class="text-muted small mb-0">บันทึกกิจกรรมย้อนหลัง 200 รายการล่าสุด</p>
+        </div>
+        <div class="d-flex" style="gap: 10px;">
+            <input type="text" id="logSearch" class="form-control form-control-sm" placeholder="ค้นหาชื่อผู้ใช้หรือกิจกรรม..." style="width: 250px; border-radius: 20px;">
+            <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()"><i class="fas fa-sync-alt"></i></button>
+        </div>
+    </div>
+
+    <div class="log-table-wrapper">
+        <table class="table table-borderless mb-0">
+            <thead class="sticky-thead">
+                <tr>
+                    <th style="width: 18%">วัน-เวลา</th>
+                    <th style="width: 12%">ผู้ใช้</th>
+                    <th style="width: 15%">กิจกรรม</th>
+                    <th>รายละเอียด</th>
+                    <th style="width: 12%">IP Address</th>
+                </tr>
+            </thead>
+            <tbody id="logBody">
+                <% if (logs && logs.length > 0) { %>
+                    <% logs.forEach(log => { 
+                        // กำหนดสี Badge ตามชื่อ Action
+                        let badgeClass = 'badge-secondary';
+                        if(log.action.includes('UPDATE')) badgeClass = 'badge-update';
+                        if(log.action.includes('DELETE')) badgeClass = 'badge-delete';
+                        if(log.action.includes('CREATE') || log.action.includes('ADD') || log.action.includes('SUBMIT')|| log.action.includes('ACCEPT')) badgeClass = 'badge-create';
+                        if(log.action.includes('ERROR') || log.action.includes('FAIL') || log.action.includes('DENY')) badgeClass = 'badge-error';
+                        if(log.action.includes('LOGIN') || log.action.includes('REGISTER')) badgeClass = 'badge-auth';
+                    %>
+                        <tr class="log-row border-bottom" data-search="<%= log.username %> <%= log.action %> <%= JSON.stringify(log.details) %>">
+                            <td class="small align-middle text-muted">
+                                <%= new Date(log.timestamp).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }) %>
+                            </td>
+                            <td class="align-middle">
+                                <span class="font-weight-bold text-dark"><%= log.username %></span>
+                                <div class="text-xs text-muted"><%= log.role %></div>
+                            </td>
+                            <td class="align-middle">
+                                <span class="badge <%= badgeClass %> px-2 py-1" style="border-radius: 4px; font-size: 0.7rem;">
+                                    <%= log.action %>
+                                </span>
+                            </td>
+                            <td class="small align-middle text-gray-700">
+                                <div style="max-height: 50px; overflow-y: auto;">
+                                    <% if (typeof log.details === 'object') { %>
+                                        <% Object.entries(log.details).forEach(([key, val]) => { %>
+                                            <span class="mr-2"><strong><%= key %>:</strong> <%= val %></span>
+                                        <% }) %>
+                                    <% } else { %>
+                                        <%= log.details %>
+                                    <% } %>
+                                </div>
+                            </td>
+                            <td class="small align-middle text-muted"><%= log.ip || '-' %></td>
+                        </tr>
+                    <% }) %>
+                <% } else { %>
+                    <tr><td colspan="5" class="text-center py-5">ไม่พบข้อมูลบันทึกกิจกรรม</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // ระบบค้นหา Log แบบ Real-time
+    document.getElementById('logSearch').addEventListener('input', function(e) {
+        const val = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('.log-row');
+        
+        rows.forEach(row => {
+            const text = row.getAttribute('data-search').toLowerCase();
+            row.style.display = text.includes(val) ? "" : "none";
+        });
+    });
+</script>
