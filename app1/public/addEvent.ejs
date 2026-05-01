@@ -1,3 +1,4 @@
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
     /* ✅ 1. Layout & Wrapper */
     .add-event-wrapper {
@@ -292,6 +293,30 @@
     #workload-list > div:last-child {
         border-bottom: none;
     }
+
+    /* ✅ 6. Custom Datepicker Input */
+    .custom-date-input {
+        height: 50px !important;
+        border-radius: 12px !important;
+        border: 2px solid #eaecf4 !important;
+        padding: 0 15px !important;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+        font-weight: 500;
+        font-size: 0.95rem;
+        width: 100% !important;
+        background-color: #fff !important;
+        color: #5a5c69;
+        cursor: pointer; /* เมาส์เปลี่ยนเป็นรูปมือเพื่อบ่งบอกว่าคลิกได้ */
+    }
+    .custom-date-input:hover {
+        border-color: #4e73df !important;
+        box-shadow: 0 2px 8px rgba(78, 115, 223, 0.12);
+    }
+    .custom-date-input:focus {
+        border-color: #4e73df !important;
+        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.15) !important;
+        outline: none;
+    }
 </style>
 
 <div class="container-fluid add-event-wrapper">
@@ -324,23 +349,7 @@
 
         <div id="start-date" class="form-group mt-4 animated--grow-in" style="display: none;">
             <label id="start-label" class="input-label">ถึงวันที่</label>
-            <div class="row no-gutters d-flex flex-nowrap align-items-center" style="justify-content: space-evenly;gap: 10px;">
-                <div class="time-col">
-                    <select id="selectYear" class="form-control custom-select-modern" onchange="updateToDateOptions('selectDay', 'selectMonth', 'selectYear');">
-                        <option value="" disabled selected hidden>ปี (พ.ศ.)</option>
-                    </select>
-                </div>
-                <div class="time-col">
-                    <select id="selectMonth" class="form-control custom-select-modern" onchange="updateToDateOptions('selectDay', 'selectMonth', 'selectYear');" disabled>
-                        <option value="" disabled selected hidden>เดือน</option>
-                    </select>
-                </div>
-                <div class="time-col">
-                    <select id="selectDay" class="form-control custom-select-modern" onchange="updateToDateOptions('selectDay', 'selectMonth', 'selectYear');" disabled>
-                        <option value="" disabled selected hidden>วัน</option>
-                    </select>
-                </div>
-            </div>
+            <input type="text" id="eventDate" class="form-control custom-date-input" placeholder="เลือกวันที่...">
         </div>
 
         <div id="extraInfo" class="animated--grow-in">
@@ -349,38 +358,19 @@
         </div>
 
         <div id="group-select-number" class="animated--grow-in mt-4" style="display: none;">
-            <label class="input-label">เลือกจำนวนกลุ่มที่จะสร้าง</label>
+            <label class="input-label">ตั้งค่าการจัดสอบอัตโนมัติ</label>
             <div class="row no-gutters d-flex flex-nowrap align-items-center" style="justify-content: space-between;gap: 10px;">
-                <div class="time-col">
-                    <select id="select-group-number" class="form-control custom-select-modern" onchange="initGroupSelection(this,0)">
-                        <option value="" disabled selected hidden>จำนวนกลุ่ม</option>
-                    </select>
+                <div class="w-50 pr-2">
+                    <input type="text" id="examStartDate" class="form-control custom-date-input" placeholder="เลือกวันที่เริ่มสอบ...">
+                </div>
+                <div class="w-50 pl-2">
+                    <input type="number" id="examDaysCount" class="form-control custom-date-input" min="1" max="30" placeholder="จำนวนวันสอบ (เช่น 2)">
                 </div>
             </div>
-            <div id="start-select-date" class="form-group mt-4 animated--grow-in w-100" style="display: none;">
-                <label id="start-select-label" class="input-label">เริ่มวันที่</label>
-                <div class="row no-gutters d-flex flex-nowrap align-items-center" style="justify-content: space-evenly;gap: 10px;">
-                    <div class="time-col">
-                        <select id="start-select-year" class="form-control custom-select-modern" onchange="updateToDateOptions('start-select-day', 'start-select-month', 'start-select-year');">
-                            <option value="" disabled selected hidden>ปี (พ.ศ.)</option>
-                        </select>
-                    </div>
-                    <div class="time-col">
-                        <select id="start-select-month" class="form-control custom-select-modern" onchange="updateToDateOptions('start-select-day', 'start-select-month', 'start-select-year');" disabled>
-                            <option value="" disabled selected hidden>เดือน</option>
-                        </select>
-                    </div>
-                    <div class="time-col">
-                        <select id="start-select-day" class="form-control custom-select-modern" onchange="updateToDateOptions('start-select-day', 'start-select-month', 'start-select-year');" disabled>
-                            <option value="" disabled selected hidden>วัน</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            <div id="groupCreate" class="animated--grow-in"></div>
-            <button id="addMoreGroupBtn" class="btn btn-view shadow-sm mt-2" style="display: none;" onclick="addMoreGroup();">
-                <i class="fas fa-plus"></i> เพิ่มวันที่สอบ
+            <button id="generateScheduleBtn" class="btn btn-view shadow-sm mt-3 w-100" onclick="generateAutoSchedule()">
+                <i class="fas fa-magic mr-2"></i> สุ่มตารางสอบอัตโนมัติ
             </button>
+            <div id="groupCreate" class="animated--grow-in mt-4"></div>
         </div>
 
 
@@ -415,6 +405,8 @@
 </div>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
 <script>
     let startLabel = document.getElementById("start-label");
     let groupSelectNumber = document.getElementById("group-select-number");
@@ -427,46 +419,26 @@
     document.addEventListener("DOMContentLoaded", async function() {
         try {
             const res = await fetch('/api/getMyGroups');
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             data = await res.json(); // เก็บข้อมูลไว้ในตัวแปร Global
             initDatePicker(); // เริ่มทำงานส่วนอื่นต่อ
         } catch (err) {
             console.error("Fetch error:", err);
+            Swal.fire({
+                icon: 'error',
+                title: 'ข้อผิดพลาด',
+                text: 'ไม่สามารถโหลดข้อมูลเริ่มต้นได้ กรุณารีเฟรชหน้าใหม่อีกครั้ง'
+            });
         }
     });
     
-    let selectedFile = null;
-
     const saveEventBtn = document.getElementById("saveEventBtn");
     const cancelEventBtn = document.getElementById("cancelEventBtn");
 
     const eventName = document.getElementById("eventName");
     const eventDescription = document.getElementById("eventDescription");
 
-    const monthTh = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-
     const timeTh = [["08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",], ["00","30"]]
-
-    function getEventDateRange() {
-        if(selectedValue !== "วันสอบ"){
-            return {
-                startYear: parseInt(document.getElementById("selectYear").value) || 0,
-                startMonth: parseInt(document.getElementById("selectMonth").value) || 0,
-                startDay: parseInt(document.getElementById("selectDay").value) || 0,
-            };
-        }else if (sectionCount === 1){
-            return {
-                startYear: parseInt(document.getElementById("start-select-year").value) || 0,
-                startMonth: parseInt(document.getElementById("start-select-month").value) || 0,
-                startDay: parseInt(document.getElementById("start-select-day").value) || 0,
-            };
-        }else{
-            return{
-                startYear: parseInt(document.getElementById("start-select-year"+(sectionCount-1)).value) || 0,
-                startMonth: parseInt(document.getElementById("start-select-month"+(sectionCount-1)).value) || 0,
-                startDay: parseInt(document.getElementById("start-select-day"+(sectionCount-1)).value) || 0
-            }
-        }
-    }
 
     function checkAppear(){
         const groupOnly = document.getElementById("groupOnlyCheckbox").checked;
@@ -474,72 +446,51 @@
         document.getElementById('selectedGroupContainer').classList.toggle('d-none', !groupOnly);
     }
 
-    function removeCount(){
-        sectionCount--;
-        document.getElementById('select-group-number'+sectionCount).style.display = 'none';
-        document.getElementById('select-group-number'+sectionCount+'-label').style.display = 'none';
-        document.getElementById("start-select-date"+sectionCount).style.display = "none";
-        groupNumber("select-group-number"+sectionCount);
-        sourceGroup();
-    }
+    async function generateAutoSchedule() {
+        const startDateStr = document.getElementById("examStartDate").value;
+        const daysCount = parseInt(document.getElementById("examDaysCount").value);
 
-    function addMoreGroup() {
-        document.getElementById('select-group-number'+sectionCount+'-label').style.display = 'flex';
-        document.getElementById('select-group-number'+sectionCount).style.display = 'flex';
-        document.getElementById('select-group-number'+sectionCount).disabled = false;
-        document.getElementById("addMoreGroupBtn").style.display = "none";
-    }
+        if (!startDateStr || isNaN(daysCount) || daysCount < 1) {
+            Swal.fire({ icon: 'warning', title: 'กรุณากรอกข้อมูล', text: 'เลือกวันที่เริ่มและจำนวนวันสอบให้ถูกต้อง' });
+            return;
+        }
 
-    async function initGroupSelection(selectElement) {
-        const selectedValue = selectElement.value;
+        if (!data || !data.groups || data.groups.length === 0) {
+            Swal.fire({ icon: 'error', title: 'ไม่พบข้อมูลกลุ่ม', text: 'ไม่มีกลุ่มที่พร้อมสอบในขณะนี้' });
+            return;
+        }
+
+        const groups = [...data.groups];
+        // สุ่มรายชื่อกลุ่มเพื่อให้ยุติธรรม
+        groups.sort(() => Math.random() - 0.5);
+
+        const numGroups = groups.length;
+        const basePerDay = Math.floor(numGroups / daysCount);
+        let remainder = numGroups % daysCount;
+
         const container = document.getElementById("groupCreate");
-        document.getElementById("start-select-date").style.display = "inline-block";
         container.innerHTML = ''; // ล้างทั้งหมดก่อนเริ่มใหม่
         sectionCount = 0; 
-        // แสดงปุ่ม "เพิ่ม"
-        document.getElementById("addMoreGroupBtn").style.display = "inline-block";
-        // สร้างชุดที่ 1 ทันที
-        const firstSet = await addNewGroupSection(selectedValue);
-        container.innerHTML = firstSet;
-        groupNumber("select-group-number"+sectionCount);
-    }
 
-    async function initGroupSelectionMore(selectElement,currentSectionCount) {
-        const selectedValue = selectElement.value;
-        const container = document.getElementById("sub-container-"+currentSectionCount);
-        document.getElementById("start-select-date"+sectionCount).style.display = "inline-block";
-        const td = document.getElementById("start-select-day"+currentSectionCount);
-        const tm = document.getElementById("start-select-month"+currentSectionCount);
-        const ty = document.getElementById("start-select-year"+currentSectionCount);
-        container.innerHTML = '';
-        sectionCount = currentSectionCount === sectionCount && (currentSectionCount - sectionCount === 1 || sectionCount - currentSectionCount === 1) ?  currentSectionCount-1 : currentSectionCount;
-        const more = await addNewGroupSection(selectedValue);
-        container.insertAdjacentHTML('beforeend', more);
-        groupNumber("select-group-number"+sectionCount);
-        document.getElementById("select-group-number"+(sectionCount-1)).selectedIndex = selectedValue;
-        document.getElementById("addMoreGroupBtn").style.display = "inline-block";
-        ty.value = "";
-        tm.value = "";
-        td.value = "";
-        tm.disabled = true;
-        td.disabled = true;
-    }
+        let groupIndex = 0;
+        let startDate = new Date(startDateStr);
 
-    function addNewGroupSection(selectedValue) {
-        sectionCount++; // เพิ่มลำดับชุด
-
-        const groups = data.groups;
-        const teachers = data.teachers;
+        // คำนวณภาระงานเริ่มต้น
+        let teacherWorkload = {};
+        data.teachers.forEach(t => teacherWorkload[t.username] = 0);
         
-        const groupsOptions = (groups && groups.length > 0)
-            ? groups.map(g => `<option value="${g._id}">${g.projectName}</option>`).join('')
-            : `<option value="" disabled style="color: #a0aec0; font-style: italic;">-- ไม่มีกลุ่มให้เลือก --</option>`;
+        groups.forEach(g => {
+            let adv = Array.isArray(g.advisor) ? g.advisor[0] : g.advisor;
+            if (adv) {
+                let cleanAdv = adv.replace(" (Pending)", "");
+                if (teacherWorkload[cleanAdv] !== undefined) {
+                    teacherWorkload[cleanAdv]++;
+                }
+            }
+        });
 
-        const teachersOptions = (teachers && teachers.length > 0)
-            ? teachers.map(t => `<option value="${t.username}">${t.title || ""} ${t.name}</option>`).join('')
-            : `<option value="" disabled>ไม่มีอาจารย์</option>`;
-
-        
+        const groupsOptions = data.groups.map(g => `<option value="${g._id}">${g.projectName}</option>`).join('');
+        const teachersOptions = data.teachers.map(t => `<option value="${t.username}">${t.title || ""} ${t.name}</option>`).join('');
         const timesOptions = timeTh[0].flatMap(hour => {
             const minutesArray = timeTh[1];
             
@@ -552,83 +503,132 @@
             });
         }).join('');
 
-        // สร้าง HTML สำหรับ 1 ชุด (Section)
-        let sectionHTML = `
-        <div class="group-section border p-3 rounded mt-3 animated--grow-in" id="section-${sectionCount}" style="background: #f8f9fc;">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="m-0 font-weight-bold text-primary">ชุดที่ ${sectionCount}</h6>
-                ${sectionCount > 1 ? `<button class="btn btn-sm btn-danger" onclick="this.parentElement.parentElement.remove(); removeCount();">ลบชุดนี้</button>` : ''}
-            </div>
-            <div class="d-flex flex-column align-items-center">`;
+        for (let d = 1; d <= daysCount; d++) {
+            let groupsThisDay = basePerDay + (remainder > 0 ? 1 : 0);
+            remainder--;
 
-        for (let i = 1; i <= selectedValue; i++) {
-            sectionHTML += `
-            <div class="w-100 mb-3">
-                <div class="d-flex flex-row align-items-start"> <div class="d-flex align-items-center pt-2">
-                        <span class="mr-2">${i}.</span>
-                    </div>
-                    <div class="d-flex flex-column w-100" style="gap: 7px;">
-                        <div class="d-flex align-items-center w-100" style="gap: 7px;">
-                            <select id="group${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="sourceGroup(this,${sectionCount},${selectedValue},${i}); updateWorkloadUI();">
-                                <option value="" disabled selected hidden>เลือกกลุ่ม</option>
-                                ${groupsOptions}
-                            </select>
-                            <select id="time${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="populateTime(this,${sectionCount},${selectedValue},${i});">
-                                <option value="" disabled selected hidden>เลือกเวลา</option>
-                                ${timesOptions}
-                            </select>
-                        </div>
-                        
-                        <div class="teacher-grid-container" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; width: 100%;">
-                            <select id="director-one-${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="sourceTeacher(this,${sectionCount},${i}); updateWorkloadUI();" style="background-color: #e9ecef; pointer-events: none;">
-                                <option value="" disabled selected hidden>อาจารย์ที่ปรึกษา</option>
-                                ${teachersOptions}
-                            </select>
-                            <select id="director-two-${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="sourceTeacher(this,${sectionCount},${i}); updateWorkloadUI();">
-                                <option value="" disabled selected hidden>เลือกกรรมการ</option>
-                                ${teachersOptions}
-                            </select>
-                            <select id="director-three-${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="sourceTeacher(this,${sectionCount},${i}); updateWorkloadUI();">
-                                <option value="" disabled selected hidden>เลือกประธานกรรมการ</option>
-                                ${teachersOptions}
-                            </select>
-                        </div>
-                    </div>
+            if (groupsThisDay === 0) continue;
+
+            // ข้ามเสาร์-อาทิตย์
+            while (startDate.getDay() === 0 || startDate.getDay() === 6) {
+                startDate.setDate(startDate.getDate() + 1);
+            }
+            
+            let localDate = new Date(startDate.getTime() - (startDate.getTimezoneOffset() * 60000));
+            let currentDateStr = localDate.toISOString().split('T')[0];
+
+            sectionCount++;
+            
+            let sectionHTML = `
+            <div class="group-section border p-3 rounded mt-3 animated--grow-in" id="section-${sectionCount}" style="background: #f8f9fc;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="m-0 font-weight-bold text-primary">วันที่จัดสอบ ${d} (ชุดที่ ${sectionCount})</h6>
                 </div>
-            </div>`;
+                
+                <input type="hidden" id="select-group-number${sectionCount}" value="${groupsThisDay}">
+                
+                <div class="form-group mt-2 w-100">
+                    <input type="text" id="start-eventDate${sectionCount}" class="form-control custom-date-input" value="${currentDateStr}" placeholder="เลือกวันที่...">
+                </div>
+
+                <div class="d-flex flex-column align-items-center">`;
+
+            for (let i = 1; i <= groupsThisDay; i++) {
+                sectionHTML += `
+                <div class="w-100 mb-3">
+                    <div class="d-flex flex-row align-items-start"> 
+                        <div class="d-flex align-items-center pt-2">
+                            <span class="mr-2">${i}.</span>
+                        </div>
+                        <div class="d-flex flex-column w-100" style="gap: 7px;">
+                            <div class="d-flex align-items-center w-100" style="gap: 7px;">
+                                <select id="group${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="sourceGroup(this,${sectionCount},${groupsThisDay},${i}); updateWorkloadUI();">
+                                    <option value="" disabled hidden>เลือกกลุ่ม</option>
+                                    ${groupsOptions}
+                                </select>
+                                <select id="time${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="populateTime(this,${sectionCount},${groupsThisDay},${i});">
+                                    <option value="" disabled hidden>เลือกเวลา</option>
+                                    ${timesOptions}
+                                </select>
+                            </div>
+                            
+                            <div class="teacher-grid-container" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; width: 100%;">
+                                <select id="director-one-${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="sourceTeacher(this,${sectionCount},${i}); updateWorkloadUI();" style="background-color: #e9ecef; pointer-events: none;">
+                                    <option value="" disabled hidden>อาจารย์ที่ปรึกษา</option>
+                                    ${teachersOptions}
+                                </select>
+                                <select id="director-two-${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="sourceTeacher(this,${sectionCount},${i}); updateWorkloadUI();">
+                                    <option value="" disabled hidden>เลือกกรรมการ</option>
+                                    ${teachersOptions}
+                                </select>
+                                <select id="director-three-${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="sourceTeacher(this,${sectionCount},${i}); updateWorkloadUI();">
+                                    <option value="" disabled hidden>เลือกประธานกรรมการ</option>
+                                    ${teachersOptions}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }
+
+            sectionHTML += `</div></div>`;
+            container.insertAdjacentHTML('beforeend', sectionHTML);
+
+            initializeFlatpickr(`#start-eventDate${sectionCount}`);
+
+            // ใส่ข้อมูลเริ่มต้น (Pre-fill)
+            for (let i = 1; i <= groupsThisDay; i++) {
+                let g = groups[groupIndex++];
+                
+                document.getElementById(`group${sectionCount}-s${i}`).value = g._id;
+                
+                let timeVal = 540 + ((i - 1) * 30); // เริ่ม 09:00 เพิ่มทีละ 30 นาที
+                if (timeVal <= 1200) {
+                    let timeSelect = document.getElementById(`time${sectionCount}-s${i}`);
+                    if (timeSelect.querySelector(`option[value="${timeVal}"]`)) {
+                        timeSelect.value = timeVal;
+                    }
+                }
+
+                let adv = Array.isArray(g.advisor) ? g.advisor[0] : g.advisor;
+                let cleanAdv = adv ? adv.replace(" (Pending)", "") : "";
+                let advSelect = document.getElementById(`director-one-${sectionCount}-s${i}`);
+                if (cleanAdv && advSelect.querySelector(`option[value="${cleanAdv}"]`)) {
+                    advSelect.value = cleanAdv;
+                }
+
+                let availableTeachers = Object.keys(teacherWorkload).filter(t => t !== cleanAdv);
+                availableTeachers.sort((a, b) => {
+                    if (teacherWorkload[a] === teacherWorkload[b]) return Math.random() - 0.5;
+                    return teacherWorkload[a] - teacherWorkload[b];
+                });
+
+                let dir1 = availableTeachers[0];
+                let dir2 = availableTeachers[1];
+
+                if (dir1) {
+                    document.getElementById(`director-two-${sectionCount}-s${i}`).value = dir1;
+                    teacherWorkload[dir1]++;
+                }
+                if (dir2) {
+                    document.getElementById(`director-three-${sectionCount}-s${i}`).value = dir2;
+                    teacherWorkload[dir2]++;
+                }
+            }
+
+            startDate.setDate(startDate.getDate() + 1);
         }
 
-        sectionHTML += `</div></div>
-                <label class="input-label mt-2" id="select-group-number${sectionCount}-label" style="display: none;">เลือกจำนวนกลุ่มที่จะสร้าง</label>
-                <div class="time-col mt-2">
-                    <select id="select-group-number${sectionCount}" class="form-control custom-select-modern" disabled style="display: none;" onchange="initGroupSelectionMore(this,${sectionCount}); sourceGroup();">
-                        <option value="" disabled selected hidden>จำนวนกลุ่ม</option>
-                    </select>
-                </div>
-                <div id="start-select-date${sectionCount}" class="form-group mt-4 animated--grow-in w-100" style="display: none;">
-                <label id="start-select-label${sectionCount}" class="input-label">เริ่มวันที่</label>
-                <div class="row no-gutters d-flex flex-nowrap align-items-center" style="justify-content: space-evenly;gap: 10px;">
-                    <div class="time-col">
-                        <select id="start-select-year${sectionCount}" class="form-control custom-select-modern" onchange="updateToDateOptions('start-select-day${sectionCount}', 'start-select-month${sectionCount}', 'start-select-year${sectionCount}');">
-                            <option value="" disabled selected hidden>ปี (พ.ศ.)</option>
-                        </select>
-                    </div>
-                    <div class="time-col">
-                        <select id="start-select-month${sectionCount}" class="form-control custom-select-modern" onchange="updateToDateOptions('start-select-day${sectionCount}', 'start-select-month${sectionCount}', 'start-select-year${sectionCount}');" disabled>
-                            <option value="" disabled selected hidden>เดือน</option>
-                        </select>
-                    </div>
-                    <div class="time-col">
-                        <select id="start-select-day${sectionCount}" class="form-control custom-select-modern" onchange="updateToDateOptions('start-select-day${sectionCount}', 'start-select-month${sectionCount}', 'start-select-year${sectionCount}');" disabled>
-                            <option value="" disabled selected hidden>วัน</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            <div id="sub-container-${sectionCount}" class="animated--grow-in"></div>`;
-
-        // 🚩 ใช้ insertAdjacentHTML เพื่อ "ต่อท้าย" โดยไม่ล้างของเก่า
-        return sectionHTML;
+        // อัปเดต Dropdown เพื่อไม่ให้เลือกกลุ่มซ้ำ
+        for (let s = 1; s <= sectionCount; s++) {
+            let groupsThisDay = parseInt(document.getElementById(`select-group-number${s}`).value);
+            for (let i = 1; i <= groupsThisDay; i++) {
+                let groupEl = document.getElementById(`group${s}-s${i}`);
+                if(groupEl) sourceGroup(groupEl, s, groupsThisDay, i);
+            }
+        }
+        
+        updateWorkloadUI();
     }
 
     function sourceGroup(selectedElement, sectionCount, selectValue, selfNum) {
@@ -751,15 +751,6 @@
     });
 }
 
-    function groupNumber(groupNumber) {
-        const groupCount = document.getElementById(groupNumber);
-        groupCount.innerHTML = '<option value="" disabled selected hidden>จำนวนกลุ่ม</option>';
-        for (let i = 1; i <= 20; i++) {
-            groupCount.add(new Option(i.toString()));
-        }
-    }
-    groupNumber("select-group-number");
-
     function populateTime(selectElement, timeSectionCount, selectValue, selfNum) {
         const selectedValue = parseInt(selectElement.value); 
         
@@ -813,270 +804,56 @@
         }
     }
     
-    function initDatePicker() {
-        let pickerSets = [];
-        if (!sectionCount || sectionCount === 0 ){
-            pickerSets = [
-                { year: "selectYear", month: "selectMonth", day: "selectDay"},
-                { year:"start-select-year", month:"start-select-month", day:"start-select-day"}
-            ];
-        }else{
-             pickerSets = [{ year: "start-select-year"+sectionCount, month: "start-select-month"+sectionCount, day: "start-select-day"+sectionCount}]; 
+    function updateMinDate() {
+        const today = new Date().toISOString().split('T')[0];
+        
+        const eventDate = document.getElementById("eventDate");
+        if (eventDate && eventDate._flatpickr) eventDate._flatpickr.set('minDate', today);
+        
+        const startEventDate = document.getElementById("start-eventDate");
+        if (startEventDate && startEventDate._flatpickr) {
+            startEventDate._flatpickr.set('minDate', today);
         }
 
-        const now = new Date();
-        const currentYear = document.getElementById("start-select-year").value ? parseInt(document.getElementById("start-select-year").value) : now.getFullYear();
-        const currentMonth = now.getMonth() + 1; // 1-12
+        if (selectedValue === "วันสอบ") {
+            for (let i = 1; i <= sectionCount; i++) {
+                const el = document.getElementById("start-eventDate" + i);
+                if (el && el._flatpickr) {
+                    // หาช่องกรอกวันที่ของชุดก่อนหน้าเพื่อตั้งค่า min
+                    const prevId = i === 1 ? "start-eventDate" : "start-eventDate" + (i - 1);
+                    const prevEl = document.getElementById(prevId);
+                    
+                    if (prevEl && prevEl.value) {
+                        el._flatpickr.set('minDate', prevEl.value);
+                        // หากวันที่ที่เคยเลือกไว้น้อยกว่าเงื่อนไข ให้เคลียร์ค่าทิ้ง
+                        if (el.value && el.value < prevEl.value) {
+                            el._flatpickr.clear();
+                        }
+                    } else {
+                        el._flatpickr.set('minDate', today);
+                    }
+                }
+            }
+        }
+    }
 
-        pickerSets.forEach(set => {
-            const sYear = document.getElementById(set.year);
-            if (!sYear) return;
-
-            sYear.innerHTML = '<option value="" disabled selected hidden>ปี (พ.ศ.)</option>';
-
-            // ปี: วนจากปัจจุบันไปอีก 10 ปี
-            for (let i = currentYear; i <= currentYear + 10; i++) {
-                sYear.add(new Option(i + 543, i));
+    function initializeFlatpickr(selector) {
+        flatpickr(selector, {
+            locale: "th",
+            dateFormat: "Y-m-d",
+            minDate: "today",
+            disableMobile: true, // ใช้ปฏิทินของ Flatpickr บนมือถือแทน
+            onChange: function() {
+                updateMinDate();
             }
         });
     }
 
-    function populateDays(dayId, monthId, yearId) {
-        const sYear = document.getElementById(yearId);
-        const sMonth = document.getElementById(monthId);
-        const sDay = document.getElementById(dayId);
-        if (!sDay || !sMonth || !sYear) return;
-
-        // [1] หาลำดับของตัวเองและค่าปัจจุบัน
-        const match = dayId.match(/\d+/);
-        const myNum = match ? parseInt(match[0]) : 0; 
-        const sYearValue = parseInt(sYear.value) || 0;
-        const sMonthValue = parseInt(sMonth.value) || 0;
-        const sDayValue = parseInt(sDay.value) || 0;
-
-        // ดึงค่าวันที่ปัจจุบันมาใช้เฉพาะชุดแรก หรือใช้กรองพื้นฐาน
-        const now = new Date();
-        const nowDate = now.getDate();
-        const nowMonth = now.getMonth() + 1;
-        const nowYear = now.getFullYear();
-
-        if(sYearValue > 0 && sMonthValue > 0) sDay.disabled = false;
-
-        // --- ส่วนที่ 1: เติมวันให้ตัวเอง (sDay) ---
-        const currentDay = sDay.value;
-        const daysInMainMonth = new Date(sYearValue, sMonthValue, 0).getDate();
-        sDay.innerHTML = '<option value="" disabled selected hidden>วัน</option>';
-
-        // หา ID ของ "ชุดก่อนหน้า"
-        let prevSuffix = "";
-        if (myNum > 0) {
-            prevSuffix = (myNum === 1) ? "" : (myNum - 1);
-        }
-        const pYear = document.getElementById("start-select-year" + prevSuffix);
-        const pMonth = document.getElementById("start-select-month" + prevSuffix);
-        const pDay = document.getElementById("start-select-day" + prevSuffix);
-
-        for (let d = 1; d <= daysInMainMonth; d++) {
-            // 🚩 เงื่อนไข A: สำหรับทุกชุด (รวมชุดแรก) ห้ามเก่ากว่าวันปัจจุบัน
-            if (sYearValue === nowYear && sMonthValue === nowMonth && d < nowDate) {
-                continue;
-            }
-
-            // 🚩 เงื่อนไข B: สำหรับชุดที่ 2 เป็นต้นไป ห้ามเก่ากว่าชุดก่อนหน้า
-            if (selectedValue === "วันสอบ" && pYear && pMonth && pDay) {
-                const pyVal = parseInt(pYear.value) || 0;
-                const pmVal = parseInt(pMonth.value) || 0;
-                const pdVal = parseInt(pDay.value) || 0;
-
-                if (sYearValue === pyVal && sMonthValue === pmVal && pdVal > 0 && d <= pdVal) continue;
-                if (sYearValue < pyVal || (sYearValue === pyVal && sMonthValue < pmVal)) continue;
-            }
-            
-            sDay.add(new Option(d, d));
-        }
-        sDay.value = currentDay;
-        if (sDay.selectedIndex === -1) sDay.value = "";
-
-
-        // --- ส่วนที่ 2: สั่งให้ "ชุดถัดไป" อัปเดตตามเรา ---
-        if (selectedValue === "วันสอบ") {
-            for (let i = myNum + 1; i <= sectionCount; i++) {
-                const suffix = i === 0 ? "" : i;
-                const ty = document.getElementById("start-select-year" + suffix);
-                const tm = document.getElementById("start-select-month" + suffix);
-                const td = document.getElementById("start-select-day" + suffix);
-
-                if (!td || !tm || !ty || td === sDay) continue;
-
-                const targetYearValue = parseInt(ty.value) || 0;
-                const targetMonthValue = parseInt(tm.value) || 0;
-                const currentSelectedDay = td.value;
-
-                const daysInTargetMonth = new Date(targetYearValue, targetMonthValue, 0).getDate();
-                td.innerHTML = '<option value="" disabled selected hidden>วัน</option>';
-
-                for (let d = 1; d <= daysInTargetMonth; d++) {
-                    // กรองวันปัจจุบัน (กันเหนียวให้ชุดลูกด้วย)
-                    if (targetYearValue === nowYear && targetMonthValue === nowMonth && d < nowDate) continue;
-
-                    // กรองตามวันของชุดแม่ (เรา)
-                    if (targetYearValue === sYearValue && targetMonthValue === sMonthValue) {
-                        if (sDayValue > 0 && d <= sDayValue) continue;
-                    }
-
-                    if (targetYearValue < sYearValue || (targetYearValue === sYearValue && targetMonthValue < sMonthValue)) {
-                        continue;
-                    }
-
-                    td.add(new Option(d, d));
-                }
-                td.value = currentSelectedDay;
-                if (td.selectedIndex === -1) td.value = "";
-            }
-        }
-    }
-
-    function updateMonthOptions(monthId, yearId) {
-        const sYear = document.getElementById(yearId);
-        const sMonth = document.getElementById(monthId);
-        if (!sMonth || !sYear) return;
-
-        // [1] หาลำดับของตัวเองและค่าปัจจุบัน
-        const match = monthId.match(/\d+/);
-        const myNum = match ? parseInt(match[0]) : 0; 
-        const sYearValue = parseInt(sYear.value) || 0;
-        const sMonthValue = parseInt(sMonth.value) || 0;
-
-        // ดึงค่าวันที่ปัจจุบันมาใช้เฉพาะชุดแรก หรือใช้กรองพื้นฐาน
-        const now = new Date();
-        const nowMonth = now.getMonth() + 1;
-        const nowYear = now.getFullYear();
-
-        if(sYearValue > 0 ) sMonth.disabled = false;
-
-        // --- ส่วนที่ 1: เติมเดือนให้ตัวเอง (sMonth) ---
-        const currentMonth = sMonth.value;
-        sMonth.innerHTML = '<option value="" disabled selected hidden>เดือน</option>';
-
-        // หา ID ของ "ชุดก่อนหน้า"
-        let prevSuffix = "";
-        if (myNum > 0) {
-            prevSuffix = (myNum === 1) ? "" : (myNum - 1);
-        }
-        const pYear = document.getElementById("start-select-year" + prevSuffix);
-        const pMonth = document.getElementById("start-select-month" + prevSuffix);
-        const pDay = document.getElementById("start-select-day" + prevSuffix);
-
-        for (let m = 1; m <= 12; m++) {
-            // 🚩 เงื่อนไข A: สำหรับทุกชุด (รวมชุดแรก) ห้ามเก่ากว่าเดือนปัจจุบัน
-            if (sYearValue === nowYear && m < nowMonth) {
-                continue;
-            }
-
-            // 🚩 เงื่อนไข B: สำหรับชุดที่ 2 เป็นต้นไป ห้ามเก่ากว่าชุดก่อนหน้า
-            if (selectedValue === "วันสอบ" && pYear && pMonth) {
-                const pyVal = parseInt(pYear.value) || 0;
-                const pmVal = parseInt(pMonth.value) || 0;
-
-                if (sYearValue === pyVal &&  pmVal > 0 && m <= pmVal) continue;
-                if (sYearValue < pyVal ) continue;
-            }
-            
-            sMonth.add(new Option(monthTh[m-1], m));
-        }
-        sMonth.value = currentMonth;
-        if (sMonth.selectedIndex === -1) sMonth.value = "";
-
-
-        // --- ส่วนที่ 2: สั่งให้ "ชุดถัดไป" อัปเดตตามเรา ---
-        if (selectedValue === "วันสอบ") {
-            for (let i = myNum + 1; i <= sectionCount; i++) {
-                const suffix = i === 0 ? "" : i;
-                const ty = document.getElementById("start-select-year" + suffix);
-                const tm = document.getElementById("start-select-month" + suffix);
-                const td = document.getElementById("start-select-day" + suffix);
-
-                if (!tm || !ty || tm === sMonth) continue;
-
-                const targetYearValue = parseInt(ty.value) || 0;
-                const currentSelectedMonth = tm.value;
-
-                tm.innerHTML = '<option value="" disabled selected hidden>เดือน</option>';
-
-                for (let m = 1; m <= 12; m++) {
-                    // กรองวันปัจจุบัน (กันเหนียวให้ชุดลูกด้วย)
-                    if (targetYearValue === nowYear && m < nowMonth) continue;
-
-                    // กรองตามวันของชุดแม่ (เรา)
-                    if (targetYearValue === sYearValue ) {
-                        if (sMonthValue > 0 && m <= sMonthValue) continue;
-                    }
-
-                    if (targetYearValue < sYearValue) {
-                        continue;
-                    }
-
-                    tm.add(new Option(monthTh[m-1], m));
-                }
-                tm.value = currentSelectedMonth;
-                if (tm.selectedIndex === -1) {
-                    tm.value = "";
-                    td.value = "";
-                    td.disabled = true;
-                }
-            }
-        }
-    }
-
-    function updateYearOptions(yearId) {
-        const sYear = document.getElementById(yearId);
-        if (!sYear) return;
-
-        // หาลำดับตัวเอง (ถ้าไม่มีเลขคือชุดที่ 0)
-        const match = yearId.match(/\d+/);
-        const selfNum = match ? parseInt(match[0]) : 0;
-        const sYearValue = parseInt(sYear.value) || 0;
-        const currentYear = new Date().getFullYear();
-        // เติมปีให้ตัวเองถ้าว่าง
-        if (sYear.options.length <= 1) {
-            sYear.innerHTML = '<option value="" disabled selected hidden>ปี (พ.ศ.)</option>';
-            for (let j = currentYear; j <= currentYear + 10; j++) {
-                sYear.add(new Option(j + 543, j));
-            }
-        }
-
-        if (selectedValue === "วันสอบ") {
-            // 🚩 แก้ไข: เริ่มลูปที่ตัวถัดไปเท่านั้น (i = selfNum + 1)
-            for (let i = selfNum + 1; i <= sectionCount; i++) {
-                const ty = document.getElementById("start-select-year" + i);
-                const tm = document.getElementById("start-select-month" + i);
-                const td = document.getElementById("start-select-day" + i);
-
-                if (!ty) continue;
-
-                const targetValue = ty.value;
-                ty.innerHTML = '<option value="" disabled selected hidden>ปี (พ.ศ.)</option>';
-                let startY = sYearValue || new Date().getFullYear();
-                for (let j = startY; j <= startY + 10; j++) {
-                    ty.add(new Option(j + 543, j));
-                }
-
-                // ถ้าปีเดิมของชุดหลังยังใช้ได้ (ไม่น้อยกว่าตัวแม่) ให้เก็บไว้
-                if (targetValue && parseInt(targetValue) >= sYearValue) {
-                    ty.value = targetValue;
-                } else {
-                    ty.value = ""; if(tm) tm.value = ""; if(td) td.value = "";
-                    tm.disabled = true;
-                    td.disabled = true;
-                }
-            }
-        }
-    }
-
-    function updateToDateOptions(sDay, sMonth, sYear) {
-        updateYearOptions(sYear);
-        updateMonthOptions(sMonth, sYear);
-        populateDays(sDay, sMonth, sYear);
+    function initDatePicker() {
+        initializeFlatpickr("#eventDate");
+        initializeFlatpickr("#examStartDate");
+        initializeFlatpickr("#start-eventDate");
+        updateMinDate();
     }
 
     function selectActivity(element) {
@@ -1164,6 +941,17 @@
         eventDescription.value = "";
         eventName.style.display = "none";
         eventName.value = "";
+        
+        const evDate = document.getElementById("eventDate");
+        if (evDate && evDate._flatpickr) evDate._flatpickr.clear();
+        
+        const sd = document.getElementById("start-eventDate");
+        if(sd && sd._flatpickr) sd._flatpickr.clear();
+
+        document.getElementById("examStartDate").value = "";
+        document.getElementById("examDaysCount").value = "";
+        document.getElementById("groupCreate").innerHTML = "";
+        
         initDatePicker(); 
         saveEventBtn.disabled = false;
         saveEventBtn.innerText = "บันทึกกิจกรรม";
@@ -1172,9 +960,7 @@
 
 
     saveEventBtn.addEventListener("click", () => {
-        const day = document.getElementById("selectDay").value;
-        const month = document.getElementById("selectMonth").value;
-        const year = document.getElementById("selectYear").value;
+        const eventDateVal = document.getElementById("eventDate").value;
         const groupOnly = document.getElementById("groupOnlyCheckbox").checked;
 
         if (groupOnly && !chosenGroup) {
@@ -1187,7 +973,7 @@
             return;
         }
 
-        if (!selectedValue || selectedValue === "เลือกกิจกรรม"  || (selectedValue !== "วันสอบ" && (!day || !month || !year))) {
+        if (!selectedValue || selectedValue === "เลือกกิจกรรม"  || (selectedValue !== "วันสอบ" && !eventDateVal)) {
             Swal.fire({
                 icon: 'warning',
                 title: 'ข้อมูลไม่ครบถ้วน',
@@ -1215,22 +1001,31 @@
         const formData = new FormData();
         formData.append("title", Name || selectedValue);
         formData.append("description", desc);
-        formData.append("date", `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+        formData.append("date", eventDateVal);
         if(groupOnly) formData.append("chosenGroup", chosenGroup);
 
         if (selectedValue === "วันสอบ") {
             let examData = []; // ก้อนข้อมูลหลัก
 
             for (let i = 1; i <= sectionCount; i++) {
-                const year = document.getElementById(`start-select-year${i === 1 ? '' : i-1}`).value;
-                const month = document.getElementById(`start-select-month${i === 1 ? '' : i-1}`).value;
-                const day = document.getElementById(`start-select-day${i === 1 ? '' : i-1}`).value;
-                const dateString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                const dateInput = document.getElementById(`start-eventDate${i}`);
+                const dateString = dateInput ? dateInput.value : null;
+                
+                if (!dateString) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'ข้อมูลไม่ครบถ้วน',
+                        text: "กรุณาเลือกวันที่สำหรับการสอบให้ครบถ้วน",
+                        confirmButtonText: 'ตกลง'
+                    });
+                    saveEventBtn.disabled = false;
+                    return;
+                }
 
                 // 2. ดึงจำนวนแถว (selectedValue) ของชุดนั้น (สมมติเก็บไว้ใน attribute หรือตัวแปร)
                 // ในที่นี้ต้องระวังว่าแต่ละ Section อาจมีจำนวนแถวไม่เท่ากัน 
                 // แนะนำให้ดึงจากค่าของ select-group-number ในชุดนั้นๆ
-                const rowsCount = parseInt(document.getElementById(`select-group-number${i === 1 ? '' : i-1}`).value);
+                const rowsCount = parseInt(document.getElementById(`select-group-number${i}`).value);
 
                 let details = [];
                 for (let j = 1; j <= rowsCount; j++) {

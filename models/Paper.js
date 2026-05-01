@@ -18,7 +18,9 @@ const paperSchema = new mongoose.Schema({
   },
   passTimes: { type: Number, default: 0 },
   date: { type: Date, default: null }, 
-  director: { type: [String], default: [] }, // เปลี่ยนเป็นอาเรย์ว่างเพื่อความปลอดภัย
+  director: { type: String, default: null },
+  advisor: { type: String, default: null },
+  greatDirector: { type: String, default: null },// เปลี่ยนเป็นอาเรย์ว่างเพื่อความปลอดภัย
   autoPdfId: { type: String, default: null }
 });
 

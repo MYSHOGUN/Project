@@ -1,6 +1,9 @@
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;700&display=swap');
+
     /* จัด Layout หลักให้กึ่งกลางหน้าจอ */
     .platform-wrapper {
+        font-family: 'Prompt', sans-serif !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
@@ -23,15 +26,15 @@
     .paper-card {
         border-radius: 20px !important;
         border: none !important;
-        transition: all 0.3s ease !important;
+        transition: transform 0.2s ease, box-shadow 0.2s ease !important;
         background: #ffffff !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05) !important;
     }
 
-    /*.paper-card:hover {
+    .paper-card:hover {
         transform: translateY(-5px) !important;
-        box-shadow: 0 12px 25px rgba(0,0,0,0.1) !important;
-    }*/
+        box-shadow: 0 15px 35px rgba(78, 115, 223, 0.1) !important;
+    }
 
     .file-scroll-area {
         height: 180px !important;
@@ -101,8 +104,8 @@
 <div class="container-fluid">
     <div class="platform-wrapper">
         <div class="platform-container mb-3 text-center text-md-left">
-            <h1 class="font-weight-bold" style="color: #4e73df; font-size: 2.2rem;">
-                <i class="fas fa-file-export mr-3"></i>แพลตฟอร์มส่งเอกสาร
+            <h1 class="font-weight-bold text-gray-800" style="font-size: 2.2rem;">
+                <i class="fas fa-file-export mr-3 text-primary"></i>แพลตฟอร์มส่งเอกสาร
             </h1>
             <p class="text-muted">จัดการส่งเอกสาร ตรวจสอบความพร้อม และบันทึกผลการพิจารณาโครงงาน</p>
         </div>
@@ -226,8 +229,8 @@
                                     <label class="custom-control-label" for="fix-${paperId}">แก้ไข</label>
                                 </div>
                             </div>
-                            <textarea class="form-control mb-3 d-none mx-auto" id="comment-${paperId}" rows="2" style="max-width: 500px;" placeholder="ระบุสิ่งที่ต้องการให้แก้ไข..."></textarea>
-                            <button class="btn btn-success px-5 shadow-sm" style="border-radius: 10px;" onclick="submitResult('${paperId}')">ยืนยันส่งผลการสอบ</button>
+                            <textarea class="form-control mb-3 d-none mx-auto" id="comment-${paperId}" rows="2" style="max-width: 500px; border-radius: 12px;" placeholder="ระบุสิ่งที่ต้องการให้แก้ไข..."></textarea>
+                            <button class="btn btn-success px-5 shadow-sm rounded-pill font-weight-bold" onclick="submitResult('${paperId}')">ยืนยันส่งผลการสอบ</button>
                         </div>
                     </div>`;
                 }
@@ -248,7 +251,7 @@
                             
                             <div class="d-flex align-items-center" style="gap: 10px;">
                                 ${paper.autoPdfId ? `
-                                    <a href="/view-pdf/${paper.autoPdfId}" target="_blank" class="btn btn-sm btn-outline-danger shadow-sm px-3">
+                                    <a href="/view-pdf/${paper.autoPdfId}" target="_blank" class="btn btn-sm btn-outline-danger shadow-sm px-3 rounded-pill">
                                         <i class="fas fa-file-pdf mr-2"></i>ดาวน์โหลดแบบฟอร์ม
                                     </a>
                                 ` : `

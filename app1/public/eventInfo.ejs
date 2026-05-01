@@ -1,6 +1,9 @@
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;700&display=swap');
+
     /* จัด Layout ให้กึ่งกลางและสมบูรณ์ */
     .event-detail-wrapper {
+        font-family: 'Prompt', sans-serif !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
@@ -17,11 +20,12 @@
         border-radius: 20px !important;
         box-shadow: 0 12px 35px rgba(0,0,0,0.1) !important;
         border: none !important;
-        overflow: hidden !important;
     }
 
     .event-header {
-        background: #f8f9fc !important;
+        background: linear-gradient(135deg, #f8f9fc 0%, #ffffff 100%) !important;
+        border-top-left-radius: 20px;
+        border-top-right-radius: 20px;
         padding: 2.5rem !important;
         border-bottom: 2px solid #e3e6f0 !important;
     }
@@ -29,17 +33,37 @@
     .table-responsive {
         border-radius: 12px !important;
         border: 1px solid #dee2e6 !important;
+        overflow: hidden !important;
     }
 
     .table thead {
-        background-color: #4e73df !important;
+        background: linear-gradient(90deg, #4e73df 0%, #224abe 100%) !important;
         color: white !important;
+        border-bottom: 0 !important;
     }
 
     .excel-section {
         margin-top: 2.5rem !important;
         padding-top: 2rem !important;
         border-top: 2px dashed #eaecf4 !important;
+    }
+
+    /* Input styles for editable table */
+    .editable-input {
+        background: transparent;
+        transition: all 0.2s ease;
+        border-radius: 6px;
+    }
+    .editable-input:focus {
+        background: #fff !important;
+        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25) !important;
+        border-color: #bac8f3 !important;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fc !important;
+    }
+    .btn-rounded {
+        border-radius: 50px !important;
     }
 </style>
 
@@ -51,8 +75,8 @@
                 <i class="fas fa-calendar-alt mr-2 text-primary"></i>รายละเอียดกิจกรรม
             </h1>
             <% if (user && user.role === 'admin') { %>
-                <button class="btn btn-danger shadow-sm px-4" onclick="deleteEvent()" style="border-radius: 12px;">
-                    <i class="fas fa-trash-alt mr-2"></i> ลบกิจกรรม
+                <button class="btn btn-danger shadow-sm px-4 btn-rounded" onclick="deleteEvent()">
+                    <i class="fas fa-trash-alt mr-2"></i> ลบตารางกิจกรรม
                 </button>
             <% } %>
         </div>
@@ -95,32 +119,38 @@
                                             <th>กลุ่ม</th>
                                             <th>วันที่</th>
                                             <th>เริ่มเวลา</th>
-                                            <th>กรรมการ</th>
+                                            <th>อาจารย์ที่ปรึกษา</th>
+                                            <th>ประธานกรรมการ</th>
+                                            <th>กรรมการสอบ</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <% tableData.forEach((row, index) => { %>
                                             <tr class="schedule-row">
                                                 <% if (user.role === 'admin') { %>
-                                                    <td class="p-0"><input type="text" name="data[<%= index %>][ลำดับ]" class="form-control border-0 text-center bg-transparent" value="<%= index+1 %>"></td>
-                                                    <td class="p-0 font-weight-bold"><input type="text" name="data[<%= index %>][ชื่อกลุ่ม]" class="form-control border-0 bg-transparent" value="<%= row.groupName %>"></td>
+                                                    <td class="p-1"><input type="text" name="data[<%= index %>][ลำดับ]" class="form-control border-0 text-center editable-input" value="<%= index+1 %>"></td>
+                                                    <td class="p-1 font-weight-bold"><input type="text" name="data[<%= index %>][ชื่อกลุ่ม]" class="form-control border-0 editable-input" value="<%= row.groupName %>"></td>
                                                     <td class="p-0">
                                                         <input type="date" name="data[<%= index %>][dateOnly]" 
-                                                            class="form-control border-0 text-center bg-transparent" 
+                                                            class="form-control border-0 text-center editable-input" 
                                                             value="<%= new Date(row.date).toISOString().split('T')[0] %>">
                                                     </td>
                                                     <td class="p-0">
                                                         <input type="time" name="data[<%= index %>][timeOnly]" 
-                                                            class="form-control border-0 text-center font-weight-bold text-primary bg-transparent" 
+                                                            class="form-control border-0 text-center font-weight-bold text-primary editable-input" 
                                                             value="<%= (d => String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))(new Date(row.date)) %>">
                                                     </td>
-                                                    <td class="p-0"><textarea name="data[<%= index %>][กรรมการ]" class="form-control border-0 bg-transparent small" rows="1"><%= row.directors.join(', '); %></textarea></td>
+                                                    <td class="p-1"><textarea name="data[<%= index %>][อาจารย์ที่ปรึกษา]" class="form-control border-0 editable-input small" rows="1"><%= row.advisor || '' %></textarea></td>
+                                                    <td class="p-1"><textarea name="data[<%= index %>][ประธานกรรมการ]" class="form-control border-0 editable-input small" rows="1"><%= row.greatDirector || '' %></textarea></td>
+                                                    <td class="p-1"><textarea name="data[<%= index %>][กรรมการ]" class="form-control border-0 editable-input small" rows="1"><%= row.directors || '' %></textarea></td>
                                                 <% } else { %>
                                                     <td class="text-center text-muted"><%= index+1 %></td>
                                                     <td class="font-weight-bold text-gray-800"><%= row.groupName %></td>
                                                     <td class="text-center"><%= new Date(row.date).toLocaleDateString('th-TH', { dateStyle: 'long' }) || '-' %></td>
                                                     <td class="text-center font-weight-bold text-primary"><%= (d => String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))(new Date(row.date)) %></td>
-                                                    <td class="small"><%= row.directors %></td>
+                                                    <td class="small"><%= row.advisor || '-' %></td>
+                                                    <td class="small"><%= row.greatDirector || '-' %></td>
+                                                    <td class="small"><%= row.directors || '-' %></td>
                                                 <% } %>
                                             </tr>
                                         <% }) %>
@@ -130,7 +160,7 @@
 
                             <% if (user.role === 'admin') { %>
                                 <div class="text-right mt-3">
-                                    <button type="button" id="saveScheduleBtn" class="btn btn-success shadow-sm">
+                                    <button type="button" id="saveScheduleBtn" class="btn btn-success shadow-sm btn-rounded px-4">
                                         <i class="fas fa-save mr-2"></i>บันทึกการแก้ไขทั้งหมด
                                     </button>
                                 </div>

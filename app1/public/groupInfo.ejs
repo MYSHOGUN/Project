@@ -1,5 +1,8 @@
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;700&display=swap');
+
     .content-container {
+        font-family: 'Prompt', sans-serif !important;
         width: 80% !important;
         margin: 0 auto !important;
     }
@@ -48,21 +51,130 @@
         max-width: 200px !important;
         width: auto !important;
     }
+    
+    /* Modern UI Enhancements */
+    .modern-card {
+        border-radius: 16px !important;
+        border: none !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05) !important;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .modern-card:hover {
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+    }
+    .member-item-card {
+        background: #f8f9fc;
+        border-radius: 12px;
+        padding: 15px 10px;
+        transition: all 0.3s ease;
+    }
+    .member-item-card:hover {
+        background: #fff;
+        box-shadow: 0 4px 15px rgba(78, 115, 223, 0.15);
+        transform: translateY(-3px);
+    }
+    .file-pill {
+        border-radius: 50px !important;
+        transition: all 0.2s ease;
+    }
+    .file-pill:hover {
+        background-color: #eaecf4 !important;
+    }
+
+    /* CSS สำหรับ Stepper */
+    .stepper-wrapper {
+        display: flex !important;
+        justify-content: space-between !important;
+        margin-top: 10px !important;
+        margin-bottom: 10px !important;
+        position: relative !important;
+    }
+    .stepper-item {
+        position: relative !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        flex: 1 !important;
+        transition: 0.3s !important;
+    }
+    .stepper-item::before { position: absolute !important; content: "" !important; border-bottom: 4px solid #e3e6f0 !important; width: 100% !important; top: 22px !important; left: -50% !important; z-index: 2 !important; }
+    .stepper-item::after { position: absolute !important; content: "" !important; border-bottom: 4px solid #e3e6f0 !important; width: 100% !important; top: 22px !important; left: 50% !important; z-index: 2 !important; }
+    .stepper-item .step-counter {
+        position: relative !important; z-index: 5 !important; display: flex !important; justify-content: center !important; align-items: center !important; width: 45px !important; height: 45px !important; border-radius: 50% !important; background: #e3e6f0 !important; margin-bottom: 10px !important; font-size: 1.2rem !important; color: white !important;
+    }
+    
+    .stepper-item.completed .step-counter { background-color: #1cc88a !important; }
+    .stepper-item.completed::after, .stepper-item.completed::before { border-bottom-color: #1cc88a !important; }
+    
+    .stepper-item.active .step-counter { background-color: #4e73df !important; box-shadow: 0 0 10px rgba(78, 115, 223, 0.5) !important; }
+    .stepper-item.failed .step-counter { background-color: #e74a3b !important; }
+    
+    .stepper-item:first-child::before { content: none !important; }
+    .stepper-item:last-child::after { content: none !important; }
+    
+    .step-name {
+        font-size: 0.9rem !important;
+        font-weight: 700 !important;
+        color: #858796 !important;
+        text-align: center !important;
+    }
+    .stepper-item.active .step-name { color: #4e73df !important; }
+    .stepper-item.completed .step-name { color: #1cc88a !important; }
+    .stepper-item.failed .step-name { color: #e74a3b !important; }
 </style>
 
 <div class="main-content-wrapper" style="min-height: 84vh;">
-    <button onclick="window.location.href='/status'" class="btn btn-dark" style="width: fit-content;margin-left: 2vw; margin-top: 2vh;"><i class="fas fa-arrow-left"></i> ย้อนกลับ</button>
+    <button onclick="window.location.href='/status'" class="btn btn-light rounded-pill shadow-sm font-weight-bold text-gray-700" style="width: fit-content;margin-left: 2vw; margin-top: 2vh;"><i class="fas fa-arrow-left mr-2"></i> ย้อนกลับ</button>
     <div class="content-container">
         <div class="d-flex align-items-center justify-content-between my-4">
             <h1 class="font-weight-bold text-gray-800" style="font-size: 2.2rem;">
                 <i class="fas fa-project-diagram mr-3 text-primary"></i>รายละเอียดโครงการ
             </h1>
-            <span class="badge badge-pill <%= group.status === 'พร้อมสอบ' ? 'badge-success' : 'badge-warning' %> shadow-sm" style="font-size: 1.1rem; padding: 12px 25px;">
-                สถานะ: <%= group.status %>
-            </span>
+        </div>
+        
+        <!-- Logic คำนวณ Step ปัจจุบัน -->
+        <% 
+        let currentStep = 1;
+        let isFailed = false;
+        const s = group.status || "";
+        
+        if (s.includes("ไม่ผ่าน")) {
+            isFailed = true;
+            if (s.includes("หัวข้อ")) currentStep = 2;
+            else currentStep = 3;
+        } else {
+            if (s === "ไม่มีอาจารย์ที่ปรึกษา" || s === "ไม่มีสมาชิก") currentStep = 1;
+            else if (s.includes("ผ่านการสอบป้องกัน")) currentStep = 4;
+            else if (s.includes("ผ่านการสอบหัวข้อ") || s.includes("ป้องกัน") || s.includes("ก้าวหน้า")) currentStep = 3;
+            else if (s.includes("หัวข้อ") || s === "รอนำเสนอหัวข้อ") currentStep = 2;
+            else currentStep = (group.passTimes === 0) ? 2 : 3;
+        }
+        %>
+        
+        <!-- แสดง Stepper -->
+        <div class="bg-white p-4 modern-card" style="margin-bottom: 2.5rem !important;">
+            <div class="stepper-wrapper">
+                <div class="stepper-item <%= currentStep > 1 ? 'completed' : (currentStep === 1 ? 'active' : '') %>">
+                    <div class="step-counter"><i class="fas <%= currentStep > 1 ? 'fa-check' : 'fa-users' %>"></i></div>
+                    <div class="step-name">จับกลุ่ม &<br>หาที่ปรึกษา</div>
+                </div>
+                <div class="stepper-item <%= currentStep > 2 ? 'completed' : (currentStep === 2 && !isFailed ? 'active' : (currentStep === 2 && isFailed ? 'failed' : '')) %>">
+                    <div class="step-counter"><i class="fas <%= currentStep > 2 ? 'fa-check' : (currentStep === 2 && isFailed ? 'fa-times' : 'fa-file-alt') %>"></i></div>
+                    <div class="step-name">สอบนำเสนอ<br>หัวข้อ</div>
+                </div>
+                <div class="stepper-item <%= currentStep > 3 ? 'completed' : (currentStep === 3 && !isFailed ? 'active' : (currentStep === 3 && isFailed ? 'failed' : '')) %>">
+                    <div class="step-counter"><i class="fas <%= currentStep > 3 ? 'fa-check' : (currentStep === 3 && isFailed ? 'fa-times' : 'fa-user-graduate') %>"></i></div>
+                    <div class="step-name">สอบป้องกัน</div>
+                </div>
+            </div>
+            <div class="text-center mt-4">
+                <span class="badge badge-<%= isFailed ? 'danger' : (currentStep === 4 ? 'success' : 'primary') %> px-4 py-2 rounded-pill" style="font-size: 1.1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                    <i class="fas fa-info-circle mr-1"></i> สถานะปัจจุบัน: <%= group.status %>
+                </span>
+            </div>
         </div>
 
-        <div class="card mb-4 border-bottom-primary">
+        <div class="card mb-5 modern-card border-bottom-primary" style="border-bottom-width: 4px !important;">
             <div class="card-header py-3 bg-white border-0 text-center">
                 <h5 class="m-0 font-weight-bold text-primary text-uppercase">บุคลากรในกลุ่ม</h5>
             </div>
@@ -75,20 +187,17 @@
 
                     <div class="col-lg-6 px-4">
                         <div class="member-grid">
-                            <div style="border-left: 1px dashed #e3e6f0; height: 50px;"></div>
-                            <div class="member-item">
+                            <div class="member-item member-item-card">
                                 <span class="text-label">หัวหน้ากลุ่ม</span>
-                                <div class="h5 font-weight-bold text-gray-800 mb-0"><%= member1Name %></div>
+                                <div class="h6 font-weight-bold text-gray-800 mb-0"><i class="fas fa-user-graduate text-gray-400 mr-2"></i><%= member1Name %></div>
                             </div>
-                            <div style="border-left: 1px dashed #e3e6f0; height: 50px;"></div>
-                            <div class="member-item">
+                            <div class="member-item member-item-card ml-2 mr-2">
                                 <span class="text-label">สมาชิก</span>
-                                <div class="h5 font-weight-bold text-gray-800 mb-0"><%= member2Name || '-' %></div>
+                                <div class="h6 font-weight-bold text-gray-800 mb-0"><i class="fas fa-user text-gray-400 mr-2"></i><%= member2Name || '-' %></div>
                             </div>
-                            <div style="border-left: 1px dashed #e3e6f0; height: 50px;"></div>
-                            <div class="member-item">
+                            <div class="member-item member-item-card">
                                 <span class="text-label">อาจารย์ที่ปรึกษา</span>
-                                <div class="h5 font-weight-bold text-primary mb-0">อ. <%= advisorName %></div>
+                                <div class="h6 font-weight-bold text-primary mb-0"><i class="fas fa-chalkboard-teacher mr-2"></i>อ. <%= advisorName %></div>
                             </div>
                         </div>
                     </div>
@@ -97,21 +206,21 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card modern-card mb-5">
             <div class="card-header py-3 bg-white border-0">
                 <h5 class="m-0 font-weight-bold text-primary text-uppercase">ประวัติเอกสารที่เคยส่ง</h5>
             </div>
             <div class="card-body px-4">
                 <% if (papers && papers.length > 0) { %>
                     <% papers.forEach(paper => { %>
-                        <div class="paper-entry border p-4 mb-4 shadow-sm">
+                        <div class="paper-entry border p-4 mb-4" style="border-radius: 12px; background: #fcfcfc;">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h4 class="font-weight-bold text-dark mb-0">
-                                    <i class="fas fa-file-alt mr-3 text-primary"></i><%= paper.passTimes === 0 ? 'เอกสารก่อนสอบนำเสนอหัวข้อปริญญานิพนธ์' : 'เอกสารก่อนสอบป้องกันปริญญานิพนธ์' %>
+                                    <i class="fas fa-folder-open mr-3 text-primary"></i><%= paper.passTimes === 0 ? 'เอกสารก่อนสอบนำเสนอหัวข้อปริญญานิพนธ์' : 'เอกสารก่อนสอบป้องกันปริญญานิพนธ์' %>
                                 </h4>
                                 <div class="text-right">
-                                    <span class="badge badge-light border px-3 py-2 mr-2">สอบครั้งที่ <%= paper.passTimes + 1 %></span>
-                                    <small class="text-muted"><i class="far fa-calendar-alt mr-1"></i><%= paper.date ? new Date(paper.date).toLocaleDateString('th-TH') : '-' %></small>
+                                    <span class="badge badge-primary px-3 py-2 mr-2 rounded-pill shadow-sm">สอบครั้งที่ <%= paper.passTimes + 1 %></span>
+                                    <span class="badge badge-light border px-3 py-2 rounded-pill"><i class="far fa-calendar-alt mr-1"></i><%= paper.date ? new Date(paper.date).toLocaleDateString('th-TH') : '-' %></span>
                                 </div>
                             </div>
                             
@@ -120,7 +229,7 @@
                                 <% if (paper.submittedFiles && paper.submittedFiles.length > 0) { %>
                                     <% paper.submittedFiles.forEach(f => { %>
                                         <div class="m-1">
-                                            <div class="d-inline-flex align-items-center p-2 px-3 bg-light border rounded shadow-sm" style="width: fit-content; min-width: 150px;">
+                                            <div class="d-inline-flex align-items-center p-2 px-3 bg-white border file-pill shadow-sm" style="width: fit-content; min-width: 150px;">
                                                 
                                                 <div class="text-nowrap mr-3 text-truncate">
                                                     <% if (f.file && f.file.contentType === 'application/pdf') { %>

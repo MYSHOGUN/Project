@@ -4,7 +4,7 @@
   #message-input { padding-right: 45px !important; border-radius: 25px !important; height: 45px; border: 1px solid #d1d3e2; }
   #file-input-label { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #4e73df; z-index: 10; line-height: 0; }
   #message-sent { width: 45px; height: 45px; border-radius: 50% !important; display: flex; justify-content: center; align-items: center; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-  #group-list-section { background-color: #f8f9fc !important; height: 100% !important; border-right: 1px solid #e3e6f0; padding: 0 !important; display: flex; flex-direction: column; }
+  #group-list-section { background-color: #fff !important; height: 100% !important; border-right: 1px solid #e3e6f0; padding: 0 !important; display: flex; flex-direction: column; }
   
   /* --- ปรับปรุงส่วน Group Item เพื่อให้ "ดัน" บรรทัดล่าง --- */
   .group-item {
@@ -83,27 +83,29 @@
     transition: transform 0.3s ease;
   }
 
-  #card { transition: margin 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important; }
+  #card { box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important; border: 1px solid #eaecf4 !important; transition: margin 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important; overflow: hidden; }
 </style>
 
 <div class="container-fluid" style="padding: 0; margin: 0; line-height: normal;">
     <!-- Page Heading -->
     <div class="card" style="border-radius: 20px; margin: 40px; height: 85vh;" id="card">
-      <div class="card-body">
-        <div class="row flex-column flex-sm-row" style="height: 100%;">
+      <div class="card-body p-0">
+        <div class="row flex-column flex-sm-row m-0" style="height: 100%;">
 
         <!-- รายชื่อ -->
-        <div id="group-list-section" class="col-sm-4 col-12" style="background-color: lightgrey; height: 100%; width: 33.3333%;">
-          <div class="mx-4 mt-4">
-            <h2 style="color: #4e73df;">รายชื่อกลุ่ม</h2>
-            <ul class="list-group" id="group-list">
+        <div id="group-list-section" class="col-sm-4 col-12 border-right p-0" style="background-color: #fff; height: 100%; width: 33.3333%;">
+          <div class="p-3" style="background: linear-gradient(135deg, #4e73df 0%, #224abe 100%); color: white;">
+            <h5 class="mb-0 font-weight-bold"><i class="fas fa-users mr-2"></i> รายชื่อกลุ่ม</h5>
+          </div>
+          <div class="p-3" style="overflow-y: auto; height: calc(100% - 60px);">
+            <ul class="list-group pb-4" id="group-list">
             <% activeGroups.forEach(g => { %>
               <li class="list-group-item group-item mb-2" data-groupname="<%= g.projectName %>" data-groupid="<%= g._id %>">
                 <div class="group-item-header">
                   <div class="d-flex flex-column" style="pointer-events: none;">
                     <strong><%= g.projectName %></strong>
                     <span class="<%= g.status.includes('ไม่ผ่าน') ? 'text-danger' : 'text-normal' %>">
-                      Status: <%= g.status %>
+                      <small>Status: <%= g.status %></small>
                     </span>
                   </div>
                   <% if(g.advisor === user.username) { %>
@@ -119,8 +121,8 @@
                 </div>
               </li>
               <div class="<% if(user.role === 'teacher' || user.role === 'admin'){ %> d-none <% }else{ %> d-flex <% } %>flex-row" style="margin-bottom: 20px; justify-content: space-evenly;">
-                <button id="addMemberBtn" class="btn btn-primary" style="width: 45%; border: 1px; border-style: solid;">เพิ่มสมาชิก</button>
-                <button id="leaveGroupBtn" class="btn btn-danger" style="width: 45%; border: 1px; border-style: solid;" onclick="confirmLeaveGroup(event, '<%= g._id %>')">ออกจากกลุ่ม</button>
+                <button id="addMemberBtn" class="btn btn-outline-primary rounded-pill font-weight-bold shadow-sm" style="width: 45%;"><i class="fas fa-user-plus mr-1"></i> เพิ่มสมาชิก</button>
+                <button id="leaveGroupBtn" class="btn btn-outline-danger rounded-pill font-weight-bold shadow-sm" style="width: 45%;" onclick="confirmLeaveGroup(event, '<%= g._id %>')"><i class="fas fa-sign-out-alt mr-1"></i> ออกจากกลุ่ม</button>
               </div>
             <% }) %>
             <% if(pastGroups.length > 0) { %>
@@ -137,34 +139,34 @@
                 <div class="group-item-header">
                   <div class="d-flex flex-column" style="pointer-events: none;">
                     <strong><%= g.projectName %></strong>
-                    <span>Status: <%= g.status %></span>
+                    <span class="small text-muted">Status: <%= g.status %></span>
                   </div>
                 </div>
               </li>
             <% }) %>
           </ul>
-
-
           </div>
         </div>                     
 
         <!-- ระบบแชท -->
-        <div id="chat-section" class="col-sm-8 col-12 d-flex flex-column " style="height: 100%; display: none; width: 66.6666%;">
-          <div class="mt-4 mx-4 d-flex align-items-center justify-content-between">
-            <h2 style="color: #4e73df;">
-              แชทกลุ่ม: <span id="chat-with">-</span>
-            </h2>
-            <button id="back-button" class="btn btn-secondary d-sm-none">
-              <i class="bi bi-arrow-bar-left"></i> ย้อนกลับ
+        <div id="chat-section" class="col-sm-8 col-12 d-flex flex-column p-0" style="height: 100%; display: none; width: 66.6666%; background-color: #fff;">
+          <div class="p-3 border-bottom d-flex align-items-center justify-content-between">
+            <h5 class="m-0 font-weight-bold text-gray-800">
+              <i class="fas fa-comments text-primary mr-2"></i> <span id="chat-with">-</span>
+            </h5>
+            <button id="back-button" class="btn btn-light rounded-pill shadow-sm d-sm-none font-weight-bold">
+              <i class="fas fa-arrow-left mr-1"></i> ย้อนกลับ
             </button>
           </div>
 
           <div style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column;" id="messages-container">
             <!-- ข้อความแชท -->
           </div>
-          <div id="file-preview-box" class="mx-4" style="display: flex; gap: 5px; flex-wrap: wrap;"></div>
-          <form id="chat-form" class="d-flex align-items-center mx-4 my-2" style="gap: 10px; display: flex !important;">
-            <div class="chat-input-wrapper" style="position: relative !important; flex: 1 !important; display: flex !important; align-items: center !important;">
+          
+          <div class="bg-white border-top p-3">
+            <div id="file-preview-box" class="mb-2" style="display: flex; gap: 5px; flex-wrap: wrap;"></div>
+            <form id="chat-form" class="d-flex align-items-center m-0" style="gap: 15px; display: flex !important;">
+              <div class="chat-input-wrapper w-100" style="position: relative !important; flex: 1 !important; display: flex !important; align-items: center !important;">
                 
                 <input id="message-input" autocomplete="off" placeholder="พิมพ์ข้อความ..." class="form-control" 
                       style="padding-right: 45px !important; border-radius: 20px !important; height: 45px !important; width: 100% !important;">
@@ -177,11 +179,12 @@
                 <input id="file-upload" type="file" hidden multiple>
             </div>
 
-            <button id="message-sent" type="submit" class="btn btn-primary" 
+            <button id="message-sent" type="submit" class="btn btn-primary shadow-sm" 
                     style="width: 45px !important; height: 45px !important; border-radius: 50% !important; display: flex !important; justify-content: center !important; align-items: center !important; padding: 0 !important; flex-shrink: 0 !important;">
                 <i class="fas fa-paper-plane"></i>
             </button>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   </div>
@@ -631,4 +634,3 @@ window.confirmLeaveGroup = async (e, groupId) => {
     if (li) joinGroup(li.dataset.groupid, li.dataset.groupname);
   });
 </script>
-

@@ -44,6 +44,12 @@
 
     .form-label { font-weight: bold; color: #4e73df; font-size: 0.9rem; }
     .input-readonly { background-color: #f8f9fc !important; border-color: #eaecf4; color: #858796; }
+    
+    .form-control {
+        border-radius: 12px;
+        padding: 12px 15px;
+        height: auto;
+    }
 </style>
 
 <div class="container-fluid py-4" style="min-height: 84vh; background: #f4f7f6;">
@@ -128,10 +134,10 @@
                             </div>
 
                             <div class="mt-4 d-flex">
-                                <button type="button" id="saveProfileBtn" class="btn btn-success btn-block py-2 mr-2 shadow-sm">
+                                <button type="button" id="saveProfileBtn" class="btn btn-success btn-block py-2 mr-2 shadow-sm rounded-pill font-weight-bold">
                                     <i class="fas fa-save mr-2"></i> บันทึกข้อมูล
                                 </button>
-                                <button type="button" id="cancelProfileBtn" class="btn btn-light border py-2 flex-shrink-1 px-4">
+                                <button type="button" id="cancelProfileBtn" class="btn btn-light border py-2 flex-shrink-1 px-4 rounded-pill font-weight-bold">
                                     ยกเลิก
                                 </button>
                             </div>

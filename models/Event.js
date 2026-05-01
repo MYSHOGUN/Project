@@ -8,7 +8,9 @@ const eventSchema = new mongoose.Schema({
     testData: {
         type: [{
             groupName: String,
-            directors: [String],
+            advisor: String,
+            greatDirector: String,
+            directors: String,
             date: Date
         }],
         default: [] // แนะนำให้เป็น [] เพื่อให้ลูปที่หน้าบ้านไม่พัง แต่ถ้าจะใช้ null ต้องจัดการดีๆ

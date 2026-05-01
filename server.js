@@ -2,8 +2,6 @@ const Message = require("./models/Message"); // ✅ import model
 
 const Group = require("./models/Group"); // ✅ import group model
 
-const News = require('./models/News'); // ✅ import news model
-
 const Event = require('./models/Event'); // ✅ import event model
 
 const Paper = require('./models/Paper'); // ✅ import event model
@@ -1521,67 +1519,6 @@ app.get("/updateGroup", requireLogin, requireRole(["user"]), async (req, res) =>
   }
 });
 
-app.post("/api/news", requireLogin, apiLimiter, upload.single("file"), async (req, res) => {
-    try {
-        const { newsTitle, newsData } = req.body;
-        let imgInfo = {}; // ใช้อ็อบเจกต์เพื่อเก็บข้อมูลรูปภาพ
-
-        // 1. ตรวจสอบว่ามีไฟล์รูปภาพหรือไม่
-        if (req.file) {
-            
-            // 2. สร้าง Upload Stream ไปยัง GridFS
-            // Note: ต้องใช้ req.file.filename (ที่ถูกกำหนดโดย multer) หรือ req.file.originalname 
-            const uploadStream = bucket.openUploadStream(req.file.originalname, { 
-                contentType: req.file.mimetype,
-                // สามารถเพิ่ม metadata อื่นๆ ได้ที่นี่
-            });
-            
-            // 3. กำหนดข้อมูลที่จะบันทึกลงใน Mongoose Schema
-            imgInfo = {
-                filename: req.file.originalname, // หรือใช้ req.file.filename ถ้า multer กำหนด
-                contentType: req.file.mimetype,
-                // Mongoose สามารถใช้ ID ที่ GridFS สร้างโดยอัตโนมัติมาอ้างอิงได้
-                id: uploadStream.id // GridFS File ID (ObjectId)
-            };
-
-            // 4. ส่งไฟล์เข้าสู่ Stream และรอให้การอัปโหลดเสร็จสมบูรณ์
-            // Note: การใช้ end() ไม่ใช่ async/await คุณควรใช้ Promise เพื่อรอ
-            await new Promise((resolve, reject) => {
-                uploadStream.once('finish', resolve);
-                uploadStream.once('error', reject);
-                uploadStream.end(req.file.buffer); 
-            });
-
-            console.log(`File uploaded to GridFS with ID: ${uploadStream.id}`);
-        }
-
-        // 5. สร้าง News Document ใหม่
-        const newNews = new News({
-            title: newsTitle,
-            data: newsData,
-            // บันทึกข้อมูลรูปภาพ (ถ้ามี)
-            img: req.file ? imgInfo : null 
-        });
-
-        // 6. บันทึก Document ลงใน MongoDB
-        await newNews.save();
-
-        // 7. ส่งการตอบกลับสำเร็จ
-        return res.status(201).json({ 
-            message: "News created successfully", 
-            newsId: newNews._id,
-            fileId: imgInfo.id
-        });
-
-    } catch (err) {
-        console.error("News creation error:", err);
-        // หากเกิดข้อผิดพลาดในการอัปโหลด/บันทึก ให้ส่งสถานะ 500
-        return res.status(500).json({ 
-            error: "Failed to create news or upload file" 
-        });
-    }
-});
-
 app.get("/image/:id", async (req, res) => {
     try {
         const { id } = req.params;
@@ -1602,151 +1539,6 @@ app.get("/image/:id", async (req, res) => {
     } catch (err) {
         console.error("Error streaming news image:", err);
         res.status(500).send("Error streaming image");
-    }
-});
-
-app.get("/news/details/:id", async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        const news = await News.findOne({ _id: id });
-
-        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).send("Invalid news ID");
-        } 
-
-        renderWithLayout(res, "news", { title: "KMUTNB Project - News Details" ,newsDetails: news,user: req.session.user}, req.path,req);
-      }catch (err) {
-        console.error("Error fetching news details:", err);
-        return res.status(500).send("Error fetching news details");
-      }
-});
-
-app.post("/news-update/:newsId", requireLogin, apiLimiter,upload.single("newImage"), async (req, res) => {
-    // ชื่อ field 'newImage' ต้องตรงกับชื่อที่ใช้ใน FormData ฝั่ง Client
-
-    const newsId = req.params.newsId;
-
-    if (!newsId || !mongoose.Types.ObjectId.isValid(newsId)) {
-        return res.status(400).json({ success: false, message: "Invalid News ID" });
-    }
-
-    try {
-        // 1. ดึงข้อมูล Text จาก req.body (แยกโดย Multer)
-        const { newsTitle, newsData } = req.body; 
-        
-        let updateData = { 
-            title: newsTitle,
-            data: newsData
-        };
-
-        // 2. ค้นหาข่าวเดิมเพื่อดึง ID รูปภาพเก่า
-        let oldNews = await News.findById(newsId);
-        if (!oldNews) {
-            return res.status(404).json({ success: false, message: "News not found" });
-        }
-
-        // 3. จัดการรูปภาพใหม่ (ถ้ามีไฟล์ใหม่ถูกส่งมา)
-        if (req.file) {
-            // A. ลบรูปภาพเก่าจาก GridFS (ถ้ามีรูปเก่าอยู่)
-            if (oldNews.img && oldNews.img.id) {
-                try {
-                    // ใช้ bucket.delete() กับ GridFS ID เก่า
-                    await bucket.delete(oldNews.img.id);
-                    console.log(`✅ Old file deleted from GridFS: ${oldNews.img.id}`);
-                } catch (deleteErr) {
-                    // หากลบไม่ได้ (เช่น ไฟล์ไม่มีอยู่) ให้แสดงคำเตือนและดำเนินการต่อ
-                    console.warn(`⚠️ Warning: Could not delete old file ID ${oldNews.img.id}. Error:`, deleteErr.message);
-                }
-            }
-
-            // B. บันทึกไฟล์ใหม่เข้า GridFS
-            const uploadStream = bucket.openUploadStream(req.file.originalname, { 
-                contentType: req.file.mimetype
-            });
-            
-            await new Promise((resolve, reject) => {
-                uploadStream.once('finish', resolve);
-                uploadStream.once('error', reject);
-                uploadStream.end(req.file.buffer); // ส่ง buffer ของไฟล์เข้า stream
-            });
-
-            console.log(`✅ New file uploaded to GridFS with ID: ${uploadStream.id}`);
-
-            // C. อัปเดตข้อมูล img ใน Document ด้วย ID ใหม่
-            updateData.img = {
-                filename: req.file.originalname,
-                contentType: req.file.mimetype,
-                id: uploadStream.id // ID ใหม่ที่สร้างโดย GridFS
-            };
-        } 
-        // 🚨 หมายเหตุ: ถ้าไม่มี req.file (ไม่ได้เปลี่ยนรูป), updateData จะมีแค่ title/data
-        // ทำให้ ID รูปภาพเก่าถูกเก็บไว้ตามที่คุณต้องการโดยอัตโนมัติ
-
-        // 4. อัปเดต News Document ใน MongoDB
-        const updatedNews = await News.findByIdAndUpdate(
-            newsId,
-            { $set: updateData }, // ใช้ $set เพื่ออัปเดตเฉพาะ field ที่เปลี่ยน
-            { new: true, runValidators: true } // คืนค่าเอกสารที่อัปเดตแล้ว
-        );
-
-        if (!updatedNews) {
-            return res.status(404).json({ success: false, message: "News not found during update." });
-        }
-
-        // 5. ส่งการตอบกลับสำเร็จ
-        res.status(200).json({ success: true, message: "บันทึกข่าวสำเร็จ", news: updatedNews });
-
-    } catch (err) {
-        console.error("❌ Error updating news:", err);
-        // สามารถใช้ err.message เพื่อส่งรายละเอียดกลับไปได้
-        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดที่ Server: การอัปเดตล้มเหลว" });
-    }
-});
-
-app.delete("/news-delete/:newsId", requireLogin, async (req, res) => {
-    // Note: ควรเพิ่ม requireRole('admin') เพื่อความปลอดภัยหากไม่ได้ใช้ requireLogin ที่มีการตรวจสอบ role ภายใน
-    // เช่น: app.delete("/news-delete/:newsId", requireRole('admin'), async (req, res) => { ...
-
-    const newsId = req.params.newsId;
-
-    if (!newsId || !mongoose.Types.ObjectId.isValid(newsId)) {
-        return res.status(400).json({ success: false, message: "Invalid News ID" });
-    }
-
-    try {
-        // 1. ค้นหาข่าวเพื่อดึง ID รูปภาพเก่า
-        const newsToDelete = await News.findById(newsId);
-        if (!newsToDelete) {
-            return res.status(404).json({ success: false, message: "ไม่พบข่าวสารที่ต้องการลบ" });
-        }
-
-        // 2. ลบรูปภาพที่เกี่ยวข้องออกจาก GridFS (ถ้ามี)
-        if (newsToDelete.img && newsToDelete.img.id) {
-            try {
-                // ใช้ bucket.delete() กับ GridFS ID
-                await bucket.delete(newsToDelete.img.id);
-                console.log(`✅ File deleted from GridFS: ${newsToDelete.img.id}`);
-            } catch (deleteErr) {
-                // โดยปกติ GridFS Bucket Delete จะโยน Error ถ้าไฟล์ไม่มีอยู่
-                console.warn(`⚠️ Warning: Could not delete file ID ${newsToDelete.img.id}. Error:`, deleteErr.message);
-                // เราจะดำเนินการลบ News Document ต่อไปแม้จะลบไฟล์ GridFS ไม่ได้
-            }
-        }
-
-        // 3. ลบ News Document ออกจาก MongoDB
-        const result = await News.deleteOne({ _id: newsId });
-
-        if (result.deletedCount === 0) {
-             return res.status(404).json({ success: false, message: "ไม่พบข่าวสารที่ต้องการลบ" });
-        }
-
-        // 4. ส่งการตอบกลับสำเร็จ
-        res.status(200).json({ success: true, message: "ลบข่าวสำเร็จ" });
-
-    } catch (err) {
-        console.error("❌ Error deleting news:", err);
-        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดที่ Server: การลบล้มเหลว" });
     }
 });
 
@@ -2143,7 +1935,7 @@ app.get("/addEvent", requireLogin,requireRole(['admin']) ,(req, res) => {
   renderWithLayout(res, "addEvent", { title: "KMUTNB Project - Add Event" }, req.path,req);
 });
 
-app.post("/api/addEvent", apiLimiter, requireLogin, upload.single("file"), async (req, res) => {
+app.post("/api/addEvent", apiLimiter, requireLogin, requireRole(['admin']), upload.single("file"), async (req, res) => {
     try {
         const { title, date, description ,examSchedule} = req.body;
         console.log("ดูๆ"+date);
@@ -2273,29 +2065,39 @@ app.post("/api/addEvent", apiLimiter, requireLogin, upload.single("file"), async
                                 { status: { $in: ["พร้อมสอบนำเสนอหัวข้อปริญญานิพนธ์", "พร้อมสอบก้าวหน้าปริญญานิพนธ์",  "พร้อมสอบป้องกันปริญญานิพนธ์"] }}
                             ]
                         });
-                        console.log(group);
 
-                        // 2. จัดการรายชื่อกรรมการจาก Excel: แยกชื่อ / ตัดคำนำหน้า / ตัดนามสกุล
-                        let directorslist = slot.directors
-                        console.log(directorslist);
-
-                        let directors = [];
-                        for (const director of directorslist) {
-                            const directorInfo = await User.findOne({
-                                $and: [
-                                    { username: director }, 
-                                    {role: { $in: ["admin","teacher"] }}
-                                ]
-                            });
-                            if (directorInfo) {
-                                directors.push(directorInfo.name);
-                            }
+                        if (!group) {
+                            const missing = await Group.findById(slot.group);
+                            if (missing) missingGroups.push(missing.projectName);
+                            continue; // ข้ามกลุ่มนี้ไปถ้าสถานะถูกเปลี่ยนไปแล้วและเพิ่มเข้า list กลุ่มที่มีปัญหา
                         }
-                        console.log(group.projectName,finalDateTime,directors);
+
+                        let advisorStr = "";
+                        if (slot.advisor) {
+                            const advInfo = await User.findOne({ username: slot.advisor, role: { $in: ["admin", "teacher"] } });
+                            if (advInfo) advisorStr = advInfo.name;
+                        }
+
+                        let greatDirectorStr = "";
+                        if (slot.greatDirector) {
+                            const gDirInfo = await User.findOne({ username: slot.greatDirector, role: { $in: ["admin", "teacher"] } });
+                            if (gDirInfo) greatDirectorStr = gDirInfo.name;
+                        }
+
+                        let directorslist = slot.directors || [];
+                        if (!Array.isArray(directorslist)) directorslist = [directorslist];
+                        let directorsArr = [];
+                        for (const director of directorslist) {
+                            const directorInfo = await User.findOne({ username: director, role: { $in: ["admin", "teacher"] } });
+                            if (directorInfo) directorsArr.push(directorInfo.name);
+                        }
+                        let directorStr = directorsArr.join(", ");
 
                         testData.push({
                             groupName: group.projectName,
-                            directors: directors,
+                            advisor: advisorStr,
+                            greatDirector: greatDirectorStr,
+                            directors: directorStr,
                             date: finalDateTime
                         });
 
@@ -2309,7 +2111,9 @@ app.post("/api/addEvent", apiLimiter, requireLogin, upload.single("file"), async
                             expireAt: testresultsdate,
                             passTimes: paperPassTimes,
                             date: finalDateTime,
-                            director: directors
+                            advisor: advisorStr,
+                            greatDirector: greatDirectorStr,
+                            director: directorStr
                         });
                         const mem1 = await User.findOne({ username: group.member1 });
                         const mem2 = group.member2 ? await User.findOne({ username: group.member2 }) : null;
@@ -2317,7 +2121,7 @@ app.post("/api/addEvent", apiLimiter, requireLogin, upload.single("file"), async
                         if(group.passTimes === 0){
                             group.status = "รอสอบนำเสนอหัวข้อปริญญานิพนธ์"
                         }else if (group.passTimes >= 1){
-                            if(mem1.branch === "ECT" || mem2.branch === "ECT"){
+                            if(mem1.branch === "ECT" || mem2?.branch === "ECT"){
                             group.status = "รอสอบก้าวหน้าปริญญานิพนธ์";
                             }else{
                             group.status = "รอสอบป้องกันปริญญานิพนธ์";
@@ -2336,7 +2140,9 @@ app.post("/api/addEvent", apiLimiter, requireLogin, upload.single("file"), async
             }
         }
 
-        const expire =  date2 ? new Date(date2) : new Date(date1);
+        // 🛠️ ป้องกันบั๊ก new Date(null) = 1970 
+        // ถ้ามี date2 ใช้ date2, ถ้าไม่มีดู date1, ถ้าไม่มีทั้งคู่ใช้วันปัจจุบัน
+        const expire = date2 ? new Date(date2) : (date1 ? new Date(date1) : new Date());
         expire.setHours(23, 59, 59, 999);
 
         const newEvent = new Event({
@@ -2346,7 +2152,8 @@ app.post("/api/addEvent", apiLimiter, requireLogin, upload.single("file"), async
             testData: testData,
             date: date1,
             toDate: date2,
-            expireAt: expire
+            expireAt: expire,
+            fileId: uploadedFileId // 🛠️ เซฟ ID ไฟล์เก็บไว้ (คุณอาจจะต้องเช็คใน Model Event ว่าใช้ชื่อฟิลด์อะไร)
         });
 
         await newEvent.save();
@@ -2733,7 +2540,9 @@ app.get("/api/getMyPapers", requireLogin, async (req, res) => {
         const platforms = await Paper.find({ 
             $or: [
                 { groupId: { $in: userGroupIds } },
-                { director:  name }
+                { director: { $regex: name, $options: "i" } },
+                { advisor: { $regex: name, $options: "i" } },
+                { greatDirector: { $regex: name, $options: "i" } }
             ]
         }).lean();
         
@@ -2793,6 +2602,8 @@ app.post("/api/submitPaperResult", apiLimiter,requireLogin, async (req, res) => 
                 eventId: currentPaper.eventId,
                 groupId: currentPaper.groupId,
                 mention: `อาจารย์ ${user} ต้องการให้แก้ไข: ${comment}`,
+                advisor: currentPaper.advisor,
+                greatDirector: currentPaper.greatDirector,
                 director: currentPaper.director, // ส่งกรรมการชุดเดิมไปด้วย
                 passTimes: currentPaper.passTimes,
                 autoPdfId: currentPaper.autoPdfId, // ส่งต่อ PDF เดิมไปด้วย (ถ้ามี)
@@ -2834,8 +2645,12 @@ app.post("/api/submitPaperResult", apiLimiter,requireLogin, async (req, res) => 
         }
         await examResult.save();
 
+        // คำนวณจำนวนกรรมการทั้งหมด (นับจาก string ที่อาจคั่นด้วยลูกน้ำ)
+        const countVoters = (str) => str ? str.split(",").filter(s => s.trim() !== "").length : 0;
+        const expectedVotersCount = countVoters(currentPaper.advisor) + countVoters(currentPaper.greatDirector) + countVoters(currentPaper.director);
+
         // ตรวจสอบว่ากรรมการลงครบทุกคนหรือยัง
-        if (examResult.pass.length + examResult.fail.length === currentPaper.director.length) {
+        if (examResult.pass.length + examResult.fail.length >= expectedVotersCount) {
             
             // ดึงข้อมูลสมาชิกเพื่อเช็คสาขา (EnET หรือสาขาอื่น)
             const student = await User.findOne({ username: group.member1 });
@@ -3333,11 +3148,29 @@ app.get("/groupInfo/:id", async (req, res) => {
         const allPapers = await Paper.find({ groupId: id }).sort({ submittedAt: -1 }).lean();
         const allFiles = await PaperFile.find({ groupId: id }).lean();
 
+        // 4. ดึงข้อมูลผลการสอบ (Result)
+        const allResults = await Result.find({ groupId: id }).lean();
+        
+        let resultUsernames = [];
+        allResults.forEach(r => {
+            if (r.pass) resultUsernames = resultUsernames.concat(r.pass);
+            if (r.fail) resultUsernames = resultUsernames.concat(r.fail);
+        });
+        const resultUsers = await User.find({ username: { $in: resultUsernames } }).lean();
+        
+        const getResultUserFullName = (username) => {
+            const u = resultUsers.find(user => user.username === username);
+            return u ? `${u.title && u.title !== 'รอเพิ่มข้อมูล' ? u.title + ' ' : ''}${u.name} ${u.lastname}`.trim() : username;
+        };
+
         // นำไฟล์ไปใส่ไว้ในแต่ละ Paper
         const papersWithFiles = allPapers.map(paper => {
+            const rawResult = allResults.find(r => r.passTimes === paper.passTimes);
+            let formattedResult = rawResult ? { pass: (rawResult.pass || []).map(getResultUserFullName), fail: (rawResult.fail || []).map(getResultUserFullName) } : null;
             return {
                 ...paper,
-                submittedFiles: allFiles.filter(f => f.paperId.toString() === paper._id.toString())
+                submittedFiles: allFiles.filter(f => f.paperId.toString() === paper._id.toString()),
+                result: formattedResult
             };
         });
 
@@ -3461,11 +3294,15 @@ app.post("/update-exam-schedule", apiLimiter, requireLogin, async (req, res) => 
             if (!group) continue;
 
             // จัดการกรรมการ
-            let directorsStr = row['กรรมการ'] || "";
-            let directors = directorsStr.split(/[,\/;]|\sและ\s/).map(s => {
-                let clean = s.trim().replace(/^(ดร\.|ผศ\.ดร\.|ผศ\.|รศ\.ดร\.|รศ\.|ศ\.|มร\.|นาย|นางสาว|นาง|อาจารย์|อ\.)\s?/, "");
-                return clean.split(/\s+/)[0]; 
-            }).filter(s => s !== "");
+                    const cleanNameFunc = (s) => s.trim().replace(/^(ดร\.|ผศ\.ดร\.|ผศ\.|รศ\.ดร\.|รศ\.|ศ\.|มร\.|นาย|นางสาว|นาง|อาจารย์|อ\.)\s?/, "").split(/\s+/)[0];
+
+                    let advisorsArr = (row['อาจารย์ที่ปรึกษา'] || "").split(/[,\/;]|\sและ\s/).map(cleanNameFunc).filter(s => s !== "");
+                    let greatDirectorsArr = (row['ประธานกรรมการ'] || "").split(/[,\/;]|\sและ\s/).map(cleanNameFunc).filter(s => s !== "");
+                    let directorsArr = (row['กรรมการ'] || "").split(/[,\/;]|\sและ\s/).map(cleanNameFunc).filter(s => s !== "");
+
+                    let advisorStr = advisorsArr.join(", ");
+                    let greatDirectorStr = greatDirectorsArr.join(", ");
+                    let directorStr = directorsArr.join(", ");
 
             const datePart = row['dateOnly']; // '2026-04-15'
             const timePart = row['timeOnly'] || "00:00"; // '09:30'
@@ -3481,7 +3318,9 @@ app.post("/update-exam-schedule", apiLimiter, requireLogin, async (req, res) => 
             // 🚩 เก็บลง testData ของ Event
             newTestData.push({
                 groupName: groupNameStr,
-                directors: directors,
+                        advisor: advisorStr,
+                        greatDirector: greatDirectorStr,
+                        directors: directorStr,
                 date: finalDate
             });
 
@@ -3493,7 +3332,9 @@ app.post("/update-exam-schedule", apiLimiter, requireLogin, async (req, res) => 
                 { eventId: event.id, groupId: group._id }, 
                 { 
                     $set: { 
-                        director: directors,
+                                advisor: advisorStr,
+                                greatDirector: greatDirectorStr,
+                                director: directorStr,
                         mention: event.description || event.title,
                         expireAt: testResultsExpire,
                         date: finalDate
@@ -3714,11 +3555,11 @@ app.get("/search-group", requireLogin, async (req, res) => {
   }
 });
 
-app.post("/api/addEventForGroup", apiLimiter, requireLogin, upload.single('file'), async (req, res) => {
+app.post("/api/addEventForGroup", apiLimiter, requireLogin, requireRole(['admin', 'teacher']), upload.single('file'), async (req, res) => {
     let groupNameStr;
     try {
-        const { title, date, toDate, description , chosenGroup, director,   dateTest ,  time} = req.body;
-        console.log("Received data:", { title, date, toDate, description, chosenGroup, director, dateTest, time });
+        const { title, date, toDate, description, chosenGroup, advisor, greatDirector, director, dateTest, time } = req.body;
+        console.log("Received data:", { title, date, toDate, description, chosenGroup, advisor, greatDirector, director, dateTest, time });
         const group = await Group.findById(chosenGroup);
         let missingGroups = [];
 
@@ -3734,9 +3575,19 @@ app.post("/api/addEventForGroup", apiLimiter, requireLogin, upload.single('file'
         }
 
         const eventId = generateEventId();
-        const date1 = new Date(date);
-        const date2 = toDate ? new Date(toDate) : null;
-        const expire = toDate ? new Date(toDate) : new Date(date);
+        let date1 = null;
+        if (date && typeof date === 'string' && date.trim() !== '') {
+            const [year, month, day] = date.split('-').map(Number);
+            date1 = new Date(year, month - 1, day);
+        }
+        
+        let date2 = null;
+        if (toDate && typeof toDate === 'string' && toDate.trim() !== '') {
+            const [year, month, day] = toDate.split('-').map(Number);
+            date2 = new Date(year, month - 1, day);
+        }
+        
+        const expire = date2 ? new Date(date2) : (date1 ? new Date(date1) : new Date());
         expire.setHours(23, 59, 59, 999);
 
         // --- ส่วนที่แก้ไข: จัดการไฟล์ Excel เข้า GridFS ---
@@ -3815,26 +3666,14 @@ app.post("/api/addEventForGroup", apiLimiter, requireLogin, upload.single('file'
             const testresultsdate = new Date(expire);
             testresultsdate.setDate(testresultsdate.getDate() + 7);
 
-            let directors = directorslist.toString().split(/[,\/;]|\sและ\s/).map(s => {
-            let cleanName = s.trim().replace(/^(ดร\.|ผศ\.ดร\.|ผศ\.|รศ\.ดร\.|รศ\.|ศ\.|มร\.|นาย|นางสาว|นาง|อาจารย์|อ\.)\s?/, "");
-                return cleanName.split(/\s+/)[0]; 
-            }).filter(s => s !== "");
+            const cleanNameFunc = (s) => s.trim().replace(/^(ดร\.|ผศ\.ดร\.|ผศ\.|รศ\.ดร\.|รศ\.|ศ\.|มร\.|นาย|นางสาว|นาง|อาจารย์|อ\.)\s?/, "").split(/\s+/)[0];
 
-            if(!directors || !Array.isArray(directors) || directorslist.length === 0){
+            let advStr = advisor ? advisor.toString().split(/[,\/;]|\sและ\s/).map(cleanNameFunc).filter(s => s !== "").join(", ") : "";
+            let gDirStr = greatDirector ? greatDirector.toString().split(/[,\/;]|\sและ\s/).map(cleanNameFunc).filter(s => s !== "").join(", ") : "";
+            let dirStr = director ? director.toString().split(/[,\/;]|\sและ\s/).map(cleanNameFunc).filter(s => s !== "").join(", ") : "";
+
+            if(!dirStr && !advStr && !gDirStr){
                 return res.status(400).json({ error: "ข้อมูลไม่ถูกต้อง: ไม่มีกรรมการ" });
-            }
-
-                // 3. ไปดึงชื่อ Advisor จาก Collection User มาเพิ่ม (Add เข้าไป)
-            const advisorUser = await User.findOne({ username: group.advisor });
-            if (advisorUser && advisorUser.name) {
-                let advisorCleanName = advisorUser.name.toString().trim()
-                .replace(/^(ดร\.|ผศ\.ดร\.|ผศ\.|รศ\.ดร\.|รศ\.|ศ\.|มร\.|นาย|นางสาว|นาง|อาจารย์|อ\.)\s?/, "")
-                .split(/\s+/)[0];
-                            
-                        // ตรวจสอบก่อนว่าชื่อ Advisor ซ้ำกับกรรมการที่มีอยู่แล้วไหม ถ้าไม่ซ้ำก็ push เข้าไป
-                if (!directors.includes(advisorCleanName)) {
-                    directors.push(advisorCleanName);
-                }
             }
 
             const paperPassTimes = group.passTimes || 0;
@@ -3846,7 +3685,9 @@ app.post("/api/addEventForGroup", apiLimiter, requireLogin, upload.single('file'
                 expireAt: testresultsdate,
                 passTimes: paperPassTimes,
                 date: date1,
-                director: directors// ✅ รอบนี้จะไม่เป็น null ถ้าผ่าน try
+                advisor: advStr,
+                greatDirector: gDirStr,
+                director: dirStr
             });
 
             const savedPaper = await newPaper.save(); 
@@ -3870,24 +3711,27 @@ app.post("/api/addEventForGroup", apiLimiter, requireLogin, upload.single('file'
             title,
             description,
             testTableSingle:{
-                director: directorslist,  
+                advisor: advStr,
+                greatDirector: gDirStr,
+                director: dirStr,  
                 date:  dateTest, 
                 time: time        
             },
             toGroup: chosenGroup,
             date: date1,
             toDate: date2,
-            expireAt: expire
+            expireAt: expire,
+            fileId: uploadedFileId // 🛠️ เซฟ ID ไฟล์เหมือนกัน
         });
 
         await newEvent.save();
 
         const mem1 = await User.findOne({ username: group.member1 });
         const mem2 = group.member2 ? await User.findOne({ username: group.member2 }) : null;
-        const advisor = await User.findOne({ username: group.advisor });
+        const advisorInfo = await User.findOne({ username: group.advisor });
 
         // 🔔 เรียกแจ้งเตือน (เช็คให้ชัวร์ว่าลบบั๊กในฟังก์ชันนี้แล้ว)
-        await sendGroupNotification('alert_group', chosenGroup, req.session.user.username, req.session.user.name, `มีกิจกรรมใหม่: ${title}`, req.session.user.picture || null , eventId , expire , mem1 , mem2 , advisor);
+        await sendGroupNotification('alert_group', chosenGroup, req.session.user.username, req.session.user.name, `มีกิจกรรมใหม่: ${title}`, req.session.user.picture || null , eventId , expire , mem1 , mem2 , advisorInfo);
 
          await createLog(req, "ADD_EVENT_GROUP", {
             username: req.session.user.username,
