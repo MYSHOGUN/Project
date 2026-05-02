@@ -280,7 +280,7 @@
         border-radius: 8px; 
         box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
         padding: 10px; 
-        z-index: 9999; /* สูงสุดๆ เพื่อให้ทับทุกอย่าง */
+        z-index: 990; /* ปรับลดลงเพื่อให้ Dropdown โปรไฟล์ (z-index: 1000) สามารถทับได้ */
         font-size: 12px;
         transition: top 0.2s ease; /* ขยับแบบสมูท */
     }
@@ -516,13 +516,14 @@
             
             let localDate = new Date(startDate.getTime() - (startDate.getTimezoneOffset() * 60000));
             let currentDateStr = localDate.toISOString().split('T')[0];
+            let thaiDateStr = startDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
 
             sectionCount++;
             
             let sectionHTML = `
             <div class="group-section border p-3 rounded mt-3 animated--grow-in" id="section-${sectionCount}" style="background: #f8f9fc;">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="m-0 font-weight-bold text-primary">วันที่จัดสอบ ${d} (ชุดที่ ${sectionCount})</h6>
+                    <h6 class="m-0 font-weight-bold text-primary">กลุ่มที่สอบวันที่ ${thaiDateStr}</h6>
                 </div>
                 
                 <input type="hidden" id="select-group-number${sectionCount}" value="${groupsThisDay}">

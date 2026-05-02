@@ -9611,6 +9611,31 @@ a:focus {
   position: fixed;
 }
 
+#accordionSidebar {
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+
+#accordionSidebar::-webkit-scrollbar {
+  width: 5px;
+}
+
+#accordionSidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#accordionSidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+#accordionSidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
 .sidebar .nav-item {
   position: relative;
 }
@@ -10666,6 +10691,3 @@ footer.sticky-footer .copyright {
 body.sidebar-toggled footer.sticky-footer {
   width: 100%;
 }
-
-
-

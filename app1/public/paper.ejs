@@ -254,13 +254,9 @@
                             </div>
                             
                             <div class="d-flex align-items-center" style="gap: 10px;">
-                                ${paper.autoPdfId ? `
-                                    <a href="/view-pdf/${paper.autoPdfId}" target="_blank" class="btn btn-sm btn-outline-danger shadow-sm px-3 rounded-pill">
-                                        <i class="fas fa-file-pdf mr-2"></i>ดาวน์โหลดแบบฟอร์ม
-                                    </a>
-                                ` : `
-                                    <span class="badge badge-light text-muted p-2">ระบบยังไม่ได้สร้างแบบฟอร์ม</span>
-                                `}
+                                <a href="/api/generate-pdf/${targetGroup._id}" target="_blank" class="btn btn-sm btn-outline-danger shadow-sm px-3 rounded-pill">
+                                    <i class="fas fa-file-pdf mr-2"></i>ดาวน์โหลดแบบฟอร์ม
+                                </a>
 
                                 ${((currentRole === 'teacher' || currentRole === 'admin') && (!paper.mention || !paper.mention.includes("แก้ไข"))) ? `
                                     <label class="custom-check-container mb-0" for="check-${targetGroup._id}">
@@ -393,7 +389,24 @@
                 body: formData 
             });
             
-            if (!uploadRes.ok) throw new Error(error);
+            if (!uploadRes.ok) {
+                let errorMsg = `เกิดข้อผิดพลาดในการอัปโหลด (รหัส: ${uploadRes.status})`;
+                const textData = await uploadRes.text().catch(() => '');
+                try {
+                    const errData = JSON.parse(textData);
+                    errorMsg = errData.error || errData.message || errorMsg;
+                } catch (e) {
+                    if (uploadRes.status === 413 || textData.toLowerCase().includes('too large')) {
+                        errorMsg = 'ขนาดไฟล์ใหญ่เกินกว่าที่ระบบรองรับ';
+                    } else if (textData) {
+                        errorMsg += `\nรายละเอียด: ${textData.replace(/<[^>]*>?/gm, '').substring(0, 100)}...`;
+                    }
+                }
+                if (typeof errorMsg === 'string' && errorMsg.toLowerCase().includes('large')) {
+                    errorMsg = 'ขนาดไฟล์ใหญ่เกินกว่าที่ระบบรองรับ';
+                }
+                throw new Error(errorMsg);
+            }
             const uploadedData = await uploadRes.json();
 
             // 2. แมปข้อมูลให้ตรงกับที่ /api/PaperUploadFile ต้องการ (id และ filename)
@@ -456,11 +469,36 @@
 
         if (confirm.isConfirmed || confirm.isDenied) {
             const isReady = confirm.isConfirmed;
+            let comment = "";
+
+            // ถ้าเลือก "ไม่พร้อมสอบ" ให้แสดง Popup ถามเหตุผล
+            if (!isReady) {
+                const { value: text, isConfirmed: isTextConfirmed } = await Swal.fire({
+                    title: 'เหตุผลที่ไม่พร้อมสอบ',
+                    input: 'textarea',
+                    inputLabel: 'ระบุสิ่งที่นักศึกษาต้องแก้ไข (ข้อความนี้จะถูกส่งไปยังแชทกลุ่ม)',
+                    inputPlaceholder: 'กรอกข้อความที่นี่...',
+                    showCancelButton: true,
+                    confirmButtonText: 'ยืนยัน',
+                    cancelButtonText: 'ยกเลิก',
+                    inputValidator: (value) => {
+                        if (!value) {
+                            return 'กรุณาระบุเหตุผล!';
+                        }
+                    }
+                });
+
+                if (!isTextConfirmed) {
+                    return; // ยกเลิกการอัปเดตสถานะถ้าอาจารย์กดปุ่มยกเลิก
+                }
+                comment = text;
+            }
+
             try {
                 const res = await fetch(`/api/groups/mark-ready-for-exam`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ groupId, paperId, isReady })
+                    body: JSON.stringify({ groupId, paperId, isReady, comment })
                 });
                 if (res.ok) {
                     checkbox.checked = isReady;

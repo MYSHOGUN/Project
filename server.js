@@ -446,7 +446,7 @@ function generateEventId() {
     // ผลลัพธ์จะเป็นแบบ: "123e4567-e89b-12d3-a456-426614174000"
 }
 
-async function sendGroupNotification(type, groupId, senderUsername, sender, messageText, senderPic, mention , expire , member1, member2 , advisor) {
+async function sendGroupNotification(type, groupId, senderUsername, sender, messageText, senderPic, mention , expire , member1, member2 , advisor, extraRecipient) {
     try {
         if (type === 'alert') {
             // 1. บันทึกลง DB แค่ 1 อัน (ใช้ recipient: 'ALL')
@@ -564,6 +564,7 @@ async function sendGroupNotification(type, groupId, senderUsername, sender, mess
             if (member1) recipientList.push(member1);
             if (member2) recipientList.push(member2);
             if (advisor) recipientList.push(advisor);
+            if (extraRecipient && !recipientList.includes(extraRecipient)) recipientList.push(extraRecipient);
             const globalNoti = new Notification({
                 recipient: recipientList,
                 senderUsername: senderUsername,
@@ -2008,30 +2009,6 @@ app.post("/api/addEvent", apiLimiter, requireLogin, requireRole(['admin']), uplo
               });
 
               for (const group of allGroups) {
-                  let finalAutoIdString = null;
-
-                  try {
-                      const autoPdfBuffer = await generateAutoFilledPDF(group);
-
-                      if (autoPdfBuffer) {
-                          // 2. ใช้ localBucket ที่สร้างขึ้นใหม่
-                          const uploadStream = bucket.openUploadStream(`แบบฟอร์ม_${group.projectName}.pdf`, { 
-                              contentType: 'application/pdf' 
-                          });
-
-                          await new Promise((resolve, reject) => {
-                              streamifier.createReadStream(Buffer.from(autoPdfBuffer))
-                                  .pipe(uploadStream)
-                                  .on('error', reject)
-                                  .on('finish', resolve);
-                          });
-
-                          finalAutoIdString = uploadStream.id.toString();
-                          console.log(`✅ เขียนไฟล์สำเร็จ ID: ${finalAutoIdString}`);
-                      }
-                  } catch (pdfErr) {
-                      console.error(`❌ PDF Fail (${group.projectName}):`, pdfErr.message);
-                  }
                   const [year, month, day] = date.split('-').map(Number);
                   date1 =  new Date(year, month - 1, day);
                     date1.setHours(23, 59, 59, 999);
@@ -2048,9 +2025,6 @@ app.post("/api/addEvent", apiLimiter, requireLogin, requireRole(['admin']), uplo
                       existingPaper.mention = description || title;
                       existingPaper.expireAt = date1;
                       existingPaper.date = date1;
-                      if (finalAutoIdString) {
-                          existingPaper.autoPdfId = finalAutoIdString;
-                      }
                       savedPaper = await existingPaper.save();
                   } else {
                       const newPaper = new Paper({
@@ -2059,12 +2033,10 @@ app.post("/api/addEvent", apiLimiter, requireLogin, requireRole(['admin']), uplo
                           mention: description || title,
                           expireAt: date1,
                           passTimes: group.passTimes,
-                          date: date1,
-                          autoPdfId: finalAutoIdString
+                          date: date1
                       });
                       savedPaper = await newPaper.save(); 
                   }
-                  console.log(`💾 บันทึกสำเร็จ! ID: ${savedPaper.autoPdfId}`);
 
                   const mem1 = await User.findOne({ username: group.member1 });
                   const mem2 = group.member2 ? await User.findOne({ username: group.member2 }) : null;
@@ -2306,7 +2278,8 @@ app.get("/eventInfo/:id", requireLogin,requireNotRole(['secretary']), async (req
         renderWithLayout(res, "eventInfo", { 
             title: "KMUTNB Project - Event Info", 
             event,
-            tableData
+            tableData,
+            groupName
         }, req.path, req);
 
     } catch (err) {
@@ -2566,12 +2539,26 @@ app.post("/api/PaperUploadFile", requireLogin, apiLimiter,async (req, res) => {
             $set: { status: "ส่งเอกสารเรียบร้อย" } 
         });
 
+        // เผื่อนักศึกษาไปส่งในกล่อง "ส่งเอกสารได้ตลอดเวลา" ให้ดึง username ของอาจารย์ที่สั่งแก้ (ถ้ามี)
+        let extraRecipient = paper.commentBy;
+        if (!extraRecipient) {
+            const lastFixPaper = await Paper.findOne({
+                groupId: paperGroup._id,
+                passTimes: paperGroup.passTimes,
+                commentBy: { $ne: null }
+            }).sort({ _id: -1 });
+            
+            if (lastFixPaper) {
+                extraRecipient = lastFixPaper.commentBy;
+            }
+        }
+
         if(req.session.user.username === paperGroup.member1){
-            sendGroupNotification('alert_paper', null, req.session.user.username, req.session.user.name, `กลุ่ม ${paperGroup.projectName} ส่งเอกสารเรียบร้อยแล้วโดย ${req.session.user.name}`, req.session.user.picture || null , paper.eventId , null , null , paperGroup.member2 , paperGroup.advisor);
+            sendGroupNotification('alert_paper', null, req.session.user.username, req.session.user.name, `กลุ่ม ${paperGroup.projectName} ส่งเอกสารเรียบร้อยแล้วโดย ${req.session.user.name}`, req.session.user.picture || null , paper.eventId , null , null , paperGroup.member2 , paperGroup.advisor, extraRecipient);
         }else if(req.session.user.username === paperGroup.member2){
-            sendGroupNotification('alert_paper', null, req.session.user.username, req.session.user.name, `กลุ่ม ${paperGroup.projectName} ส่งเอกสารเรียบร้อยแล้วโดย ${req.session.user.name}`, req.session.user.picture || null , paper.eventId , null , paperGroup.member1 , null , paperGroup.advisor);
+            sendGroupNotification('alert_paper', null, req.session.user.username, req.session.user.name, `กลุ่ม ${paperGroup.projectName} ส่งเอกสารเรียบร้อยแล้วโดย ${req.session.user.name}`, req.session.user.picture || null , paper.eventId , null , paperGroup.member1 , null , paperGroup.advisor, extraRecipient);
         }else if(req.session.user.username === paperGroup.advisor){
-            sendGroupNotification('alert_paper', null, req.session.user.username, req.session.user.name, `กลุ่ม ${paperGroup.projectName} ส่งเอกสารเรียบร้อยแล้วโดย อาจารย์ ${req.session.user.name}`, req.session.user.picture || null , paper.eventId , null , paperGroup.member1 , paperGroup.member2 , null);
+            sendGroupNotification('alert_paper', null, req.session.user.username, req.session.user.name, `กลุ่ม ${paperGroup.projectName} ส่งเอกสารเรียบร้อยแล้วโดย อาจารย์ ${req.session.user.name}`, req.session.user.picture || null , paper.eventId , null , paperGroup.member1 , paperGroup.member2 , null, extraRecipient);
         }
 
         
@@ -2650,8 +2637,7 @@ app.get("/api/getMyPapers", requireLogin, async (req, res) => {
             return {
                 ...p,
                 isSubmitted: fileRecords.length > 0,
-                files: fileRecords.map(f => f.file),
-                autoPdfId: p.autoPdfId // ✅ ส่ง ID ของ PDF แยกออกไป
+                files: fileRecords.map(f => f.file)
             };
         }));
 
@@ -2696,21 +2682,29 @@ app.post("/api/submitPaperResult", apiLimiter,requireLogin, async (req, res) => 
         expire.setHours(23, 59, 59, 999);
 
         if (result === "แก้ไข") {
-            // สร้าง Paper ใหม่เพื่อเด้งแจ้งเตือนกลุ่ม (ให้นักเรียนส่งใหม่)
-            const fixPaper = new Paper({
-                eventId: currentPaper.eventId,
-                groupId: currentPaper.groupId,
-                mention: `อาจารย์ ${user} ต้องการให้แก้ไข: ${comment}`,
-                advisor: currentPaper.advisor,
-                greatDirector: currentPaper.greatDirector,
-                director: currentPaper.director, // ส่งกรรมการชุดเดิมไปด้วย
-                passTimes: currentPaper.passTimes,
-                autoPdfId: currentPaper.autoPdfId, // ส่งต่อ PDF เดิมไปด้วย (ถ้ามี)
-                date: expire, // กำหนดวันหมดอายุใหม่ (7 วันนับจากวันนี้)
-                expireAt: expire
-            });
+            // ไม่สร้างกล่องส่งเอกสารใหม่แล้ว 
+            // แต่บันทึกว่าใครเป็นคนสั่งให้แก้ไขไว้ที่กล่องเอกสารปัจจุบัน (เพื่อใช้แจ้งเตือนเวลานักศึกษาส่งไฟล์มาใหม่)
+            currentPaper.commentBy = username;
+            await currentPaper.save();
 
-            await fixPaper.save();
+            // ✅ ส่งข้อความเข้าระบบแชทกลุ่ม
+            let mem1Chat = group.member1 ? group.member1.replace(" (Pending)", "") : null;
+            let mem2Chat = group.member2 ? group.member2.replace(" (Pending)", "") : null;
+            let advChat = group.advisor ? group.advisor.replace(" (Pending)", "") : null;
+
+            const textMessage = new Message({
+                groupId: currentPaper.groupId,
+                senderUsername: "system",
+                senderName: "ระบบ",
+                type: "text",
+                text: `[ระบบแจ้งเตือน] อาจารย์ ${user} ต้องการให้แก้ไขเอกสาร: ${comment}`,
+                senderPic: null,
+                timestamp: new Date(),
+                groupMember: [mem1Chat, mem2Chat, advChat]
+            });
+            await textMessage.save();
+            io.to(currentPaper.groupId.toString()).emit("group message", textMessage);
+
             sendGroupNotification('alert_paper', null, username, user, `กลุ่ม ${group.projectName} ต้องมีการแก้ไข`, req.session.user.picture || null , currentPaper.eventId , group.member1 , group.member2 , group.advisor);
 
             const fixGroupPaper = await Group.findByIdAndUpdate(
@@ -3159,7 +3153,7 @@ app.post("/api/groups/mark-ready-for-exam", apiLimiter,async (req, res) => {
     console.log("✅ Permission check passed. Processing request...");
 
     try {
-        const { groupId , paperId, isReady } = req.body;
+        const { groupId , paperId, isReady, comment } = req.body;
 
         const group = await Group.findById(groupId);
 
@@ -3217,6 +3211,26 @@ app.post("/api/groups/mark-ready-for-exam", apiLimiter,async (req, res) => {
 
         if (!updatedGroup) {
             return res.status(404).json({ error: "ไม่พบข้อมูลกลุ่ม" });
+        }
+
+        // ✅ เพิ่มการบันทึกแชทและแจ้งเตือน Real-time เมื่อไม่พร้อมสอบและมี comment
+        if (isReady === false && comment && comment.trim() !== "") {
+            let mem1 = group.member1 ? group.member1.replace(" (Pending)", "") : null;
+            let mem2 = group.member2 ? group.member2.replace(" (Pending)", "") : null;
+            let adv = group.advisor ? group.advisor.replace(" (Pending)", "") : null;
+
+            const textMessage = new Message({
+                groupId: groupId,
+                senderUsername: req.session.user.username,
+                senderName: req.session.user.name,
+                type: "text",
+                text: `[ระบบแจ้งเตือน] อาจารย์ลงความเห็นว่า "ไม่พร้อมสอบ" เนื่องจาก: ${comment.trim()}`,
+                senderPic: req.session.user.picture || null,
+                timestamp: new Date(),
+                groupMember: [mem1, mem2, adv]
+            });
+            await textMessage.save();
+            io.to(groupId).emit("group message", textMessage);
         }
         
         if (isReady !== false) {
@@ -3601,38 +3615,32 @@ app.post("/api/addSecretary", apiLimiter, requireLogin, async (req, res) => {
     });
 });
 
-// ✅ API สำหรับดึง PDF จาก autoPdfId มาแสดงผล
-// เพิ่มหรือแก้ไขใน server.js
-app.get("/view-pdf/:id", async (req, res) => {
+// ✅ API สำหรับสร้าง PDF สดตามข้อมูลกลุ่ม
+app.get("/api/generate-pdf/:groupId", requireLogin, async (req, res) => {
     try {
-        const idParam = req.params.id;
+        const groupId = req.params.groupId;
         
         // 1. ตรวจสอบความถูกต้องของ ID String
-        if (!mongoose.Types.ObjectId.isValid(idParam)) {
+        if (!mongoose.Types.ObjectId.isValid(groupId)) {
             return res.status(400).send("❌ รูปแบบ ID ไม่ถูกต้อง");
         }
 
-        const fileId = new mongoose.Types.ObjectId(idParam);
-        
-        // 2. ใช้ bucket (GridFSBucket) ที่ประกาศไว้ในบรรทัดที่ 46
-        const files = await bucket.find({ _id: fileId }).toArray();
-        
-        if (!files || files.length === 0) {
-            return res.status(404).send("❌ ไม่พบไฟล์เอกสารใน GridFS (ID นี้ไม่มีไฟล์จริง)");
-        }
+        const group = await Group.findById(groupId);
+        if (!group) return res.status(404).send("ไม่พบข้อมูลกลุ่ม");
 
-        // 3. ตั้งค่า Header สำหรับ PDF
+        const pdfBuffer = await generateAutoFilledPDF(group);
+        if (!pdfBuffer) return res.status(500).send("ไม่สามารถสร้าง PDF ได้");
+
+        const encodedFilename = encodeURIComponent(`แบบฟอร์ม_${group.projectName}.pdf`);
         res.set({
             "Content-Type": "application/pdf",
-            "Content-Disposition": `inline; filename="${encodeURIComponent(files[0].filename)}"`
+            "Content-Disposition": `inline; filename*=UTF-8''${encodedFilename}`
         });
-
-        // 4. Stream ไฟล์ออกไป
-        const downloadStream = bucket.openDownloadStream(fileId);
-        downloadStream.pipe(res);
+        
+        res.send(Buffer.from(pdfBuffer));
 
     } catch (err) {
-        console.error("❌ View PDF Error:", err.message);
+        console.error("❌ Generate PDF Error:", err.message);
         res.status(500).send("เกิดข้อผิดพลาด: " + err.message);
     }
 });
@@ -3761,31 +3769,6 @@ app.post("/api/addEventForGroup", apiLimiter, requireLogin, requireRole(['admin'
                     return res.status(404).json({ error: "กลุ่มนี้ไม่สามารถตั้งวันส่งเอกสารได้เนื่องจาก"+ group.status + 'อยู่แล้ว'});
                 }
 
-                  let finalAutoIdString = null;
-
-                  try {
-                      const autoPdfBuffer = await generateAutoFilledPDF(group);
-
-                      if (autoPdfBuffer) {
-                          // 2. ใช้ localBucket ที่สร้างขึ้นใหม่
-                          const uploadStream = bucket.openUploadStream(`แบบฟอร์ม_${group.projectName}.pdf`, { 
-                              contentType: 'application/pdf' 
-                          });
-
-                          await new Promise((resolve, reject) => {
-                              streamifier.createReadStream(Buffer.from(autoPdfBuffer))
-                                  .pipe(uploadStream)
-                                  .on('error', reject)
-                                  .on('finish', resolve);
-                          });
-
-                          finalAutoIdString = uploadStream.id.toString();
-                          console.log(`✅ เขียนไฟล์สำเร็จ ID: ${finalAutoIdString}`);
-                      }
-                  } catch (pdfErr) {
-                      console.error(`❌ PDF Fail (${group.projectName}):`, pdfErr.message);
-                  }
-
                   let existingPaper = await Paper.findOne({
                       groupId: group._id,
                       passTimes: group.passTimes,
@@ -3798,9 +3781,6 @@ app.post("/api/addEventForGroup", apiLimiter, requireLogin, requireRole(['admin'
                       existingPaper.mention = description || title;
                       existingPaper.expireAt = expire;
                       existingPaper.date = expire;
-                      if (finalAutoIdString) {
-                          existingPaper.autoPdfId = finalAutoIdString;
-                      }
                       savedPaper = await existingPaper.save();
                   } else {
                       const newPaper = new Paper({
@@ -3809,12 +3789,10 @@ app.post("/api/addEventForGroup", apiLimiter, requireLogin, requireRole(['admin'
                           mention: description || title,
                           expireAt: expire,
                           passTimes: group.passTimes,
-                          date: expire,
-                          autoPdfId: finalAutoIdString
+                          date: expire
                       });
                       savedPaper = await newPaper.save(); 
                   }
-                  console.log(`💾 บันทึกสำเร็จ! ID: ${savedPaper.autoPdfId}`);
 
                   const mem1 = await User.findOne({ username: group.member1 });
                   const mem2 = group.member2 ? await User.findOne({ username: group.member2 }) : null;

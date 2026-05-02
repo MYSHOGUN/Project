@@ -21,7 +21,7 @@ const paperSchema = new mongoose.Schema({
   director: { type: String, default: null },
   advisor: { type: String, default: null },
   greatDirector: { type: String, default: null },// เปลี่ยนเป็นอาเรย์ว่างเพื่อความปลอดภัย
-  autoPdfId: { type: String, default: null }
+  commentBy: { type: String, default: null }
 });
 
 module.exports = mongoose.model("Paper", paperSchema);

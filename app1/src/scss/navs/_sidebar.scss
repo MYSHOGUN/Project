@@ -10,6 +10,29 @@
         opacity: 0; /* ซ่อนเมื่อ Sidebar ถูกปิด */
     }
 
+    &#accordionSidebar {
+        height: 100vh; /* Fallback สำหรับเบราว์เซอร์เก่า */
+        height: 100dvh; /* ป้องกันแถบ URL บังบนมือถือ */
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain; /* ป้องกันการเลื่อนทะลุไปหน้าเว็บหลัก */
+
+        /* ปรับแต่ง Scrollbar ให้ดูมินิมอล ไม่หนาเทอะทะ */
+        &::-webkit-scrollbar {
+            width: 5px;
+        }
+        &::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        &::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+        &::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+    }
+
     .nav-item {
         position: relative;
 
