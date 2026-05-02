@@ -34,6 +34,18 @@
     .btn-add-member:hover { border-color: #4e73df; color: #4e73df; background: #f0f3ff; }
 
     .badge-role { font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; margin-left: auto; }
+
+    /* 3. Input Styles */
+    .custom-title-input {
+        width: 100%; background: transparent; border: none;
+        border-bottom: 2px solid #e3e6f0; border-radius: 0;
+        padding: 8px 0; font-size: 1.1rem; color: #5a5c69;
+        transition: border-color 0.3s ease; outline: none; box-shadow: none;
+    }
+    .custom-title-input:focus {
+        border-bottom-color: #4e73df; color: #2d3436;
+    }
+    .custom-title-input::placeholder { color: #b7b9cc; font-weight: normal; }
 </style>
 
 <div class="container-fluid d-flex align-items-start justify-content-center" style="min-height: 100vh; background: #f4f7f6; padding-top: 20px;">
@@ -46,13 +58,13 @@
         </div>
 
         <div class="project-title-box">
-            <small class="text-primary font-weight-bold uppercase">ชื่อปริญญานิพนธ์</small>
-            <input type="text" id="name" class="mb-0 mt-1 font-weight-bold text-gray-800" value="<%= groups[0].projectName %>"></input>
+            <small class="text-primary font-weight-bold text-uppercase"><i class="fas fa-book mr-1"></i> ชื่อปริญญานิพนธ์ (ภาษาไทย)</small>
+            <input type="text" id="name" class="custom-title-input mt-1 font-weight-bold" value="<%= groups[0].projectName %>" placeholder="ระบุชื่อปริญญานิพนธ์ภาษาไทย">
         </div>
 
         <div class="project-title-box">
-            <small class="text-primary font-weight-bold uppercase">ชื่อปริญญานิพนธ์ (ภาษาอังกฤษ)</small>
-            <input type="text" id="engName" class="mb-0 mt-1 font-weight-bold text-gray-800" value="<%= groups[0].engName %>"></input>
+            <small class="text-primary font-weight-bold text-uppercase"><i class="fas fa-book mr-1"></i> ชื่อปริญญานิพนธ์ (ภาษาอังกฤษ)</small>
+            <input type="text" id="engName" class="custom-title-input mt-1 font-weight-bold" value="<%= groups[0].engName %>" placeholder="ระบุชื่อปริญญานิพนธ์ภาษาอังกฤษ">
         </div>
 
         <div class="mb-4">
@@ -154,12 +166,17 @@
         const groups = JSON.parse(serverData.dataset.groups || '[]');
 
         function updateButtonState() {
-            if (chosenUser !== null || chosenAdvisor !== null) {
+            const isNameChanged = $("#name").val().trim() !== (groups[0].projectName || "");
+            const isEngNameChanged = $("#engName").val().trim() !== (groups[0].engName || "");
+            
+            if (chosenUser !== null || chosenAdvisor !== null || isNameChanged || isEngNameChanged) {
                 $("#updateGroupBtn").prop("disabled", false).addClass("shadow");
             } else {
                 $("#updateGroupBtn").prop("disabled", true).removeClass("shadow");
             }
         }
+        
+        $("#name, #engName").on("input", updateButtonState);
 
         // --- Search Student ---
         $("#addMemberBtn").on("click", function() {
@@ -254,8 +271,8 @@
         });
 
         $("#updateGroupBtn").on("click", function() {
-            const name = document.getElementById("name");
-            const engName = document.getElementById("engName");
+            const name = document.getElementById("name").value.trim();
+            const engName = document.getElementById("engName").value.trim();
             const groupData = {
                 member2: chosenUser || groups[0].member2,
                 advisor: chosenAdvisor || groups[0].advisor,

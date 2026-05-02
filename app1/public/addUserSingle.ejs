@@ -114,7 +114,7 @@
                     <label class="label-text">ตำแหน่งผู้ใช้</label>
                     <select class="custom-select" id="role">
                         <option selected disabled>เลือกตำแหน่ง...</option>
-                        <option value="student">นักศึกษา</option>
+                        <option value="user">นักศึกษา</option>
                         <option value="teacher">อาจารย์</option>
                     </select>
                 </div>
@@ -164,7 +164,7 @@ document.getElementById('saveUser').addEventListener('click', async function(e) 
         title: 'ยืนยันการเพิ่มผู้ใช้?',
         html: `คุณกำลังจะเพิ่ม <b>${titleText}${name} ${lastname}</b><br>` +
               `รหัส: ${username}<br>` +
-              `ตำแหน่ง: ${role === 'student' ? 'นักศึกษา' : 'อาจารย์'}`,
+              `ตำแหน่ง: ${role === 'user' ? 'นักศึกษา' : 'อาจารย์'}`,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#1cc88a',

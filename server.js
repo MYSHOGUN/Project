@@ -1140,6 +1140,16 @@ app.post("/groups", apiLimiter,requireLogin, async (req, res) => {
     const newGroup = new Group({ projectName, engName, member1: member1, member2: mem2 , advisor : adv,status , allMember: [member1]});
     await newGroup.save();
 
+    // ✅ สร้างกล่อง "ส่งเอกสารได้ตลอดเวลา" ทันทีที่สร้างกลุ่มสำเร็จ
+    const newPaper = new Paper({
+        eventId: "default",
+        groupId: newGroup._id,
+        mention: "สามารถส่งเอกสารได้ตลอดเวลา",
+        passTimes: 0,
+        date: new Date('2099-12-31')
+    });
+    await newPaper.save();
+
     const expireTime = new Date(Date.now() + 120 * 24 * 60 * 60 * 1000); // กำหนดเวลาหมดอายุ (120 วัน)
 
     sendGroupNotification("addGroup", newGroup._id, "ระบบ", "ระบบ", `คุณถูกเพิ่มเข้ากลุ่มโดย ${mem1.name}`, null, null , expireTime , null ,  member2 , advisor)
@@ -1199,11 +1209,13 @@ app.post("/group/accept-invitation/:groupId/:notiId", apiLimiter,requireLogin, a
     //แก้ recipient เอา username ออกจาก array recipients ใน DB แต่ถ้าไมมี recipient ก็ลบเอกสารนั้นทิ้งไปเลย
 
     let noti = await Notification.findById(notiId);
-    noti.recipient.pull(username);
-    if (noti.recipient.length === 0) {
-        await Notification.findByIdAndDelete(notiId);
-    } else {
-        await noti.save();
+    if (noti) {
+        noti.recipient.pull(username);
+        if (noti.recipient.length === 0) {
+            await Notification.findByIdAndDelete(notiId);
+        } else {
+            await noti.save();
+        }
     }
     
     let updatedUser;
@@ -1256,11 +1268,13 @@ app.post("/group/deny-invitation/:groupId/:notiId", apiLimiter,requireLogin, asy
 
     // ✅ 2. ลบการแจ้งเตือนทิ้งเพื่อให้หายไปจากหน้าจอผู้ใช้
     let noti = await Notification.findById(notiId);
-    noti.recipient.pull(req.session.user.username);
-    if (noti.recipient.length === 0) {
-        await Notification.findByIdAndDelete(notiId);
-    } else {        
-        await noti.save();
+    if (noti) {
+        noti.recipient.pull(req.session.user.username);
+        if (noti.recipient.length === 0) {
+            await Notification.findByIdAndDelete(notiId);
+        } else {        
+            await noti.save();
+        }
     }
 
     // ✅ 3. อัปเดต Session ของผู้ใช้ที่กดปฏิเสธให้กลับเป็นไม่มีกลุ่ม (null)
@@ -1380,26 +1394,31 @@ app.post("/groups/leave/:groupId", apiLimiter,async (req, res) => {
 
     await group.save();
 
+    let updatedUser;
     // อัปเดต User ด้วย (ถ้า User มี field group)
     if (req.session.user.role !== "teacher" && req.session.user.role !== "admin"){
-        await User.findOneAndUpdate(
+        updatedUser = await User.findOneAndUpdate(
         { username },
-        { $set: { group: [] } } // เอา group ออก
+        { $set: { group: [] } }, // เอา group ออก
+        { new: true }
         );
     }else{
-        await User.findOneAndUpdate(
+        updatedUser = await User.findOneAndUpdate(
         { username },
-        { $pull: { group: groupId } }
+        { $pull: { group: groupId } },
+        { new: true }
         );
     }
 
-
-
     // อัปเดต session
-    req.session.user.group = User.findOne({ username }).group;
-    req.session.save()
-
-    res.send("ออกจากกลุ่มสำเร็จ");
+    req.session.user.group = updatedUser.group;
+    req.session.save((err) => {
+        if (err) {
+            console.error("❌ Session Save Error:", err);
+            return res.status(500).send("เกิดข้อผิดพลาดในการบันทึกข้อมูลเซสชัน");
+        }
+        res.send("ออกจากกลุ่มสำเร็จ");
+    });
   } catch (err) {
     console.error(err);
     res.status(500).send("เกิดข้อผิดพลาดที่ server");
@@ -1458,9 +1477,14 @@ app.get("/updateGroup", requireLogin, requireRole(["user"]), async (req, res) =>
     
     // 1. ดึงกลุ่มของผู้ใช้
     const groups = await Group.find({
-      $or: [
-        { member1: username },
-        { member2: username },
+      $and: [
+        {
+          $or: [
+            { member1: username },
+            { member2: username },
+          ]
+        },
+        { status: { $nin: ["ผ่านการสอบป้องกันปริญญานิพนธ์", "ไม่ผ่านการสอบป้องกันปริญญานิพนธ์", "ไม่ผ่านการสอบหัวข้อปริญญานิพนธ์", "ไม่มีสมาชิก"] } }
       ]
     });
 
@@ -1779,7 +1803,7 @@ app.post("/register", apiLimiter, upload.single("profileImage"), async (req, res
     
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    if (existingUser && existingUser.email && existingUser.phone === null && existingUser.name === name && existingUser.lastname === lastname && existingUser.role !== "teacher") {
+    if (existingUser && existingUser.email && existingUser.phone === null && existingUser.name === name && existingUser.lastname === lastname && existingUser.role !== "teacher" && existingUser.role !== "secretary") {
       await User.findOneAndUpdate(
         { username: username },
         { password: hashedPassword, name, lastname, phone ,picture: req.file ? img : null}
@@ -2012,17 +2036,34 @@ app.post("/api/addEvent", apiLimiter, requireLogin, requireRole(['admin']), uplo
                   date1 =  new Date(year, month - 1, day);
                     date1.setHours(23, 59, 59, 999);
 
-                  const newPaper = new Paper({
-                      eventId: eventId,
+                  let existingPaper = await Paper.findOne({
                       groupId: group._id,
-                      mention: description || title,
-                      expireAt: date1,
                       passTimes: group.passTimes,
-                      date: date1,
-                      autoPdfId: finalAutoIdString // ✅ รอบนี้จะไม่เป็น null ถ้าผ่าน try
+                      mention: { $not: /จะมีการจัดสอบ/ }
                   });
 
-                  const savedPaper = await newPaper.save(); 
+                  let savedPaper;
+                  if (existingPaper) {
+                      existingPaper.eventId = eventId;
+                      existingPaper.mention = description || title;
+                      existingPaper.expireAt = date1;
+                      existingPaper.date = date1;
+                      if (finalAutoIdString) {
+                          existingPaper.autoPdfId = finalAutoIdString;
+                      }
+                      savedPaper = await existingPaper.save();
+                  } else {
+                      const newPaper = new Paper({
+                          eventId: eventId,
+                          groupId: group._id,
+                          mention: description || title,
+                          expireAt: date1,
+                          passTimes: group.passTimes,
+                          date: date1,
+                          autoPdfId: finalAutoIdString
+                      });
+                      savedPaper = await newPaper.save(); 
+                  }
                   console.log(`💾 บันทึกสำเร็จ! ID: ${savedPaper.autoPdfId}`);
 
                   const mem1 = await User.findOne({ username: group.member1 });
@@ -2132,7 +2173,49 @@ app.post("/api/addEvent", apiLimiter, requireLogin, requireRole(['admin']), uplo
                 }
 
                 if (paperPlatforms.length > 0) {
-                    await Paper.insertMany(paperPlatforms);
+                    const savedPapers = await Paper.insertMany(paperPlatforms);
+                    for (const savedPaper of savedPapers) {
+                        const previousPaper = await Paper.findOne({
+                            groupId: savedPaper.groupId,
+                            passTimes: savedPaper.passTimes,
+                            _id: { $ne: savedPaper._id },
+                            mention: { $not: /จะมีการจัดสอบ/ }
+                        }).sort({ _id: -1 });
+
+                        if (previousPaper) {
+                            const oldFiles = await PaperFile.find({ paperId: previousPaper._id });
+                            for (const oldFile of oldFiles) {
+                                if (oldFile.file && oldFile.file.fileId) {
+                                    try {
+                                        const uploadStream = bucket.openUploadStream(oldFile.file.filename, {
+                                            contentType: oldFile.file.contentType
+                                        });
+                                        const downloadStream = bucket.openDownloadStream(new mongoose.Types.ObjectId(oldFile.file.fileId));
+                                        
+                                        await new Promise((resolve, reject) => {
+                                            downloadStream.pipe(uploadStream)
+                                                .on('error', reject)
+                                                .on('finish', resolve);
+                                        });
+
+                                        const newPaperFile = new PaperFile({
+                                            paperId: savedPaper._id,
+                                            groupId: savedPaper.groupId,
+                                            file: {
+                                                fileId: uploadStream.id,
+                                                filename: oldFile.file.filename,
+                                                contentType: oldFile.file.contentType
+                                            },
+                                            check: oldFile.check
+                                        });
+                                        await newPaperFile.save();
+                                    } catch (copyErr) {
+                                        console.error("❌ Failed to copy file for exam:", copyErr);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 
             }catch(err){
@@ -2246,51 +2329,49 @@ app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
         const papers = await Paper.find({ eventId: uuidFromParams });
         const paperIds = papers.map(p => p._id); // เก็บ _id ของ Paper (อันนี้เป็น ObjectId)
 
-        // 2. ค้นหา PaperFile ทั้งหมดที่เชื่อมกับ Paper เหล่านั้น
-        const paperFiles = await PaperFile.find({ paperId: { $in: paperIds } });
+        let deletedFilesCount = 0;
+        let deletedPapersCount = 0;
 
-        // 3. ลบไฟล์จริงใน GridFS
-        for (const pf of paperFiles) {
-            if (pf.file && pf.file.fileId) {
-                try {
-                    await bucket.delete(new mongoose.Types.ObjectId(pf.file.fileId));
-                    console.log(`🗑️ Deleted GridFS File: ${pf.file.fileId}`);
-                } catch (err) {
-                    console.warn(`⚠️ Could not delete file ${pf.file.fileId}:`, err.message);
+        if (event.title === "วันส่งเอกสาร") {
+            // คืนค่า Paper กลับเป็นค่าเริ่มต้น (เปิดรับตลอด) แทนการลบเพื่อป้องกันไฟล์นักศึกษาหาย
+            await Paper.updateMany(
+                { eventId: uuidFromParams },
+                { 
+                    $unset: { expireAt: 1 },
+                    $set: { 
+                        eventId: "default",
+                        mention: "สามารถส่งเอกสารได้ตลอดเวลา",
+                        date: new Date('2099-12-31')
+                    }
+                }
+            );
+            await Notification.deleteMany({ mention: uuidFromParams }); 
+        } else {
+            // 2. ค้นหา PaperFile ทั้งหมดที่เชื่อมกับ Paper เหล่านั้น
+            const paperFiles = await PaperFile.find({ paperId: { $in: paperIds } });
+            deletedFilesCount = paperFiles.length;
+            deletedPapersCount = papers.length;
+
+            // 3. ลบไฟล์จริงใน GridFS
+            for (const pf of paperFiles) {
+                if (pf.file && pf.file.fileId) {
+                    try {
+                        await bucket.delete(new mongoose.Types.ObjectId(pf.file.fileId));
+                    } catch (err) {
+                        console.warn(`⚠️ Could not delete file ${pf.file.fileId}:`, err.message);
+                    }
                 }
             }
+
+            // 4. ลบข้อมูล Metadata อื่นๆ
+            await PaperFile.deleteMany({ paperId: { $in: paperIds } }); 
+            await Paper.deleteMany({ eventId: uuidFromParams }); // ลบโดยใช้ UUID
+            await Notification.deleteMany({ mention: uuidFromParams }); 
         }
-
-        
-
-        // 4. ลบข้อมูล Metadata อื่นๆ
-        await PaperFile.deleteMany({ paperId: { $in: paperIds } }); 
-        await Paper.deleteMany({ eventId: uuidFromParams }); // ลบโดยใช้ UUID
-        await Notification.deleteMany({ mention: uuidFromParams }); 
 
         const group = await Group.find({status: { $ne: "ผ่านการสอบป้องกันปริญญานิพนธ์" } });
 
-        if (event.title === "วันส่งเอกสาร") {
-          const groupWaitFile = group.filter(g => g.status === "รอส่งเอกสารก่อนสอบป้องกันปริญญานิพนธ์" || g.status === "รอส่งเอกสารก่อนสอบก้าวหน้าปริญญานิพนธ์" || g.status === "รอส่งเอกสารก่อนสอบนำเสนอหัวข้อปริญญานิพนธ์" || g.status === "ส่งเอกสารการสอบนำเสนอหัวข้อปริญญานิพนธ์เรียบร้อย" || g.status === "ส่งเอกสารการสอบก้าวหน้าปริญญานิพนธ์เรียบร้อย" || g.status === "ส่งเอกสารการสอบป้องกันปริญญานิพนธ์เรียบร้อย" || g.status === "พร้อมสอบนำเสนอหัวข้อปริญญานิพนธ์" || g.status === "พร้อมสอบก้าวหน้าปริญญานิพนธ์" || g.status === "พร้อมสอบป้องกันปริญญานิพนธ์");
-          for (const g of groupWaitFile) {
-
-            const mem1 = await User.findOne({ username: g.member1 });
-            const mem2 = g.member2 ? await User.findOne({ username: g.member2 }) : null;
-
-            if (g.passTimes === 0) {
-              g.status = "รอนำเสนอหัวข้อปริญญานิพนธ์";
-            } else if(g.passTimes >= 1) {
-              if(mem1.branch === "EnET" && mem2?.branch === "EnET"){
-                g.status = "ผ่านการสอบป้องกันปริญญานิพนธ์";
-              }else{
-                g.status = "ผ่านการสอบก้าวหน้าปริญญานิพนธ์";
-              }
-            }
-            const fileTime = g.fileTimes - 1 < 0 ? 0 : g.fileTimes - 1;
-
-            await Group.findByIdAndUpdate(g._id, { $set: { status: g.status , fileTimes: fileTime}} , { new: true });
-          }
-        }else if (event.title === "วันสอบ") {
+        if (event.title === "วันสอบ") {
           const groupExamDone = group.filter(g => g.status === "รอสอบป้องกันปริญญานิพนธ์" || g.status === "รอสอบก้าวหน้าปริญญานิพนธ์" || g.status === "รอสอบนำเสนอหัวข้อปริญญานิพนธ์");
           for (const g of groupExamDone) {
             const checkFile = await PaperFile.findOne({
@@ -2346,8 +2427,8 @@ app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
                 success: true, 
                 message: "ลบกิจกรรมและไฟล์ที่เกี่ยวข้องทั้งหมดเรียบร้อยแล้ว",
                 details: {
-                    filesDeleted: paperFiles.length,
-                    platformsDeleted: papers.length
+                    filesDeleted: deletedFilesCount,
+                    platformsDeleted: deletedPapersCount
                 }
             });
         } else {
@@ -2375,6 +2456,24 @@ app.get("/paper", requireLogin, requireNotRole(['secretary']), async (req, res) 
       const now = new Date();
 
       const processedGroups = await Promise.all(groups.map(async (group) => {
+            if (group && !group.status.includes("ไม่ผ่าน") && !group.status.includes("ผ่านการสอบป้องกัน") && group.status !== "ไม่มีสมาชิก") {
+                const existingPaper = await Paper.findOne({
+                    groupId: group._id,
+                    passTimes: group.passTimes,
+                    mention: { $not: /จะมีการจัดสอบ/ }
+                });
+                if (!existingPaper) {
+                    const newPaper = new Paper({
+                        eventId: "default",
+                        groupId: group._id,
+                        mention: "สามารถส่งเอกสารได้ตลอดเวลา",
+                        passTimes: group.passTimes,
+                        date: new Date('2099-12-31') // ตั้งไว้ไกลๆ ให้กล่องส่งเอกสารทำงานได้ตลอด
+                    });
+                    await newPaper.save();
+                }
+            }
+
             const latestPaper = await Paper.findOne({ groupId: group._id }).sort({ createdAt: -1 });// หา Paper ล่าสุดของกลุ่มนี้เพื่อดูวันหมดอายุ
             if (latestPaper && latestPaper.expireAt && now > latestPaper.expireAt) {
             // เช็คว่าสถานะปัจจุบันต้องไม่ใช่สถานะที่ "จบกระบวนการแล้ว" หรือ "เป็นค่าที่ต้องการอยู่แล้ว"
@@ -3060,7 +3159,7 @@ app.post("/api/groups/mark-ready-for-exam", apiLimiter,async (req, res) => {
     console.log("✅ Permission check passed. Processing request...");
 
     try {
-        const { groupId , paperId} = req.body;
+        const { groupId , paperId, isReady } = req.body;
 
         const group = await Group.findById(groupId);
 
@@ -3068,23 +3167,36 @@ app.post("/api/groups/mark-ready-for-exam", apiLimiter,async (req, res) => {
         const mem2 = group.member2 ? await User.findOne({username: group.member2}) : null;
         let statusCheck;
 
-        if (group.passTimes === 0) {
-          statusCheck = "พร้อมสอบนำเสนอหัวข้อปริญญานิพนธ์";
-        } else if(group.passTimes >= 1) {
-          if(mem1.branch === "EnET" || mem2.branch === "EnET"){
-            statusCheck = "พร้อมสอบป้องกันปริญญานิพนธ์";
-          }else{
-            statusCheck = "พร้อมสอบก้าวหน้าปริญญานิพนธ์";
-          }
+        if (isReady !== false) {
+            if (group.passTimes === 0) {
+              statusCheck = "พร้อมสอบนำเสนอหัวข้อปริญญานิพนธ์";
+            } else if(group.passTimes >= 1) {
+              if(mem1.branch === "EnET" || mem2?.branch === "EnET"){
+                statusCheck = "พร้อมสอบป้องกันปริญญานิพนธ์";
+              }else{
+                statusCheck = "พร้อมสอบก้าวหน้าปริญญานิพนธ์";
+              }
+            }
+        } else {
+            if (group.passTimes === 0) {
+              statusCheck = "ส่งเอกสารการสอบนำเสนอหัวข้อปริญญานิพนธ์เรียบร้อย";
+            } else if(group.passTimes >= 1) {
+              if(mem1.branch === "EnET" || mem2?.branch === "EnET"){
+                statusCheck = "ส่งเอกสารการสอบป้องกันปริญญานิพนธ์เรียบร้อย";
+              }else{
+                statusCheck = "ส่งเอกสารการสอบก้าวหน้าปริญญานิพนธ์เรียบร้อย";
+              }
+            }
         }
-        console.log(`📡 Marking group ${groupId} as ready for exam with status: ${paperId}`);
+        
+        console.log(`📡 Marking group ${groupId} as ready for exam with status: ${statusCheck}`);
 
         const result = await PaperFile.updateMany(
             { $and: [
              { groupId: groupId }, 
              { paperId: paperId },
             ] },
-            { $set: { check: true } }
+            { $set: { check: isReady !== false } }
         );
         console.log(`📡 Updating paper files for group ${groupId} with paper ID ${paperId}`);
 
@@ -3106,7 +3218,12 @@ app.post("/api/groups/mark-ready-for-exam", apiLimiter,async (req, res) => {
         if (!updatedGroup) {
             return res.status(404).json({ error: "ไม่พบข้อมูลกลุ่ม" });
         }
-        sendGroupNotification('alert_paper', null, req.session.user.username, req.session.user.name, `กลุ่ม ${group.projectName} พร้อมสำหรับการสอบแล้ว`, req.session.user.picture || null , null , group.member1 , group.member2 , null);
+        
+        if (isReady !== false) {
+            sendGroupNotification('alert_paper', null, req.session.user.username, req.session.user.name, `กลุ่ม ${group.projectName} พร้อมสำหรับการสอบแล้ว`, req.session.user.picture || null , null , group.member1 , group.member2 , null);
+        } else {
+            sendGroupNotification('alert_paper', null, req.session.user.username, req.session.user.name, `กลุ่ม ${group.projectName} ถูกเปลี่ยนสถานะเป็นไม่พร้อมสอบ`, req.session.user.picture || null , null , group.member1 , group.member2 , null);
+        }
 
         res.json({ success: true });
     } catch (err) {
@@ -3250,7 +3367,46 @@ app.get("/userInfo", requireLogin, requireRole(['admin', 'secretary']) ,async (r
     // 1. ตรวจสอบสิทธิ์ Admin
     try {
         // 2. ดึงเฉพาะคนที่เป็น user และเรียงลำดับรหัส
-        const students = await User.find({ role: 'user' }).sort({ username: 1 });
+        const students = await User.find({ role: 'user' }).sort({ username: 1 }).lean();
+        const groups = await Group.find({}).sort({ _id: -1 }).lean();
+
+        const timeSince = (date) => {
+            if (!date) return "";
+            const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+            if (seconds < 0) return "เพิ่งอัปเดต";
+            let interval = Math.floor(seconds / 31536000);
+            if (interval >= 1) return interval + " ปีที่แล้ว";
+            interval = Math.floor(seconds / 2592000);
+            if (interval >= 1) return interval + " เดือนที่แล้ว";
+            interval = Math.floor(seconds / 86400);
+            if (interval >= 1) return interval + " วันที่แล้ว";
+            interval = Math.floor(seconds / 3600);
+            if (interval >= 1) return interval + " ชั่วโมงที่แล้ว";
+            interval = Math.floor(seconds / 60);
+            if (interval >= 1) return interval + " นาทีที่แล้ว";
+            return "เพิ่งอัปเดต";
+        };
+
+        // แมปสถานะของกลุ่มให้กับผู้ใช้แต่ละคน
+        students.forEach(student => {
+            if (student.status && (student.status.includes("ผ่านการสอบป้องกัน") || student.status === "จบแล้ว" || student.status === "สำเร็จการศึกษา")) {
+                student.displayStatus = student.status;
+                student.statusTimeAgo = timeSince(student.updatedAt || student.createdAt);
+            } else {
+                const studentGroup = groups.find(g => 
+                    g.member1 === student.username || 
+                    g.member2 === student.username || 
+                    g.member2 === `${student.username} (Pending)`
+                );
+                if (studentGroup) {
+                    student.displayStatus = studentGroup.status;
+                    student.statusTimeAgo = timeSince(studentGroup.updatedAt || studentGroup.lastUpdatedTime);
+                } else {
+                    student.displayStatus = "ไม่มีกลุ่ม";
+                    student.statusTimeAgo = "";
+                }
+            }
+        });
 
         // 3. Logic การจัดกลุ่ม (Group by Prefix 2 ตัวหน้าของ username)
         const groupedData = students.reduce((acc, student) => {
@@ -3630,17 +3786,34 @@ app.post("/api/addEventForGroup", apiLimiter, requireLogin, requireRole(['admin'
                       console.error(`❌ PDF Fail (${group.projectName}):`, pdfErr.message);
                   }
 
-                  const newPaper = new Paper({
-                      eventId: eventId,
+                  let existingPaper = await Paper.findOne({
                       groupId: group._id,
-                      mention: description || title,
-                      expireAt: expire,
                       passTimes: group.passTimes,
-                      date: expire,
-                      autoPdfId: finalAutoIdString // ✅ รอบนี้จะไม่เป็น null ถ้าผ่าน try
+                      mention: { $not: /จะมีการจัดสอบ/ }
                   });
 
-                  const savedPaper = await newPaper.save(); 
+                  let savedPaper;
+                  if (existingPaper) {
+                      existingPaper.eventId = eventId;
+                      existingPaper.mention = description || title;
+                      existingPaper.expireAt = expire;
+                      existingPaper.date = expire;
+                      if (finalAutoIdString) {
+                          existingPaper.autoPdfId = finalAutoIdString;
+                      }
+                      savedPaper = await existingPaper.save();
+                  } else {
+                      const newPaper = new Paper({
+                          eventId: eventId,
+                          groupId: group._id,
+                          mention: description || title,
+                          expireAt: expire,
+                          passTimes: group.passTimes,
+                          date: expire,
+                          autoPdfId: finalAutoIdString
+                      });
+                      savedPaper = await newPaper.save(); 
+                  }
                   console.log(`💾 บันทึกสำเร็จ! ID: ${savedPaper.autoPdfId}`);
 
                   const mem1 = await User.findOne({ username: group.member1 });
@@ -3692,6 +3865,47 @@ app.post("/api/addEventForGroup", apiLimiter, requireLogin, requireRole(['admin'
 
             const savedPaper = await newPaper.save(); 
             
+            const previousPaper = await Paper.findOne({
+                groupId: savedPaper.groupId,
+                passTimes: savedPaper.passTimes,
+                _id: { $ne: savedPaper._id },
+                mention: { $not: /จะมีการจัดสอบ/ }
+            }).sort({ _id: -1 });
+
+            if (previousPaper) {
+                const oldFiles = await PaperFile.find({ paperId: previousPaper._id });
+                for (const oldFile of oldFiles) {
+                    if (oldFile.file && oldFile.file.fileId) {
+                        try {
+                            const uploadStream = bucket.openUploadStream(oldFile.file.filename, {
+                                contentType: oldFile.file.contentType
+                            });
+                            const downloadStream = bucket.openDownloadStream(new mongoose.Types.ObjectId(oldFile.file.fileId));
+                            
+                            await new Promise((resolve, reject) => {
+                                downloadStream.pipe(uploadStream)
+                                    .on('error', reject)
+                                    .on('finish', resolve);
+                            });
+
+                            const newPaperFile = new PaperFile({
+                                paperId: savedPaper._id,
+                                groupId: savedPaper.groupId,
+                                file: {
+                                    fileId: uploadStream.id,
+                                    filename: oldFile.file.filename,
+                                    contentType: oldFile.file.contentType
+                                },
+                                check: oldFile.check
+                            });
+                            await newPaperFile.save();
+                        } catch (copyErr) {
+                            console.error("❌ Failed to copy file for exam:", copyErr);
+                        }
+                    }
+                }
+            }
+
             const mem1 = await User.findOne({ username: group.member1 });
             const mem2 = group.member2 ? await User.findOne({ username: group.member2 }) : null;
 

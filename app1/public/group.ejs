@@ -120,9 +120,9 @@
                   </div>
                 </div>
               </li>
-              <div class="<% if(user.role === 'teacher' || user.role === 'admin'){ %> d-none <% }else{ %> d-flex <% } %>flex-row" style="margin-bottom: 20px; justify-content: space-evenly;">
-                <button id="addMemberBtn" class="btn btn-outline-primary rounded-pill font-weight-bold shadow-sm" style="width: 45%;"><i class="fas fa-user-plus mr-1"></i> เพิ่มสมาชิก</button>
-                <button id="leaveGroupBtn" class="btn btn-outline-danger rounded-pill font-weight-bold shadow-sm" style="width: 45%;" onclick="confirmLeaveGroup(event, '<%= g._id %>')"><i class="fas fa-sign-out-alt mr-1"></i> ออกจากกลุ่ม</button>
+              <div class="<% if(user.role === 'teacher' || user.role === 'admin'){ %> d-none <% }else{ %> d-flex <% } %> flex-row" style="margin-bottom: 20px; justify-content: space-evenly;">
+                <a href="/updateGroup" class="btn btn-outline-primary rounded-pill font-weight-bold shadow-sm d-flex justify-content-center align-items-center" style="width: 45%;"><i class="fas fa-cog mr-1"></i> จัดการกลุ่ม</a>
+                <button type="button" class="btn btn-outline-danger rounded-pill font-weight-bold shadow-sm" style="width: 45%;" onclick="confirmLeaveGroup(event, '<%= g._id %>')"><i class="fas fa-sign-out-alt mr-1"></i> ออกจากกลุ่ม</button>
               </div>
             <% }) %>
             <% if(pastGroups.length > 0) { %>
@@ -213,9 +213,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentGroupName = "<%= activeGroups.length > 0 ? activeGroups[0].projectName : '' %>";
 
   let selectedFiles = [];
-
-  const addMemberBtn = document.getElementById('addMemberBtn');
-  const leaveGroupBtn = document.getElementById('leaveGroupBtn');
 
   fileInput.addEventListener('change', () => {
     const files = Array.from(fileInput.files);
@@ -444,25 +441,6 @@ document.addEventListener("DOMContentLoaded", () => {
   backButton.addEventListener('click', () => {
     showGroupListSection();
   });
-  // ปุ่มออกจากกลุ่ม
-  /*leaveGroupBtn.addEventListener('click', () => {
-    if(confirm("คุณแน่ใจหรือไม่ว่าต้องการออกจากกลุ่มนี้?")){
-      fetch(`/groups/leave/${currentGroupId}`, { method: 'POST' })
-        .then(res => {
-          if(res.ok){
-            alert("คุณได้ออกจากกลุ่มเรียบร้อยแล้ว");
-            window.location.reload();
-          } else {
-            res.text().then(text => alert("เกิดข้อผิดพลาด: " + text));
-          }
-        })
-        .catch(err => alert("เกิดข้อผิดพลาด: " + err.message));
-    }
-  });*/
-  // ปุ่มเพิ่มสมาชิก
-  addMemberBtn.addEventListener('click', () => {
-      window.location.href = '/updateGroup';
-  });
 
   // Layout responsive
   function showChatSection(){
@@ -627,7 +605,7 @@ window.confirmLeaveGroup = async (e, groupId) => {
 
   // ✅ เติม: แก้ไข Logic การเลือกกลุ่ม (ห้ามคลิกทะลุปุ่มลูกศร)
   groupList.addEventListener("click", (e) => {
-    if (e.target.closest('button') || e.target.closest('.custom-expand-menu')) {
+    if (e.target.closest('.btn') || e.target.closest('.custom-expand-menu')) {
       return; 
     }
     const li = e.target.closest('.group-item');
