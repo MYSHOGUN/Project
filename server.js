@@ -477,17 +477,19 @@ async function sendGroupNotification(type, groupId, senderUsername, sender, mess
           // 1. เตรียมรายชื่อสมาชิกกลุ่ม
           let recipientList = [];
           if (member2){
-            if(member2.includes("(Pending)")){
-                recipientList.push(member2.replace(" (Pending)",""));
+            let mem2Str = String(member2)
+            if(mem2Str.includes("(Pending)")){
+                recipientList.push(mem2Str.replace(" (Pending)",""));
             }else{
-                recipientList.push(member2);
+                recipientList.push(mem2Str);
             }
           } 
           if (advisor) {
-                if(advisor.includes("(Pending)")){
-                    recipientList.push(advisor.replace(" (Pending)",""));
+                let adv2Str = String(advisor)
+                if(adv2Str.includes("(Pending)")){
+                    recipientList.push(adv2Str.replace(" (Pending)",""));
                 }else{
-                    recipientList.push(advisor);
+                    recipientList.push(adv2Str);
                 }
           }
           // กรองเอาเฉพาะคนที่ไม่ใช่คนส่ง
@@ -1186,20 +1188,22 @@ app.post("/group/accept-invitation/:groupId/:notiId", apiLimiter,requireLogin, a
       return res.status(404).send("ไม่พบกลุ่ม");
     }
 
-    // ตรวจสอบว่ามีคนอื่นมาเสียบแทนไปก่อนหรือยัง
-    if ((group.member2 && group.member2 !== `${username} (Pending)`) || (group.advisor && group.advisor !== `${username} (Pending)`)) {
-      return res.status(400).send("กลุ่มนี้มีสมาชิกครบแล้ว");
-    }
-    
-    // 1. อัปเดตข้อมูลกลุ่ม
     let user = await User.findOne({ username: username }); // ดึงข้อมูลผู้ใช้จาก DB เพื่อความแน่นอน
-    if(user.role === "teacher" || user.role === "admin"){
+
+    // ตรวจสอบว่ามีคนอื่นมาเสียบแทนไปก่อนหรือยังแยกตามตำแหน่ง
+    if (user.role === "teacher" || user.role === "admin") {
+      if (group.advisor && group.advisor !== `${username} (Pending)`) {
+        return res.status(400).send("กลุ่มนี้มีอาจารย์ที่ปรึกษาแล้ว");
+      }
       group.advisor = username;
       if (!group.allMember.includes(username)) {
           group.allMember.push(username);
       }
-      group.status = group.passTimes === 0 ? "รอนำเสนอหัวข้อ" : "ผ่านการสอบหัวข้อปริญญานิพนธ์"
-    }else{
+      group.status = group.passTimes === 0 ? "รอนำเสนอหัวข้อ" : "ผ่านการสอบหัวข้อปริญญานิพนธ์";
+    } else {
+      if (group.member2 && group.member2 !== `${username} (Pending)`) {
+        return res.status(400).send("กลุ่มนี้มีสมาชิกครบแล้ว");
+      }
       group.member2 = username;
       if (!group.allMember.includes(username)) {
           group.allMember.push(username);
@@ -1266,9 +1270,9 @@ app.post("/group/deny-invitation/:groupId/:notiId", apiLimiter,requireLogin, asy
     const username = req.session.user.username;
 
     // ✅ 1. ล้างชื่อสมาชิกคนที่ 2 ออกเพื่อให้กลุ่มว่าง
-    if(group.member2 && group.member2 === username.toString() + " Pending"){
+    if(group.member2 && group.member2 === `${username} (Pending)`){
         group.member2 = null;
-    }else if(group.advisor && group.advisor === username.toString() + " Pending"){
+    }else if(group.advisor && group.advisor === `${username} (Pending)`){
         group.advisor = null;
     }
     await group.save();
@@ -1310,17 +1314,32 @@ app.post("/groups-update/:groupId", apiLimiter,requireLogin, async (req, res) =>
      group = await Group.findById(groupId);
     if (!group) return res.status(404).send("ไม่พบข้อมูลกลุ่ม");
 
-    const mem1 = await User.findOne({ username: group.member1 });
+    const inviter = await User.findOne({ username: req.session.user.username });
 
-    const mem2 = member2 ? String(member2) : null;
-    const adv = advisor ? String(advisor) : null;
+    const mem2 = group.member2;
+    const adv = group.advisor;
 
-    if (mem2 && mem2 !== ""  && mem2 !== null && !mem2.includes("(Pending)")) {
+    const member2Info = member2 ? await User.findOne({username: member2}) : null;
+
+    console.log(mem2,adv,member2,advisor);
+
+    let addedMember2 = null;
+    let addedAdvisor = null;
+
+    if (!mem2 && member2) {
         group.member2 = `${member2} (Pending)`;
+        addedMember2 = member2;
+    }else if(mem2 && mem2.includes("Pending") && member2){
+        return res.status(404).send("มีคำเชิญสมาชิกคนที่ 2 อยู่แล้ว")
+    }else if(member2Info && Array.isArray(member2Info.group) && member2Info.group.length > 0 && member2 && groupId !== member2Info.group[0].toString()){
+        return res.status(404).send("ผู้ใช้คนนี้มีกลุ่มอยู่แล้ว")
     }
 
-    if (adv && adv !== "" && adv !== null && !adv.includes("(Pending)")) {
+    if (!adv && advisor) {
         group.advisor = `${advisor} (Pending)`;
+        addedAdvisor = advisor;
+    }else if(adv && adv.includes("Pending") && advisor){
+        return res.status(404).send("มีคำเชิญอาจารย์ที่ปรึกษาอยู่แล้ว")
     }
 
     group.projectName = name;
@@ -1328,18 +1347,21 @@ app.post("/groups-update/:groupId", apiLimiter,requireLogin, async (req, res) =>
 
     await group.save();
 
-    await sendGroupNotification(
-      "addGroup", groupId, "ระบบ", "ระบบ", 
-      `คุณถูกเพิ่มเข้ากลุ่มโดย ${mem1?.name || 'หัวหน้ากลุ่ม'}`, 
-      null, null, expireTime, null, 
-      mem2, 
-      adv
-    );
+    // แจ้งเตือนเฉพาะคนที่มีการเชิญใหม่เท่านั้น
+    if (addedMember2 || addedAdvisor) {
+        await sendGroupNotification(
+          "addGroup", groupId, "ระบบ", "ระบบ", 
+          `คุณถูกเพิ่มเข้ากลุ่มโดย ${inviter.name || 'หัวหน้ากลุ่ม'}`, 
+          null, null, expireTime, null, 
+          addedMember2, 
+          addedAdvisor
+        );
+    }
 
     res.status(201).send("ส่งคำเชิญกลุ่มสำเร็จ");
   } catch (err) {
     console.error("❌ Error:", err);
-    res.status(500).send("เกิดข้อผิดพลาด: " + err.message);
+    return res.status(500).send("เกิดข้อผิดพลาด: " + err.message);
   }
     await createLog(req, "UPDATE_GROUP", {
         groupName: group ? group.projectName : "Unknown Group",
@@ -2090,34 +2112,29 @@ app.post("/api/addEvent", apiLimiter, requireLogin, requireRole(['admin']), uplo
                             if (missing) missingGroups.push(missing.projectName);
                             continue; // ข้ามกลุ่มนี้ไปถ้าสถานะถูกเปลี่ยนไปแล้วและเพิ่มเข้า list กลุ่มที่มีปัญหา
                         }
-
-                        let advisorStr = "";
-                        if (slot.advisor) {
-                            const advInfo = await User.findOne({ username: slot.advisor, role: { $in: ["admin", "teacher"] } });
-                            if (advInfo) advisorStr = advInfo.name;
+                        
+                        let advisorUsername = null;
+                        if (slot.advisor) { // slot.advisor should be the username
+                            advisorUsername = slot.advisor;
                         }
 
-                        let greatDirectorStr = "";
-                        if (slot.greatDirector) {
-                            const gDirInfo = await User.findOne({ username: slot.greatDirector, role: { $in: ["admin", "teacher"] } });
-                            if (gDirInfo) greatDirectorStr = gDirInfo.name;
+                        let greatDirectorUsername = null;
+                        if (slot.greatDirector) { // slot.greatDirector should be the username
+                            greatDirectorUsername = slot.greatDirector;
                         }
 
-                        let directorslist = slot.directors || [];
-                        if (!Array.isArray(directorslist)) directorslist = [directorslist];
-                        let directorsArr = [];
-                        for (const director of directorslist) {
-                            const directorInfo = await User.findOne({ username: director, role: { $in: ["admin", "teacher"] } });
-                            if (directorInfo) directorsArr.push(directorInfo.name);
+                        let directorUsername = null;
+                        if (slot.director) { // slot.director should be an array of usernames
+                            directorUsername = slot.director
                         }
-                        let directorStr = directorsArr.join(", ");
+
 
                         testData.push({
                             groupName: group.projectName,
-                            advisor: advisorStr,
-                            greatDirector: greatDirectorStr,
-                            directors: directorStr,
-                            date: finalDateTime
+                            advisor: advisorUsername,
+                            greatDirector: greatDirectorUsername,
+                            director: directorUsername,
+                            date: finalDateTime,
                         });
 
                         const paperPassTimes = group.passTimes || 0;
@@ -2130,9 +2147,9 @@ app.post("/api/addEvent", apiLimiter, requireLogin, requireRole(['admin']), uplo
                             expireAt: testresultsdate,
                             passTimes: paperPassTimes,
                             date: finalDateTime,
-                            advisor: advisorStr,
-                            greatDirector: greatDirectorStr,
-                            director: directorStr
+                            advisor: advisorUsername, // Store username
+                            greatDirector: greatDirectorUsername, // Store username
+                            director: directorUsername // Store array of usernames
                         });
                         const mem1 = await User.findOne({ username: group.member1 });
                         const mem2 = group.member2 ? await User.findOne({ username: group.member2 }) : null;
@@ -2280,6 +2297,21 @@ app.get("/eventInfo/:id", requireLogin,requireNotRole(['secretary']), async (req
 
         let tableData = event.testData;
 
+        // แปลง Username ของอาจารย์เป็นชื่อเพื่อแสดงผล
+        const allTeachers = await User.find({ role: { $in: ["admin", "teacher"] } }).lean();
+        const getTeacherName = (username) => {
+            if (!username) return "";
+            const teacher = allTeachers.find(t => t.username === username);
+            return teacher ? "อ."+ teacher.name : username;
+        };
+
+        tableData = tableData.map(row => {
+            const rowObj = row.toObject ? row.toObject() : row;
+            let dirs = rowObj.director || rowObj.directors || [];
+            if (!Array.isArray(dirs)) dirs = typeof dirs === 'string' ? dirs.split(',').map(s => s.trim()) : [];
+            return { ...rowObj, advisor: getTeacherName(rowObj.advisor), greatDirector: getTeacherName(rowObj.greatDirector), director: dirs.map(getTeacherName).join(', ') };
+        });
+
         // ส่ง tableData เข้าไปด้วย
         renderWithLayout(res, "eventInfo", { 
             title: "KMUTNB Project - Event Info", 
@@ -2340,6 +2372,46 @@ app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
                         console.warn(`⚠️ Could not delete file ${pf.file.fileId}:`, err.message);
                     }
                 }
+            }
+
+            const group = await Group.find({status: { $ne: "ผ่านการสอบป้องกันปริญญานิพนธ์" } });
+
+            if (event.title === "วันสอบ") {
+              const groupExamDone = group.filter(g => g.status === "รอสอบป้องกันปริญญานิพนธ์" || g.status === "รอสอบก้าวหน้าปริญญานิพนธ์" || g.status === "รอสอบนำเสนอหัวข้อปริญญานิพนธ์");
+              for (const g of groupExamDone) {
+                const checkFile = await PaperFile.findOne({
+                    $and: [
+                        { paperId: { $in: paperIds } },
+                        { groupId: g._id }
+                    ] 
+                });
+                if(g.status === "รอสอบป้องกันปริญญานิพนธ์"){
+                    if(checkFile && checkFile.check === true){
+                        g.status = "พร้อมสอบป้องกันปริญญานิพนธ์";
+                    }else if(checkFile && checkFile.check === false){
+                        g.status = "ส่งเอกสารการสอบป้องกันปริญญานิพนธ์เรียบร้อย";
+                    }else{
+                        g.status = "รอส่งเอกสารก่อนสอบป้องกันปริญญานิพนธ์";
+                    }
+                }else if(g.status === "รอสอบก้าวหน้าปริญญานิพนธ์"){
+                    if(checkFile && checkFile.check === true){
+                        g.status = "พร้อมสอบก้าวหน้าปริญญานิพนธ์";
+                    }else if(checkFile && checkFile.check === false){
+                        g.status = "ส่งเอกสารการสอบก้าวหน้าปริญญานิพนธ์เรียบร้อย";
+                    }else{
+                        g.status = "รอส่งเอกสารก่อนสอบก้าวหน้าปริญญานิพนธ์";
+                    }
+                }else if(g.status === "รอสอบนำเสนอหัวข้อปริญญานิพนธ์"){
+                    if(checkFile && checkFile.check === true){
+                        g.status = "พร้อมสอบนำเสนอหัวข้อปริญญานิพนธ์";
+                    }else if(checkFile && checkFile.check === false){
+                        g.status = "ส่งเอกสารการสอบนำเสนอหัวข้อปริญญานิพนธ์เรียบร้อย";
+                    }else{
+                        g.status = "รอส่งเอกสารก่อนสอบนำเสนอหัวข้อปริญญานิพนธ์";
+                    }
+                }
+                await Group.findByIdAndUpdate(g._id, { $set: { status: g.status } });
+              }
             }
 
             // 4. ลบข้อมูล Metadata อื่นๆ
@@ -3462,6 +3534,13 @@ app.post("/update-exam-schedule", apiLimiter, requireLogin, async (req, res) => 
 
         let newTestData = [];
 
+        const allTeachers = await User.find({ role: { $in: ["admin", "teacher"] } }).lean();
+        const getTeacherUsername = (name) => {
+            if (!name) return null;
+            const teacher = allTeachers.find(t => t.name.includes(name) || name.includes(t.name));
+            return teacher ? teacher.username : name; // fallback to name if not found
+        };
+
         for (const row of updatedData) {
             const groupNameStr = (row['ชื่อกลุ่ม'] || "").trim();
             if (!groupNameStr) continue;
@@ -3479,6 +3558,9 @@ app.post("/update-exam-schedule", apiLimiter, requireLogin, async (req, res) => 
                     let advisorStr = advisorsArr.join(", ");
                     let greatDirectorStr = greatDirectorsArr.join(", ");
                     let directorStr = directorsArr.join(", ");
+                    let advisorUsernames = advisorsArr.map(getTeacherUsername).filter(Boolean);
+                    let greatDirectorUsernames = greatDirectorsArr.map(getTeacherUsername).filter(Boolean);
+                    let directorUsernames = directorsArr.map(getTeacherUsername).filter(Boolean);
 
             const datePart = row['dateOnly']; // '2026-04-15'
             const timePart = row['timeOnly'] || "00:00"; // '09:30'
@@ -3494,9 +3576,12 @@ app.post("/update-exam-schedule", apiLimiter, requireLogin, async (req, res) => 
             // 🚩 เก็บลง testData ของ Event
             newTestData.push({
                 groupName: groupNameStr,
-                        advisor: advisorStr,
-                        greatDirector: greatDirectorStr,
-                        directors: directorStr,
+                advisor: advisorsArr.length > 0 ? advisorsArr[0] : null, // Store username
+                greatDirector: greatDirectorsArr.length > 0 ? greatDirectorsArr[0] : null, // Store username
+                directors: directorsArr, // Store array of usernames
+                advisor: advisorUsernames.length > 0 ? advisorUsernames[0] : null, // Store username
+                greatDirector: greatDirectorUsernames.length > 0 ? greatDirectorUsernames[0] : null, // Store username
+                directors: directorUsernames, // Store array of usernames
                 date: finalDate
             });
 
@@ -3507,10 +3592,13 @@ app.post("/update-exam-schedule", apiLimiter, requireLogin, async (req, res) => 
             await Paper.findOneAndUpdate(
                 { eventId: event.id, groupId: group._id }, 
                 { 
-                    $set: { 
-                                advisor: advisorStr,
-                                greatDirector: greatDirectorStr,
-                                director: directorStr,
+                    $set: {
+                        advisor: advisorsArr.length > 0 ? advisorsArr[0] : null, // Store username
+                        greatDirector: greatDirectorsArr.length > 0 ? greatDirectorsArr[0] : null, // Store username
+                        director: directorsArr, // Store array of usernames
+                        advisor: advisorUsernames.length > 0 ? advisorUsernames[0] : null, // Store username
+                        greatDirector: greatDirectorUsernames.length > 0 ? greatDirectorUsernames[0] : null, // Store username
+                        director: directorUsernames, // Store array of usernames
                         mention: event.description || event.title,
                         expireAt: testResultsExpire,
                         date: finalDate
@@ -3524,6 +3612,7 @@ app.post("/update-exam-schedule", apiLimiter, requireLogin, async (req, res) => 
         event.testData = newTestData;
         await event.save();
 
+        sendGroupNotification('alert', null, req.session.user.username, req.session.user.name, `มีอัปเดตตาราง กรุณาตรวจสอบ`, req.session.user.picture || null , null , null , null , null);
         res.json({ success: true, message: "อัปเดตตารางสอบเรียบร้อยแล้ว" });
 
     } catch (err) {

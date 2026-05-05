@@ -1,0 +1,20 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "C:\\Users\\HP\\OneDrive - kmutnb.ac.th\\Desktop\\Project-main\\Project\\logs\\.f03347b40f0667b20664b3bdfe802e98631a1f4f-audit.json",
+    "files": [
+        {
+            "date": 1777990626383,
+            "name": "C:\\Users\\HP\\OneDrive - kmutnb.ac.th\\Desktop\\Project-main\\Project\\logs\\application-2026-05-05.log",
+            "hash": "0852858cd113cd26683a5f272e801ea2eb71279508777a3a62840b9dd82072a5"
+        },
+        {
+            "date": 1778001130217,
+            "name": "C:\\Users\\HP\\OneDrive - kmutnb.ac.th\\Desktop\\Project-main\\Project\\logs\\application-2026-05-06.log",
+            "hash": "929d0e49b5500452cdf5a8b67a980c67392c7d204ead712c9dc20bc68f41dce9"
+        }
+    ],
+    "hashType": "sha256"
+}

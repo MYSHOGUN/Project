@@ -456,69 +456,65 @@
         const isChecked = checkbox.checked;
         checkbox.checked = !isChecked; // Revert temporarily until confirmed
 
-        const confirm = await Swal.fire({
-            title: 'สถานะความพร้อมสอบ',
-            text: "โปรดระบุสถานะความพร้อมสำหรับการสอบของกลุ่มนี้",
-            icon: 'question',
-            showDenyButton: true,
-            showCancelButton: true,
-            confirmButtonText: 'พร้อมสอบ',
-            denyButtonText: 'ไม่พร้อมสอบ',
-            cancelButtonText: 'ยกเลิก'
-        });
+        let isReady = isChecked;
+        let comment = "";
 
-        if (confirm.isConfirmed || confirm.isDenied) {
-            const isReady = confirm.isConfirmed;
-            let comment = "";
-
-            // ถ้าเลือก "ไม่พร้อมสอบ" ให้แสดง Popup ถามเหตุผล
-            if (!isReady) {
-                const { value: text, isConfirmed: isTextConfirmed } = await Swal.fire({
-                    title: 'เหตุผลที่ไม่พร้อมสอบ',
-                    input: 'textarea',
-                    inputLabel: 'ระบุสิ่งที่นักศึกษาต้องแก้ไข (ข้อความนี้จะถูกส่งไปยังแชทกลุ่ม)',
-                    inputPlaceholder: 'กรอกข้อความที่นี่...',
-                    showCancelButton: true,
-                    confirmButtonText: 'ยืนยัน',
-                    cancelButtonText: 'ยกเลิก',
-                    inputValidator: (value) => {
-                        if (!value) {
-                            return 'กรุณาระบุเหตุผล!';
-                        }
+        if (isReady) {
+            const confirm = await Swal.fire({
+                title: 'ยืนยันความพร้อมสอบ?',
+                text: "คุณต้องการยืนยันว่ากลุ่มนี้พร้อมสำหรับการสอบใช่หรือไม่?",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยัน',
+                cancelButtonText: 'ยกเลิก'
+            });
+            if (!confirm.isConfirmed) return;
+        } else {
+            const { value: text, isConfirmed: isTextConfirmed } = await Swal.fire({
+                title: 'เหตุผลที่ไม่พร้อมสอบ',
+                input: 'textarea',
+                inputLabel: 'ระบุสิ่งที่นักศึกษาต้องแก้ไข (ข้อความนี้จะถูกส่งไปยังแชทกลุ่ม)',
+                inputPlaceholder: 'กรอกข้อความที่นี่...',
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยัน',
+                cancelButtonText: 'ยกเลิก',
+                inputValidator: (value) => {
+                    if (!value) {
+                        return 'กรุณาระบุเหตุผล!';
                     }
-                });
-
-                if (!isTextConfirmed) {
-                    return; // ยกเลิกการอัปเดตสถานะถ้าอาจารย์กดปุ่มยกเลิก
                 }
-                comment = text;
+            });
+
+            if (!isTextConfirmed) {
+                return; // ยกเลิกการอัปเดตสถานะถ้าอาจารย์กดปุ่มยกเลิก
             }
+            comment = text;
+        }
 
-            try {
-                const res = await fetch(`/api/groups/mark-ready-for-exam`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ groupId, paperId, isReady, comment })
-                });
-                if (res.ok) {
-                    checkbox.checked = isReady;
+        try {
+            const res = await fetch(`/api/groups/mark-ready-for-exam`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ groupId, paperId, isReady, comment })
+            });
+            if (res.ok) {
+                checkbox.checked = isReady;
 
-                    const statusSpan = document.getElementById(`status-text-${paperId}`);
-                    if (statusSpan) {
-                        statusSpan.textContent = isReady ? 'พร้อมสอบแล้ว' : 'ส่งเอกสารเรียบร้อย';
-                        statusSpan.className = `small font-weight-bold ${isReady ? 'text-success' : 'text-primary'}`;
-                    }
-
-                    fetchFileList(paperId, paperDate);
-                    
-                    Swal.fire('สำเร็จ', `อัปเดตสถานะเป็น "${isReady ? 'พร้อมสอบ' : 'ไม่พร้อมสอบ'}" แล้ว`, 'success');
-                } else {
-                    const data = await res.json();
-                    Swal.fire('ผิดพลาด', data.error || 'ไม่สามารถอัปเดตได้', 'error');
+                const statusSpan = document.getElementById(`status-text-${paperId}`);
+                if (statusSpan) {
+                    statusSpan.textContent = isReady ? 'พร้อมสอบแล้ว' : 'ส่งเอกสารเรียบร้อย';
+                    statusSpan.className = `small font-weight-bold ${isReady ? 'text-success' : 'text-primary'}`;
                 }
-            } catch (err) {
-                Swal.fire('ผิดพลาด', 'ไม่สามารถอัปเดตได้', 'error');
+
+                fetchFileList(paperId, paperDate);
+                
+                Swal.fire('สำเร็จ', `อัปเดตสถานะเป็น "${isReady ? 'พร้อมสอบ' : 'ไม่พร้อมสอบ'}" แล้ว`, 'success');
+            } else {
+                const data = await res.json();
+                Swal.fire('ผิดพลาด', data.error || 'ไม่สามารถอัปเดตได้', 'error');
             }
+        } catch (err) {
+            Swal.fire('ผิดพลาด', 'ไม่สามารถอัปเดตได้', 'error');
         }
     }
 

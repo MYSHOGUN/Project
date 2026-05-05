@@ -5,7 +5,6 @@
         min-height: 85vh;
         display: flex;
         flex-direction: column;
-        align-items: center;
         padding: 2rem 0;
         background-color: #f8f9fc;
     }
@@ -18,6 +17,7 @@
         width: 100%;
         max-width: 700px;
         border: 1px solid rgba(255, 255, 255, 0.8);
+        margin: 0 auto;
     }
 
     /* ✅ 2. Typography & Header */
@@ -94,7 +94,7 @@
     }
 
     .custom-select-modern option:checked {
-        background: linear-gradient(90deg, #4e73df 0%, #6b8cff 100%);
+        background-color: #4e73df;
         color: #fff;
         font-weight: 500;
     }
@@ -317,6 +317,53 @@
         box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.15) !important;
         outline: none;
     }
+
+    /* D&D CSS Styles */
+    .sortable-list {
+        min-height: 100px;
+        padding-bottom: 20px;
+    }
+    .group-item {
+        background: #fff;
+        border: 1px solid #e3e6f0;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 10px;
+        cursor: grab;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        transition: box-shadow 0.2s;
+    }
+    .group-item:active { cursor: grabbing; }
+    .group-item.sortable-ghost { opacity: 0.4; }
+    .group-item .group-details {
+        display: none;
+        margin-top: 15px;
+        border-top: 1px solid #eaecf4;
+        padding-top: 15px;
+    }
+    .day-slot-list .group-item .group-details { display: block; }
+    .day-slot-list {
+        background: #f8f9fc;
+        border: 2px dashed #d1d3e2;
+        border-radius: 8px;
+        padding: 15px;
+        min-height: 120px;
+        flex-grow: 1;
+    }
+
+    /* เพิ่ม Grid ให้ตารางแต่ละวันเรียงต่อกันแนวนอน */
+    #schedule-days {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 20px;
+        align-items: start;
+    }
+    .day-container {
+        margin-bottom: 0 !important;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
 </style>
 
 <div class="container-fluid add-event-wrapper">
@@ -367,12 +414,10 @@
                     <input type="number" id="examDaysCount" class="form-control custom-date-input" min="1" max="30" placeholder="จำนวนวันสอบ (เช่น 2)">
                 </div>
             </div>
-            <button id="generateScheduleBtn" class="btn btn-view shadow-sm mt-3 w-100" onclick="generateAutoSchedule()">
-                <i class="fas fa-magic mr-2"></i> สุ่มตารางสอบอัตโนมัติ
+            <button type="button" id="generateScheduleBtn" class="btn btn-view shadow-sm mt-3 w-100" onclick="createDragDropSchedule()">
+                <i class="fas fa-table mr-2"></i> สร้างตารางจัดสอบ (ลากวาง)
             </button>
-            <div id="groupCreate" class="animated--grow-in mt-4"></div>
         </div>
-
 
         <div id="searchGroupShip" class="mt-4 d-none animated--grow-in">
             <label class="input-label">เลือกกลุ่ม</label>
@@ -389,7 +434,32 @@
             </div>
         </div>
 
-        <div id="buttons" class="justify-content-center mt-5" style="display: none;">
+        <div id="exam-scheduler" class="animated--grow-in mt-4 mx-auto" style="display: none; width: 100%;">
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; width: 100%; align-items: start;">
+                <!-- Left Column: Unassigned Groups -->
+                <div class="mb-4 h-100">
+                    <div class="card shadow-sm border-left-warning h-100">
+                        <div class="card-header bg-white py-3">
+                            <h6 class="m-0 font-weight-bold text-warning"><i class="fas fa-list-ul mr-2"></i>กลุ่มรอจัดตาราง (<span id="unassigned-count">0</span>)</h6>
+                        </div>
+                        <div class="card-body bg-light px-2 py-3" style="max-height: 70vh; overflow-y: auto;">
+                            <div id="unassigned-groups" class="sortable-list h-100" style="min-height: 100px;"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Right Column: Days -->
+                <div class="mb-4 h-100">
+                    <div class="card shadow-sm border-left-primary h-100">
+                        <div class="card-header bg-white py-3">
+                            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-calendar-alt mr-2"></i>ตารางแต่ละวัน</h6>
+                        </div>
+                        <div class="card-body px-3 py-4" style="max-height: 70vh; overflow-y: auto;" id="schedule-days"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="buttons" class="justify-content-center mt-4" style="display: none; width: 100%;">
             <button class="btn btn-save shadow-sm" id="saveEventBtn">
                 <i class="fas fa-save mr-2"></i> บันทึกกิจกรรม
             </button>
@@ -407,6 +477,7 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script>
     let startLabel = document.getElementById("start-label");
     let groupSelectNumber = document.getElementById("group-select-number");
@@ -446,7 +517,7 @@
         document.getElementById('selectedGroupContainer').classList.toggle('d-none', !groupOnly);
     }
 
-    async function generateAutoSchedule() {
+    function createDragDropSchedule() {
         const startDateStr = document.getElementById("examStartDate").value;
         const daysCount = parseInt(document.getElementById("examDaysCount").value);
 
@@ -460,26 +531,15 @@
             return;
         }
 
-        const groups = [...data.groups];
-        // สุ่มรายชื่อกลุ่มเพื่อให้ยุติธรรม
-        groups.sort(() => Math.random() - 0.5);
+        document.getElementById("group-select-number").style.display = "none";
+        document.getElementById("exam-scheduler").style.display = "block";
+        document.getElementById("buttons").style.display = "flex";
 
-        const numGroups = groups.length;
-        const basePerDay = Math.floor(numGroups / daysCount);
-        let remainder = numGroups % daysCount;
-
-        const container = document.getElementById("groupCreate");
-        container.innerHTML = ''; // ล้างทั้งหมดก่อนเริ่มใหม่
-        sectionCount = 0; 
-
-        let groupIndex = 0;
-        let startDate = new Date(startDateStr);
-
-        // คำนวณภาระงานเริ่มต้น
+        // 1. เตรียมภาระงานของอาจารย์
         let teacherWorkload = {};
         data.teachers.forEach(t => teacherWorkload[t.username] = 0);
         
-        groups.forEach(g => {
+        data.groups.forEach(g => {
             let adv = Array.isArray(g.advisor) ? g.advisor[0] : g.advisor;
             if (adv) {
                 let cleanAdv = adv.replace(" (Pending)", "");
@@ -489,27 +549,92 @@
             }
         });
 
-        const groupsOptions = data.groups.map(g => `<option value="${g._id}">${g.projectName}</option>`).join('');
         const teachersOptions = data.teachers.map(t => `<option value="${t.username}">${t.title || ""} ${t.name}</option>`).join('');
-        const timesOptions = timeTh[0].flatMap(hour => {
-            const minutesArray = timeTh[1];
-            
-            const activeMinutes = (hour === "20") ? minutesArray.slice(0, 1) : minutesArray;
-
-            return activeMinutes.map(m => {
+        
+        // สร้างชุดตัวเลือกเวลา (ป้องกัน Error บน Browser เก่าที่ไม่มี flatMap)
+        let timesOptions = "";
+        timeTh[0].forEach(hour => {
+            const activeMinutes = (hour === "20") ? timeTh[1].slice(0, 1) : timeTh[1];
+            activeMinutes.forEach(m => {
                 const timeStr = `${hour}:${m}`;
                 const totalMinutes = (parseInt(hour) * 60) + parseInt(m);
-                return `<option value="${totalMinutes}">${timeStr}</option>`;
+                timesOptions += `<option value="${totalMinutes}">${timeStr}</option>`;
             });
-        }).join('');
+        });
 
+        // 2. สร้างกล่องกลุ่มที่ยังไม่ได้จัด
+        const unassignedContainer = document.getElementById("unassigned-groups");
+        unassignedContainer.innerHTML = '';
+        
+        data.groups.forEach(g => {
+            let adv = Array.isArray(g.advisor) ? g.advisor[0] : g.advisor;
+            let cleanAdv = adv ? adv.replace(" (Pending)", "") : "";
+            
+            let availableTeachers = Object.keys(teacherWorkload).filter(t => t !== cleanAdv);
+            availableTeachers.sort((a, b) => {
+                if (teacherWorkload[a] === teacherWorkload[b]) return Math.random() - 0.5;
+                return teacherWorkload[a] - teacherWorkload[b];
+            });
+
+            let dir1 = cleanAdv;
+            let dir2 = availableTeachers[0] || "";
+            let dir3 = availableTeachers[1] || "";
+
+            if (dir2) teacherWorkload[dir2]++;
+            if (dir3) teacherWorkload[dir3]++;
+
+            const groupHtml = `
+                <div class="group-item" data-id="${g._id}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="font-weight-bold text-dark"><i class="fas fa-grip-vertical text-gray-400 mr-2"></i> ${g.projectName}</span>
+                    </div>
+                    <div class="group-details">
+                        <div class="d-flex flex-wrap" style="gap: 8px; margin-top: 10px;">
+                            <div style="flex: 1; min-width: 120px;">
+                                <select class="form-control custom-select-modern shadow-sm time-select" style="height: 40px !important; font-size: 0.85rem; padding: 0 30px 0 10px !important;">
+                                    <option value="" disabled selected hidden>เวลาสอบ</option>
+                                    ${timesOptions}
+                                </select>
+                            </div>
+                            <div style="flex: 1; min-width: 120px;">
+                                <select class="form-control custom-select-modern shadow-sm adv-select" style="background-color: #e9ecef; pointer-events: none; height: 40px !important; font-size: 0.85rem; padding: 0 30px 0 10px !important;">
+                                    <option value="" disabled hidden>ที่ปรึกษา</option>
+                                    ${teachersOptions}
+                                </select>
+                            </div>
+                            <div style="flex: 1; min-width: 120px;">
+                                <select class="form-control custom-select-modern shadow-sm dir3-select" onchange="handleTeacherChange(this)" style="height: 40px !important; font-size: 0.85rem; padding: 0 30px 0 10px !important;">
+                                    <option value="" disabled hidden>ประธานกรรมการ</option>
+                                    ${teachersOptions}
+                                </select>
+                            </div>
+                            <div style="flex: 1; min-width: 120px;">
+                                <select class="form-control custom-select-modern shadow-sm dir2-select" onchange="handleTeacherChange(this)" style="height: 40px !important; font-size: 0.85rem; padding: 0 30px 0 10px !important;">
+                                    <option value="" disabled hidden>กรรมการสอบ</option>
+                                    ${teachersOptions}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            unassignedContainer.insertAdjacentHTML('beforeend', groupHtml);
+            
+            const inserted = unassignedContainer.lastElementChild;
+            if (dir1) inserted.querySelector('.adv-select').value = dir1;
+            if (dir2) inserted.querySelector('.dir2-select').value = dir2;
+            if (dir3) inserted.querySelector('.dir3-select').value = dir3;
+        });
+
+        document.getElementById('unassigned-count').innerText = data.groups.length;
+
+        // 3. สร้างกล่องของแต่ละวัน
+        const scheduleDaysContainer = document.getElementById("schedule-days");
+        scheduleDaysContainer.innerHTML = '';
+        
+        let startDate = new Date(startDateStr);
+        
         for (let d = 1; d <= daysCount; d++) {
-            let groupsThisDay = basePerDay + (remainder > 0 ? 1 : 0);
-            remainder--;
-
-            if (groupsThisDay === 0) continue;
-
-            // ข้ามเสาร์-อาทิตย์
             while (startDate.getDay() === 0 || startDate.getDay() === 6) {
                 startDate.setDate(startDate.getDate() + 1);
             }
@@ -518,291 +643,73 @@
             let currentDateStr = localDate.toISOString().split('T')[0];
             let thaiDateStr = startDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
 
-            sectionCount++;
-            
-            let sectionHTML = `
-            <div class="group-section border p-3 rounded mt-3 animated--grow-in" id="section-${sectionCount}" style="background: #f8f9fc;">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="m-0 font-weight-bold text-primary">กลุ่มที่สอบวันที่ ${thaiDateStr}</h6>
-                </div>
-                
-                <input type="hidden" id="select-group-number${sectionCount}" value="${groupsThisDay}">
-                
-                <div class="form-group mt-2 w-100">
-                    <input type="text" id="start-eventDate${sectionCount}" class="form-control custom-date-input" value="${currentDateStr}" placeholder="เลือกวันที่...">
-                </div>
-
-                <div class="d-flex flex-column align-items-center">`;
-
-            for (let i = 1; i <= groupsThisDay; i++) {
-                sectionHTML += `
-                <div class="w-100 mb-3">
-                    <div class="d-flex flex-row align-items-start"> 
-                        <div class="d-flex align-items-center pt-2">
-                            <span class="mr-2">${i}.</span>
-                        </div>
-                        <div class="d-flex flex-column w-100" style="gap: 7px;">
-                            <div class="d-flex align-items-center w-100" style="gap: 7px;">
-                                <select id="group${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="sourceGroup(this,${sectionCount},${groupsThisDay},${i}); updateWorkloadUI();">
-                                    <option value="" disabled hidden>เลือกกลุ่ม</option>
-                                    ${groupsOptions}
-                                </select>
-                                <select id="time${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="populateTime(this,${sectionCount},${groupsThisDay},${i});">
-                                    <option value="" disabled hidden>เลือกเวลา</option>
-                                    ${timesOptions}
-                                </select>
-                            </div>
-                            
-                            <div class="teacher-grid-container" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; width: 100%;">
-                                <select id="director-one-${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="sourceTeacher(this,${sectionCount},${i}); updateWorkloadUI();" style="background-color: #e9ecef; pointer-events: none;">
-                                    <option value="" disabled hidden>อาจารย์ที่ปรึกษา</option>
-                                    ${teachersOptions}
-                                </select>
-                                <select id="director-two-${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="sourceTeacher(this,${sectionCount},${i}); updateWorkloadUI();">
-                                    <option value="" disabled hidden>เลือกกรรมการ</option>
-                                    ${teachersOptions}
-                                </select>
-                                <select id="director-three-${sectionCount}-s${i}" class="form-control custom-select-modern shadow-sm" onchange="sourceTeacher(this,${sectionCount},${i}); updateWorkloadUI();">
-                                    <option value="" disabled hidden>เลือกประธานกรรมการ</option>
-                                    ${teachersOptions}
-                                </select>
-                            </div>
-                        </div>
+            const dayHtml = `
+                <div class="day-container mb-4" data-date="${currentDateStr}">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="m-0 font-weight-bold text-primary">สอบวันที่ ${thaiDateStr}</h6>
+                        <span class="badge badge-primary badge-counter px-2 py-1">0 กลุ่ม</span>
                     </div>
-                </div>`;
-            }
-
-            sectionHTML += `</div></div>`;
-            container.insertAdjacentHTML('beforeend', sectionHTML);
-
-            initializeFlatpickr(`#start-eventDate${sectionCount}`);
-
-            // ใส่ข้อมูลเริ่มต้น (Pre-fill)
-            for (let i = 1; i <= groupsThisDay; i++) {
-                let g = groups[groupIndex++];
-                
-                document.getElementById(`group${sectionCount}-s${i}`).value = g._id;
-                
-                let timeVal = 540 + ((i - 1) * 30); // เริ่ม 09:00 เพิ่มทีละ 30 นาที
-                if (timeVal <= 1200) {
-                    let timeSelect = document.getElementById(`time${sectionCount}-s${i}`);
-                    if (timeSelect.querySelector(`option[value="${timeVal}"]`)) {
-                        timeSelect.value = timeVal;
-                    }
-                }
-
-                let adv = Array.isArray(g.advisor) ? g.advisor[0] : g.advisor;
-                let cleanAdv = adv ? adv.replace(" (Pending)", "") : "";
-                let advSelect = document.getElementById(`director-one-${sectionCount}-s${i}`);
-                if (cleanAdv && advSelect.querySelector(`option[value="${cleanAdv}"]`)) {
-                    advSelect.value = cleanAdv;
-                }
-
-                let availableTeachers = Object.keys(teacherWorkload).filter(t => t !== cleanAdv);
-                availableTeachers.sort((a, b) => {
-                    if (teacherWorkload[a] === teacherWorkload[b]) return Math.random() - 0.5;
-                    return teacherWorkload[a] - teacherWorkload[b];
-                });
-
-                let dir1 = availableTeachers[0];
-                let dir2 = availableTeachers[1];
-
-                if (dir1) {
-                    document.getElementById(`director-two-${sectionCount}-s${i}`).value = dir1;
-                    teacherWorkload[dir1]++;
-                }
-                if (dir2) {
-                    document.getElementById(`director-three-${sectionCount}-s${i}`).value = dir2;
-                    teacherWorkload[dir2]++;
-                }
-            }
-
+                    <div class="day-slot-list sortable-list"></div>
+                </div>
+            `;
+            scheduleDaysContainer.insertAdjacentHTML('beforeend', dayHtml);
+            
             startDate.setDate(startDate.getDate() + 1);
         }
 
-        // อัปเดต Dropdown เพื่อไม่ให้เลือกกลุ่มซ้ำ
-        for (let s = 1; s <= sectionCount; s++) {
-            let groupsThisDay = parseInt(document.getElementById(`select-group-number${s}`).value);
-            for (let i = 1; i <= groupsThisDay; i++) {
-                let groupEl = document.getElementById(`group${s}-s${i}`);
-                if(groupEl) sourceGroup(groupEl, s, groupsThisDay, i);
-            }
-        }
+        initSortable();
         
         updateWorkloadUI();
     }
 
-    function sourceGroup(selectedElement, sectionCount, selectValue, selfNum) {
-        const groups = data.groups; // ข้อมูลกลุ่มทั้งหมดจาก API
+    function initSortable() {
+        const unassigned = document.getElementById('unassigned-groups');
+        const dayLists = document.querySelectorAll('.day-slot-list');
+        
+        const sortableOptions = {
+            group: 'shared',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            onEnd: function (evt) {
+                updateCounts();
+            }
+        };
 
-        // 1. หา Select กลุ่มทุกตัวในหน้าจอ (ทั้งชุดปัจจุบันและชุดอื่นๆ)
-        const allGroupSelects = Array.from(document.querySelectorAll('select[id^="group"]'))
-            .filter(el => /group\d+-s\d+/.test(el.id));
-
-        // 2. รวบรวม ID กลุ่มที่ถูกเลือกไว้แล้ว "ทั้งหมด" ในขณะนี้
-        const globalSelectedValues = allGroupSelects
-            .map(s => s.value)
-            .filter(v => v !== "");
-
-        // 3. สั่งให้ทุกช่องอัปเดตรายการใหม่ (เพื่อให้กลุ่มที่ถูกเลือกหายไปจากทุกช่อง)
-        allGroupSelects.forEach((currentSelect) => {
-            const currentValue = currentSelect.value; // เก็บค่าที่ช่องนี้เลือกอยู่ปัจจุบัน
-
-            // ล้างรายการเก่า และใส่ "เลือกกลุ่ม" กลับเข้าไป
-            currentSelect.innerHTML = `<option value="" disabled ${!currentValue ? 'selected' : ''} hidden>เลือกกลุ่ม</option>`;
-            
-            // 🚩 วนลูปจากข้อมูลดิบ (groups) เพื่อสร้าง Option ใหม่
-            groups.forEach(g => {
-                // เงื่อนไขในการยอมให้ชื่อกลุ่มปรากฏในรายการ:
-                // - กลุ่มนี้ยังไม่ถูกใครเลือกเลย (!globalSelectedValues.includes)
-                // - หรือ เป็นกลุ่มที่ช่องนี้เลือกอยู่เดิม (g._id === currentValue)
-                if (!globalSelectedValues.includes(g._id) || g._id === currentValue) {
-                    const opt = new Option(g.projectName, g._id);
-                    if (g._id === currentValue) opt.selected = true;
-                    currentSelect.add(opt);
-                }
-            });
-
-            // บังคับคืนค่าเดิม (กันพลาด)
-            currentSelect.value = currentValue;
+        new Sortable(unassigned, sortableOptions);
+        dayLists.forEach(list => {
+            new Sortable(list, sortableOptions);
         });
-
-        // เรียกจัดการรายชื่ออาจารย์เฉพาะแถวที่เกิด Event
-        if (typeof sourceTeacher === "function") {
-            sourceTeacher(selectedElement, sectionCount, selfNum);
-        }
     }
 
-    function sourceTeacher(selectedElement, sectionCount, selfNum) {
-        const groups = data.groups;
-        const teachers = data.teachers;
-
-        // 🚩 แก้ไขจุดที่ 1: ตรวจสอบก่อนว่า Select กลุ่มตัวนี้มีอยู่จริงไหม
-        const groupEl = document.getElementById(`group${sectionCount}-s${selfNum}`);
-        if (!groupEl) return; // ถ้าไม่เจอให้หยุดทำงานทันที
-
-        const selectedGroupId = groupEl.value;
+    function updateCounts() {
+        const unassignedCount = document.getElementById('unassigned-groups').children.length;
+        document.getElementById('unassigned-count').innerText = unassignedCount;
         
-        // 🚩 แก้ไขจุดที่ 2: ตรวจสอบ Array ของ Directors
-        const d1 = document.getElementById(`director-one-${sectionCount}-s${selfNum}`);
-        const d2 = document.getElementById(`director-two-${sectionCount}-s${selfNum}`);
-        const d3 = document.getElementById(`director-three-${sectionCount}-s${selfNum}`);
-
-        // ถ้าไม่มีกรรมการครบ (เช่น ยังไม่ได้วาด HTML ชุดนั้น) ให้หยุดทำงาน
-        if (!d1 || !d2 || !d3) return;
-
-        const directors = [d1, d2, d3];
-
-        let groupLeadUsername = "";
-        let groupLeadDisplay = "";
-
-        if (selectedGroupId) {
-            const chosenGroup = groups.find(g => g._id === selectedGroupId);
-            // ตรวจสอบโครงสร้างข้อมูล advisor (บางครั้งอาจเป็น string หรือ array)
-            if (chosenGroup && chosenGroup.advisor) {
-                const advisorUsername = Array.isArray(chosenGroup.advisor) ? chosenGroup.advisor[0] : chosenGroup.advisor;
-                const leadInfo = teachers.find(t => t.username === advisorUsername);
-                
-                if (leadInfo) {
-                    groupLeadUsername = leadInfo.username;
-                    groupLeadDisplay = `${leadInfo.title || ""} ${leadInfo.name}`;
-                }
-            }
-        }
-
-    directors.forEach((currentSelect, index) => {
-        if (!currentSelect) return; // กัน Error กรณีหา Element ไม่เจอ
-
-        if (index === 0 && groupLeadUsername !== "") {
-            currentSelect.innerHTML = `<option value="${groupLeadUsername}" selected>${groupLeadDisplay}</option>`;
-            return; // หยุดลูปรอบ index 0 ไว้แค่นี้
-        }
-
-        const currentValue = currentSelect.value;
-        const otherValues = directors
-            .filter((s, i) => s && i !== index) // กัน Error ถ้า s เป็น null
-            .map(s => s.value)
-            .filter(v => v !== "");
-
-        let optionsHTML = "";
-        if (index === 0) optionsHTML = `<option value="" disabled selected hidden>อาจารย์ที่ปรึกษา</option>`;
-        else if (index === 1) optionsHTML = `<option value="" disabled selected hidden>เลือกกรรมการ</option>`;
-        else optionsHTML = `<option value="" disabled selected hidden>เลือกประธานกรรมการ</option>`;
-        
-        teachers.forEach(t => {
-            if (!otherValues.includes(t.username)) {
-                optionsHTML += `<option value="${t.username}">${t.title || ""} ${t.name}</option>`;
-            }
+        document.querySelectorAll('.day-container').forEach(day => {
+            const count = day.querySelector('.day-slot-list').children.length;
+            day.querySelector('.badge-counter').innerText = count + ' กลุ่ม';
         });
+    }
 
-        // 🚩 อัปเดต HTML เสมอ
-        currentSelect.innerHTML = optionsHTML;
-        if (index === 0) {
-            currentSelect.value = groupLeadUsername;
-            currentSelect.style.backgroundColor = "#e9ecef";
-            currentSelect.style.pointerEvents = "none";
-        }
-
-        // คืนค่าเดิมถ้าเป็นไปได้
-        if (currentValue && !otherValues.includes(currentValue)) {
-            currentSelect.value = currentValue;
-        } else {
-            currentSelect.value = "";
-        }
-    });
-}
-
-    function populateTime(selectElement, timeSectionCount, selectValue, selfNum) {
-        const selectedValue = parseInt(selectElement.value); 
+    function handleTeacherChange(selectElement) {
+        const groupItem = selectElement.closest('.group-item');
+        const selects = groupItem.querySelectorAll('.adv-select, .dir2-select, .dir3-select');
         
-        for (let i = 1; i <= selectValue; i++) {
-            if (i <= selfNum) continue;
-
-            const timeElement = document.getElementById("time" + timeSectionCount + "-s" + i);
-            if (!timeElement) continue;
-
-            const currentValue = parseInt(timeElement.value) || 0;
-            timeElement.innerHTML = '<option value="" disabled selected hidden>เลือกเวลา</option>';
-
-            // 🚩 1. ถ้าตัวก่อนหน้าเลือก 20:00 (1200) หรือมากกว่าไปแล้ว ให้จบงานทันที
-            if (selectedValue >= 1140) {
-                const opt = new Option("ไม่เหลือเวลาว่าง", "");
-                opt.disabled = true;
-                timeElement.add(opt);
-                timeElement.value = ""; 
-                continue; 
-            }
-
-            let hasValidTime = false; // ตัวแปรเช็คว่ามีเวลาให้เลือกไหม
-
-            outerLoop: for (let hour of timeTh[0]) {
-                for (let minute of timeTh[1]) {
-                    const totalMinutes = (parseInt(hour) * 60) + parseInt(minute);
-
-                    // 🚩 2. ต้อง "มากกว่า" เท่านั้น (ถ้า 19:30 จะไม่ขึ้นในแถวถัดไป)
-                    if (totalMinutes <= selectedValue) continue;
-
-                    if (totalMinutes <= 1200) {
-                        timeElement.add(new Option(`${hour}:${minute}`, totalMinutes));
-                        hasValidTime = true; // มีเวลาให้เลือกแล้วอย่างน้อย 1 อัน
-                        
-                        // ถ้าแวะมาถึง 20:00 แล้ว ให้หยุดสร้าง Option ทันที
-                        if (totalMinutes === 1200) break outerLoop;
-                    }
-                }
-            }
-
-            // 🚩 3. ถ้าวนลูปจนจบแล้ว "ไม่มีเวลาที่สายกว่า" ให้เลือกเลย
-            if (!hasValidTime) {
-                const opt = new Option("ไม่เหลือเวลาว่าง", "");
-                opt.disabled = true;
-                timeElement.add(opt);
-            }
-
-            if (currentValue <= selectedValue) {
-                timeElement.value = "";
-            }
+        const values = Array.from(selects).map(s => s.value);
+        const hasDuplicate = values.some((val, i) => val !== "" && values.indexOf(val) !== i);
+        
+        if (hasDuplicate) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'เลือกอาจารย์ซ้ำ',
+                text: 'กรุณาเลือกอาจารย์ที่ไม่ซ้ำกันในกลุ่มเดียวกัน',
+                timer: 2000,
+                showConfirmButton: false
+            });
+            selectElement.value = ""; 
         }
+        
+        updateWorkloadUI();
     }
     
     function updateMinDate() {
@@ -868,15 +775,19 @@
         buttons.style.display = "flex";
 
         if(selectedValue === "วันสอบ") {
+            document.querySelector('.glass-card').style.setProperty('max-width', '700px', 'important');
             teacherSum.style.display = "block";
             onlyGroup.style.display = "none";
             startLabel.innerText = "เริ่มวันที่"
             groupSelectNumber.style.display = "block";
+            document.getElementById("exam-scheduler").style.display = "none"; 
             eventDescription.style.display = "none";
             eventName.style.display = "none";
             startDate.style.display = "none";
             document.getElementById("groupOnlyCheckbox").checked = false;
         } else {
+            document.querySelector('.glass-card').style.setProperty('max-width', '700px', 'important');
+            document.getElementById("exam-scheduler").style.display = "none"; 
             teacherSum.style.display = "none";
             onlyGroup.style.display = "block";
             startLabel.innerText = "ถึงวันที่"
@@ -901,7 +812,7 @@
         const counts = {};
 
         // นับจากช่องกรรมการทั้งหมด (รวมที่ปรึกษาที่ถูกล็อกค่าไว้)
-        document.querySelectorAll('select[id^="director"]').forEach(sel => {
+        document.querySelectorAll('.adv-select, .dir2-select, .dir3-select').forEach(sel => {
             if (sel.value) {
                 counts[sel.value] = (counts[sel.value] || 0) + 1;
             }
@@ -942,6 +853,9 @@
         eventDescription.value = "";
         eventName.style.display = "none";
         eventName.value = "";
+        document.querySelector('.glass-card').style.setProperty('max-width', '700px', 'important');
+        document.getElementById("exam-scheduler").style.display = "none";
+        document.getElementById("group-select-number").style.display = "none";
         
         const evDate = document.getElementById("eventDate");
         if (evDate && evDate._flatpickr) evDate._flatpickr.clear();
@@ -951,7 +865,6 @@
 
         document.getElementById("examStartDate").value = "";
         document.getElementById("examDaysCount").value = "";
-        document.getElementById("groupCreate").innerHTML = "";
         
         initDatePicker(); 
         saveEventBtn.disabled = false;
@@ -1005,67 +918,97 @@
         formData.append("date", eventDateVal);
         if(groupOnly) formData.append("chosenGroup", chosenGroup);
 
+        let link = (groupOnly && selectedValue !== "วันสอบ") ? '/api/addEventForGroup' : '/api/addEvent';
+
         if (selectedValue === "วันสอบ") {
             let examData = []; // ก้อนข้อมูลหลัก
+            const dayContainers = document.querySelectorAll('.day-container');
 
-            for (let i = 1; i <= sectionCount; i++) {
-                const dateInput = document.getElementById(`start-eventDate${i}`);
-                const dateString = dateInput ? dateInput.value : null;
+            if (dayContainers.length === 0) {
+                Swal.fire({ icon: 'warning', title: 'ไม่พบตารางสอบ', text: "กรุณาสร้างตารางสอบก่อนบันทึก" });
+                return;
+            }
+
+            let hasError = false;
+
+            dayContainers.forEach(dayCard => {
+                const dateString = dayCard.dataset.date;
+                const groupItems = dayCard.querySelectorAll('.group-item');
                 
-                if (!dateString) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'ข้อมูลไม่ครบถ้วน',
-                        text: "กรุณาเลือกวันที่สำหรับการสอบให้ครบถ้วน",
-                        confirmButtonText: 'ตกลง'
-                    });
-                    saveEventBtn.disabled = false;
-                    return;
-                }
-
-                // 2. ดึงจำนวนแถว (selectedValue) ของชุดนั้น (สมมติเก็บไว้ใน attribute หรือตัวแปร)
-                // ในที่นี้ต้องระวังว่าแต่ละ Section อาจมีจำนวนแถวไม่เท่ากัน 
-                // แนะนำให้ดึงจากค่าของ select-group-number ในชุดนั้นๆ
-                const rowsCount = parseInt(document.getElementById(`select-group-number${i}`).value);
-
                 let details = [];
-                for (let j = 1; j <= rowsCount; j++) {
-                    const groupId = document.getElementById(`group${i}-s${j}`).value;
-                    const timeValue = document.getElementById(`time${i}-s${j}`).value;
-                    const d1 = document.getElementById(`director-one-${i}-s${j}`).value;
-                    const d2 = document.getElementById(`director-two-${i}-s${j}`).value;
-                    const d3 = document.getElementById(`director-three-${i}-s${j}`).value;
+                groupItems.forEach(groupEl => {
+                    const groupId = groupEl.dataset.id;
+                    const timeValue = groupEl.querySelector('.time-select').value;
+                    const d1 = groupEl.querySelector('.adv-select').value;
+                    const d2 = groupEl.querySelector('.dir2-select').value;
+                    const d3 = groupEl.querySelector('.dir3-select').value;
 
-                    if(!groupId || !timeValue || !d1 || !d2 || !d3){
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'ข้อมูลไม่ครบถ้วน',
-                            text: "กรุณากรอกข้อมูลทุกช่องให้ครบถ้วน",
-                            confirmButtonText: 'ตกลง'
-                        });
-                        return;
+                    if (!timeValue || !d1 || !d2 || !d3) {
+                        hasError = true;
                     }
 
-                    if (groupId) { // ส่งเฉพาะแถวที่มีการเลือกกลุ่ม
-                        details.push({
-                            group: groupId,
-                            time: timeValue,
-                            directors: [d1, d2, d3]
-                        });
-                    }
+                    details.push({
+                        group: groupId,
+                        time: timeValue,
+                        advisor: d1,
+                        greatDirector: d2,
+                        director: d3
+                    });
+                });
+
+                if (details.length > 0) {
+                    examData.push({
+                        date: dateString,
+                        slots: details
+                    });
                 }
+            });
 
-                examData.push({
-                    date: dateString,
-                    slots: details
+            const unassignedCount = document.getElementById('unassigned-groups').children.length;
+
+            if (hasError) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ข้อมูลไม่ครบถ้วน',
+                    text: "กรุณาระบุเวลาและกรรมการให้ครบทุกกลุ่มที่ถูกจัดลงตาราง",
+                    confirmButtonText: 'ตกลง'
+                });
+                return;
+            }
+
+            if (examData.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ตารางว่างเปล่า',
+                    text: "กรุณาลากกลุ่มลงในตารางอย่างน้อย 1 กลุ่ม",
+                    confirmButtonText: 'ตกลง'
+                });
+                return;
+            }
+
+            if (unassignedCount > 0) {
+                return Swal.fire({
+                    title: 'มีกลุ่มที่ยังไม่ถูกจัดตาราง',
+                    text: `เหลืออีก ${unassignedCount} กลุ่ม คุณต้องการบันทึกเพียงเท่านี้ใช่หรือไม่?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'บันทึกเลย',
+                    cancelButtonText: 'ยกเลิก'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        formData.append("examSchedule", JSON.stringify(examData));
+                        executeSave(link, formData);
+                    }
                 });
             }
 
-            // เตรียมส่งก้อนใหญ่
-            console.log(examData)
             formData.append("examSchedule", JSON.stringify(examData));
         }
 
+        executeSave(link, formData);
+    });
+
+    function executeSave(link, formData) {
         saveEventBtn.disabled = true;
         saveEventBtn.innerText = "กำลังบันทึก...";
 
@@ -1077,16 +1020,8 @@
             }
         });
 
-        let link;
-        // 2. ส่งข้อมูลไปยัง API
-        if (groupOnly && selectedValue !== "วันสอบ") {
-            link = '/api/addEventForGroup';
-        }else{
-            link = '/api/addEvent';
-        }
         fetch(link, {
             method: 'POST',
-            // หมายเหตุ: ไม่ต้องตั้ง Content-Type เมื่อใช้ FormData เบราว์เซอร์จะจัดการให้เอง
             body: formData 
         })
         .then(async response => {
@@ -1097,7 +1032,7 @@
                     Swal.fire({
                         icon: 'warning',
                         title: 'บันทึกสำเร็จ (แต่ข้อมูลไม่ครบ)',
-                        html: `${result.warning}<br><br><b class="text-danger">${result.missingGroups.join(', ')}</b><br><br>กลุ่มเหล่านี้ยังไม่พร้อมสอบหรือกรุณาตรวจสอบชื่อกลุ่มใน Excel ให้ตรงกับในระบบ`,
+                        html: `${result.warning}<br><br><b class="text-danger">${result.missingGroups.join(', ')}</b><br><br>กลุ่มเหล่านี้ยังไม่พร้อมสอบ`,
                         confirmButtonText: 'รับทราบ'
                     }).then(() => window.location.href = "/event");
                 } else {
@@ -1109,7 +1044,6 @@
                     }).then(() => window.location.href = "/event");
                 }
             } else {
-                // 💡 แสดงผล Error ที่ส่งมาจาก Server ถ้าไม่มีให้ใช้ข้อความ Default
                 const errorMsg = result.message || result.error || "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
                 Swal.close();
                 Swal.fire({
@@ -1118,15 +1052,11 @@
                     text: errorMsg,
                     confirmButtonText: 'ตกลง'
                 });
-
-                // 💡 พิมพ์ลง Console ของ Browser ไว้เช็คละเอียดๆ
-                console.error("Server Result:", result); 
-
                 saveEventBtn.disabled = false;
                 saveEventBtn.innerText = "บันทึกกิจกรรม";
             }
         })
-    });
+    }
 
     $(document).ready(function() {
         // 1. ตรวจจับการพิมพ์

@@ -147,7 +147,7 @@
                                                     </td>
                                                     <td class="p-1"><textarea name="data[<%= index %>][อาจารย์ที่ปรึกษา]" class="form-control border-0 editable-input small" rows="1"><%= row.advisor || '' %></textarea></td>
                                                     <td class="p-1"><textarea name="data[<%= index %>][ประธานกรรมการ]" class="form-control border-0 editable-input small" rows="1"><%= row.greatDirector || '' %></textarea></td>
-                                                    <td class="p-1"><textarea name="data[<%= index %>][กรรมการ]" class="form-control border-0 editable-input small" rows="1"><%= row.directors || '' %></textarea></td>
+                                                    <td class="p-1"><textarea name="data[<%= index %>][กรรมการ]" class="form-control border-0 editable-input small" rows="1"><%= row.director || '' %></textarea></td>
                                                 <% } else { %>
                                                     <td class="text-center text-muted"><%= index+1 %></td>
                                                     <td class="font-weight-bold text-gray-800"><%= row.groupName %></td>
@@ -155,7 +155,7 @@
                                                     <td class="text-center font-weight-bold text-primary"><%= (d => String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))(new Date(row.date)) %></td>
                                                     <td class="small"><%= row.advisor || '-' %></td>
                                                     <td class="small"><%= row.greatDirector || '-' %></td>
-                                                    <td class="small"><%= row.directors || '-' %></td>
+                                                    <td class="small"><%= row.director || '-' %></td>
                                                 <% } %>
                                             </tr>
                                         <% }) %>
