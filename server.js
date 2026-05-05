@@ -1263,14 +1263,20 @@ app.post("/group/deny-invitation/:groupId/:notiId", apiLimiter,requireLogin, asy
     
     if (!group) return res.status(404).send("ไม่พบกลุ่ม");
 
+    const username = req.session.user.username;
+
     // ✅ 1. ล้างชื่อสมาชิกคนที่ 2 ออกเพื่อให้กลุ่มว่าง
-    group.member2 = null; 
+    if(group.member2 && group.member2 === username.toString() + " Pending"){
+        group.member2 = null;
+    }else if(group.advisor && group.advisor === username.toString() + " Pending"){
+        group.advisor = null;
+    }
     await group.save();
 
     // ✅ 2. ลบการแจ้งเตือนทิ้งเพื่อให้หายไปจากหน้าจอผู้ใช้
     let noti = await Notification.findById(notiId);
     if (noti) {
-        noti.recipient.pull(req.session.user.username);
+        noti.recipient.pull(username);
         if (noti.recipient.length === 0) {
             await Notification.findByIdAndDelete(notiId);
         } else {        
