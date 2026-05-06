@@ -470,8 +470,17 @@
                 denyButtonText: 'ไม่พร้อม',
                 cancelButtonText: 'ยกเลิก'
             });
-            if (!confirm.isConfirmed) return;
-        } else if(!isReady || confirm.isDenied) {
+            
+            if (confirm.isConfirmed) {
+                // ไปต่อ (isReady = true)
+            } else if (confirm.isDenied) {
+                isReady = false; // อาจารย์กดปุ่ม 'ไม่พร้อม' แทน
+            } else {
+                return; // อาจารย์กด 'ยกเลิก' หรือปิดหน้าต่าง
+            }
+        }
+        
+        if (!isReady) {
             const { value: text, isConfirmed: isTextConfirmed } = await Swal.fire({
                 title: 'เหตุผลที่ไม่พร้อมสอบ',
                 input: 'textarea',
