@@ -471,7 +471,7 @@
                 cancelButtonText: 'ยกเลิก'
             });
             if (!confirm.isConfirmed) return;
-        } else if(!isReady || !confirm.isDenied) {
+        } else if(!isReady || confirm.isDenied) {
             const { value: text, isConfirmed: isTextConfirmed } = await Swal.fire({
                 title: 'เหตุผลที่ไม่พร้อมสอบ',
                 input: 'textarea',
