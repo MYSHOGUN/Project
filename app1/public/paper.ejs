@@ -465,11 +465,13 @@
                 text: "คุณต้องการยืนยันว่ากลุ่มนี้พร้อมสำหรับการสอบใช่หรือไม่?",
                 icon: 'question',
                 showCancelButton: true,
+                showDenyButton: true,
                 confirmButtonText: 'ยืนยัน',
+                denyButtonText: 'ไม่พร้อม',
                 cancelButtonText: 'ยกเลิก'
             });
             if (!confirm.isConfirmed) return;
-        } else {
+        } else if(!isReady || !confirm.isDenied) {
             const { value: text, isConfirmed: isTextConfirmed } = await Swal.fire({
                 title: 'เหตุผลที่ไม่พร้อมสอบ',
                 input: 'textarea',
