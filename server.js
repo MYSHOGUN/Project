@@ -2904,21 +2904,21 @@ app.post("/api/admin", requireLogin, apiLimiter,async (req, res) => {
     }
 
     try {
-        const { chosenAdvisor } = req.body;
+        const { username } = req.body;
 
-        if (!chosenAdvisor) {
+        if (!username) {
             return res.status(400).json({ error: "Missing chosenAdvisor" });
         }
 
         // ป้องกันการโอนสิทธิ์ให้ตัวเอง (ซึ่งจะทำให้ Role มั่ว)
-        if (chosenAdvisor === req.session.user.username) {
+        if (username === req.session.user.username) {
             return res.status(400).json({ error: "คุณเป็น Admin อยู่แล้ว" });
         }
 
         // 2. เริ่มกระบวนการโอนสิทธิ์
         // เปลี่ยนคนใหม่ให้เป็น Admin
         const advisorUser = await User.findOneAndUpdate(
-            { username: chosenAdvisor }, 
+            { username: username }, 
             { role: "admin" },
             { new: true }
         );
@@ -3549,18 +3549,21 @@ app.post("/update-exam-schedule", apiLimiter, requireLogin, async (req, res) => 
             if (!group) continue;
 
             // จัดการกรรมการ
-                    const cleanNameFunc = (s) => s.trim().replace(/^(ดร\.|ผศ\.ดร\.|ผศ\.|รศ\.ดร\.|รศ\.|ศ\.|มร\.|นาย|นางสาว|นาง|อาจารย์|อ\.)\s?/, "").split(/\s+/)[0];
+                    const cleanAndSplit = (val) => {
+                        if (!val) return [];
+                        return String(val)
+                            .split(/[,\/;]|\sและ\s/)
+                            .map(s => s.trim().replace(/^(ผู้ช่วยศาสตราจารย์\s?|รองศาสตราจารย์\s?|ศาสตราจารย์\s?|ดร\.\s?|ผศ\.\s?ดร\.\s?|ผศ\.\s?|รศ\.\s?ดร\.\s?|รศ\.\s?|ศ\.\s?|มร\.\s?|นาย\s?|นางสาว\s?|นาง\s?|อาจารย์\s?|อ\.\s?)+/g, ""))
+                            .filter(Boolean); // กรองเอาเฉพาะข้อมูลที่มีค่าจริงๆ
+                    };
 
-                    let advisorsArr = (row['อาจารย์ที่ปรึกษา'] || "").split(/[,\/;]|\sและ\s/).map(cleanNameFunc).filter(s => s !== "");
-                    let greatDirectorsArr = (row['ประธานกรรมการ'] || "").split(/[,\/;]|\sและ\s/).map(cleanNameFunc).filter(s => s !== "");
-                    let directorsArr = (row['กรรมการ'] || "").split(/[,\/;]|\sและ\s/).map(cleanNameFunc).filter(s => s !== "");
+                    let advisorsStr = cleanAndSplit(row['อาจารย์ที่ปรึกษา']);
+                    let greatDirectorsStr = cleanAndSplit(row['ประธานกรรมการ']);
+                    let directorStr = cleanAndSplit(row['กรรมการ']);
 
-                    let advisorStr = advisorsArr.join(", ");
-                    let greatDirectorStr = greatDirectorsArr.join(", ");
-                    let directorStr = directorsArr.join(", ");
-                    let advisorUsernames = advisorsArr.map(getTeacherUsername).filter(Boolean);
-                    let greatDirectorUsernames = greatDirectorsArr.map(getTeacherUsername).filter(Boolean);
-                    let directorUsernames = directorsArr.map(getTeacherUsername).filter(Boolean);
+                    let advisorUsername = advisorsStr.map(getTeacherUsername).filter(Boolean);
+                    let greatDirectorUsername = greatDirectorsStr.map(getTeacherUsername).filter(Boolean);
+                    let directorUsername = directorStr.map(getTeacherUsername).filter(Boolean);
 
             const datePart = row['dateOnly']; // '2026-04-15'
             const timePart = row['timeOnly'] || "00:00"; // '09:30'
@@ -3575,14 +3578,12 @@ app.post("/update-exam-schedule", apiLimiter, requireLogin, async (req, res) => 
 
             // 🚩 เก็บลง testData ของ Event
             newTestData.push({
-                groupName: groupNameStr,
-                advisor: advisorsArr.length > 0 ? advisorsArr[0] : null, // Store username
-                greatDirector: greatDirectorsArr.length > 0 ? greatDirectorsArr[0] : null, // Store username
-                directors: directorsArr, // Store array of usernames
-                advisor: advisorUsernames.length > 0 ? advisorUsernames[0] : null, // Store username
-                greatDirector: greatDirectorUsernames.length > 0 ? greatDirectorUsernames[0] : null, // Store username
-                directors: directorUsernames, // Store array of usernames
-                date: finalDate
+                 groupName: groupNameStr,
+                advisor: advisorUsername.join(", "), // Store username
+                greatDirector: greatDirectorUsername.join(", "), // Store username
+                director: directorUsername.join(", "), // Store array of usernames as string
+                date: finalDate,
+                time: timePart
             });
 
             // อัปเดต Paper (Logic เดิม)
@@ -3593,12 +3594,9 @@ app.post("/update-exam-schedule", apiLimiter, requireLogin, async (req, res) => 
                 { eventId: event.id, groupId: group._id }, 
                 { 
                     $set: {
-                        advisor: advisorsArr.length > 0 ? advisorsArr[0] : null, // Store username
-                        greatDirector: greatDirectorsArr.length > 0 ? greatDirectorsArr[0] : null, // Store username
-                        director: directorsArr, // Store array of usernames
-                        advisor: advisorUsernames.length > 0 ? advisorUsernames[0] : null, // Store username
-                        greatDirector: greatDirectorUsernames.length > 0 ? greatDirectorUsernames[0] : null, // Store username
-                        director: directorUsernames, // Store array of usernames
+                        advisor: advisorUsername.join(", "), // Store username
+                        greatDirector: greatDirectorUsername.join(", "), // Store username
+                        director: directorUsername.join(", "), // Store array of usernames as string
                         mention: event.description || event.title,
                         expireAt: testResultsExpire,
                         date: finalDate
