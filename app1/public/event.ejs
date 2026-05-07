@@ -67,14 +67,53 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+    // ฟังก์ชันตรวจสอบการมีอยู่ของกิจกรรมก่อนพาผู้ใช้ไปหน้าถัดไป
+    window.verifyEvent = async function(e, eventId, url) {
+        e.preventDefault(); // หยุดการเปลี่ยนหน้าชั่วคราว
+        
+        Swal.fire({
+            title: 'กำลังตรวจสอบข้อมูล...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const response = await fetch('/api/getEvents');
+            const events = await response.json();
+            // เช็คว่า event ยังมีอยู่และไม่ถูกมาร์คว่าลบ
+            const stillExists = events.some(ev => ev.id == eventId && !ev.isDeleted && !ev.deleted);
+            
+            if (stillExists) {
+                Swal.close();
+                window.location.href = url; // พาดำเนินการต่อไป
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ไม่พบกิจกรรม',
+                    text: 'กิจกรรมนี้อาจถูกลบออกจากระบบไปแล้ว',
+                    confirmButtonText: 'ตกลง'
+                }).then(() => {
+                    loadEvents(); // รีเฟรชตารางใหม่เพื่อลบการ์ดที่ค้างอยู่ออก
+                });
+            }
+        } catch (err) {
+            window.location.href = url; // Fallback หาก API มีปัญหา ให้ทำงานตามปกติ
+        }
+        return false;
+    };
+
     async function loadEvents() {
         try {
             const response = await fetch('/api/getEvents');
             const events = await response.json();
             const container = document.getElementById('eventListContainer');
 
-            if (events.length === 0) {
+            // กรองกิจกรรมที่ถูกลบออก (รองรับกรณีที่ Backend ทำเป็น Soft Delete)
+            const activeEvents = events.filter(ev => !ev.isDeleted && !ev.deleted);
+
+            if (activeEvents.length === 0) {
                 container.innerHTML = `
                     <div class="card shadow-sm border-0 text-center py-5" style="border-radius: 15px;">
                         <div class="card-body">
@@ -87,7 +126,7 @@
 
             container.innerHTML = ''; 
 
-            events.forEach(ev => {
+            activeEvents.forEach(ev => {
                 const startDate = new Date(ev.date).toLocaleDateString('th-TH', {
                     day: '2-digit', month: 'long', year: 'numeric'
                 });
@@ -107,7 +146,7 @@
                 if (ev.title === "วันส่งเอกสาร") { colorClass = "warning"; iconClass = "fa-file-upload"; }
 
                 const eventHtml = `
-                    <a href="/eventInfo/${ev.id}" class="text-decoration-none mb-4 d-block">
+                    <a href="/eventInfo/${ev.id}" onclick="return verifyEvent(event, '${ev.id}', this.href)" class="text-decoration-none mb-4 d-block">
                         <div class="card event-card-item shadow-sm border-left-${colorClass}">
                             <div class="card-body p-4">
                                 <div class="row no-gutters align-items-center">

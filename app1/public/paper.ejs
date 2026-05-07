@@ -95,6 +95,14 @@
     .file-scroll-area {
         width: 100% !important; /* ป้องกันการเบียดซ้าย */
     }
+
+    /* ✅ ทำให้ลูกศรหมุนเวลาพับ/กาง Accordion */
+    [data-toggle="collapse"] i.fa-chevron-down {
+        transition: transform 0.3s ease;
+    }
+    [data-toggle="collapse"].collapsed i.fa-chevron-down {
+        transform: rotate(-90deg);
+    }
 </style>
 
 <input type="hidden" id="raw-groups-data" value='<%- JSON.stringify(groups) %>'>
@@ -111,8 +119,8 @@
         </div>
 
         <div class="platform-container">
-            <div id="paper-platform-container" class="paper-grid">
-                <div class="text-center py-5" style="grid-column: 1 / -1; width: 100%;">
+            <div id="paper-platform-container">
+                <div class="text-center py-5" style="width: 100%;">
                     <div class="spinner-border text-primary" role="status"></div>
                     <p class="mt-2 text-muted">กำลังโหลดรายการส่งเอกสาร...</p>
                 </div>
@@ -161,6 +169,8 @@
             container.innerHTML = "";
             let teacherCards = "";
             let studentCards = "";
+            let teacherCount = 0;
+            let studentCount = 0;
             
             visiblePapers.forEach(paper => {
                 
@@ -215,6 +225,7 @@
 
                 // ส่วนที่ 1: สำหรับอาจารย์ส่งผลสอบ
                 if ((isDirector && (currentRole === "teacher" || currentRole === "admin")) && paperDate.getTime() <= today.getTime() && Result && paper.mention.includes("จะมีการจัดสอบ")) {
+                    teacherCount++;
                     teacherCards += `
                     <div class="card paper-card shadow mb-4 border-left-primary" style="grid-column: 1 / -1;">
                         <div class="card-body p-4 text-center">
@@ -241,6 +252,7 @@
 
                 // ส่วนที่ 2: Card หลัก (ส่งไฟล์และ Checkbox อาจารย์)
                 if ((isUserInGroup || currentRole === "admin") && (!paper.mention || !paper.mention.includes("จะมีการจัดสอบ"))) {
+                    studentCount++;
                     // แก้ไขโครงสร้างในส่วน cardHtml (จุดที่ส่งไฟล์) ให้เป็นตามนี้ครับ
                 // เปลี่ยนโครงสร้างภายใน cardHtml ช่วงที่มีการส่งไฟล์
                 studentCards += `
@@ -297,10 +309,38 @@
                 }
             });
 
-            const teacherHeader = teacherCards ? `<h4 class="text-primary font-weight-bold mb-3"><i class="fas fa-edit"></i> รายการที่ต้องลงคะแนน</h4>` : "";
-            const studentHeader = studentCards ? `<h4 class="text-gray-800 font-weight-bold mb-3"><i class="fas fa-file-alt"></i> รายการเอกสารและแบบฟอร์ม</h4>` : "";
+            const teacherHeader = teacherCards ? `
+                <div class="task-grade-header mb-3" style="cursor: pointer;" data-toggle="collapse" data-target="#collapseGrade">
+                    <div class="d-flex justify-content-between align-items-center bg-white p-3 shadow-sm" style="border-radius: 12px; border-left: 4px solid #4e73df;">
+                        <h5 class="text-primary font-weight-bold mb-0">
+                            <i class="fas fa-edit mr-2"></i> รายการที่ต้องลงคะแนน 
+                            <span class="badge badge-danger ml-2">${teacherCount}</span>
+                        </h5>
+                        <i class="fas fa-chevron-down text-primary"></i>
+                    </div>
+                </div>
+            ` : "";
 
-            container.innerHTML = teacherHeader + teacherCards + studentHeader + studentCards;
+            // สำหรับอาจารย์ ถ้ามีรายการที่ต้องลงคะแนน ให้พับ (collapse) รายการเอกสารเก็บไว้ก่อน เพื่อไม่ให้รก
+            let docCollapseClass = (currentRole !== 'user' && teacherCards !== '') ? '' : 'show';
+            let docTriggerClass = docCollapseClass === 'show' ? '' : 'collapsed';
+
+            const studentHeader = studentCards ? `
+                <div class="task-doc-header ${docTriggerClass} mb-3 mt-4" style="cursor: pointer;" data-toggle="collapse" data-target="#collapseDoc">
+                    <div class="d-flex justify-content-between align-items-center bg-white p-3 shadow-sm" style="border-radius: 12px; border-left: 4px solid #858796;">
+                        <h5 class="text-gray-800 font-weight-bold mb-0">
+                            <i class="fas fa-file-alt mr-2"></i> รายการเอกสารและแบบฟอร์ม 
+                            <span class="badge badge-secondary ml-2">${studentCount}</span>
+                        </h5>
+                        <i class="fas fa-chevron-down text-gray-800"></i>
+                    </div>
+                </div>
+            ` : "";
+
+            // นำการ์ดทั้งหมดมาจัดให้อยู่ใน Container ของ Grid ที่สามารถพับเก็บได้
+            container.innerHTML = 
+                (teacherCards ? `${teacherHeader}<div class="collapse show" id="collapseGrade"><div class="paper-grid">${teacherCards}</div></div>` : "") + 
+                (studentCards ? `${studentHeader}<div class="collapse ${docCollapseClass}" id="collapseDoc"><div class="paper-grid">${studentCards}</div></div>` : "");
 
             // เริ่มต้นฟังก์ชันหลัง Render
             papers.forEach(p => {

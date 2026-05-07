@@ -33,7 +33,11 @@
     .table-responsive {
         border-radius: 12px !important;
         border: 1px solid #dee2e6 !important;
-        overflow: hidden !important;
+        overflow-x: auto !important; /* เปลี่ยนเพื่อให้เลื่อนซ้ายขวาได้ */
+    }
+
+    .table th {
+        white-space: nowrap; /* ป้องกันหัวตารางหดตัว เพื่อบังคับให้เกิดการ Scroll */
     }
 
     .table thead {
@@ -108,15 +112,20 @@
 
                 <% if (typeof tableData !== 'undefined' && tableData && tableData.length > 0) { %>
                     <div class="excel-section mt-5 pt-4 border-top">
-                        <h5 class="font-weight-bold text-dark mb-4 text-center">
-                            <i class="fas fa-table mr-2 text-primary"></i>ตารางกำหนดการสอบ
-                            <% if (user.role === 'admin') { %>
-                                <small class="text-muted d-block mt-2">(โหมดแก้ไขสำหรับผู้ดูแลระบบ)</small>
-                            <% } %>
-                        </h5>
+                        <div class="text-center mb-4">
+                            <h5 class="font-weight-bold text-dark mb-2">
+                                <i class="fas fa-table mr-2 text-primary"></i>ตารางกำหนดการสอบ
+                                <% if (user.role === 'admin') { %>
+                                    <small class="text-muted d-block mt-2">(โหมดแก้ไขสำหรับผู้ดูแลระบบ)</small>
+                                <% } %>
+                            </h5>
+                            <button type="button" class="btn btn-outline-primary btn-sm btn-rounded shadow-sm mt-2" onclick="downloadTableAsImage()">
+                                <i class="fas fa-download mr-1"></i> โหลดตารางเป็นรูปภาพ
+                            </button>
+                        </div>
                         
                         <form id="scheduleForm">
-                            <div class="table-responsive shadow-sm" style="overflow-x: scroll;">
+                            <div class="table-responsive shadow-sm">
                                 <table class="table table-bordered table-hover mb-0" id="editableTable">
                                     <thead class="bg-primary text-white text-center">
                                         <tr>
@@ -185,7 +194,47 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
+    // ✅ ฟังก์ชันสำหรับดาวน์โหลดตารางออกมาเป็นไฟล์รูปภาพ PNG
+    async function downloadTableAsImage() {
+        const tableContainer = document.querySelector('.table-responsive');
+        
+        // แสดง Loading ป้องกันผู้ใช้กดซ้ำ
+        Swal.fire({
+            title: 'กำลังสร้างรูปภาพ...',
+            text: 'กรุณารอสักครู่',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const canvas = await html2canvas(tableContainer, {
+                scale: 2, // สเกล x2 ให้รูปภาพคมชัดขึ้น
+                backgroundColor: "#ffffff",
+                onclone: (clonedDoc) => {
+                    // ปรับแต่ง Clone เล็กน้อยเพื่อให้ตารางที่ล้นหน้าจอ (Scroll) ถูกเรนเดอร์ออกมาเต็มๆ ไม่โดนตัด
+                    const clonedContainer = clonedDoc.querySelector('.table-responsive');
+                    if (clonedContainer) {
+                        clonedContainer.style.setProperty('overflow', 'visible', 'important');
+                        clonedContainer.style.setProperty('width', 'max-content', 'important');
+                    }
+                }
+            });
+            
+            const image = canvas.toDataURL("image/png");
+            const link = document.createElement("a");
+            link.href = image;
+            link.download = `ตารางสอบ_${new Date().getTime()}.png`;
+            link.click();
+            
+            Swal.close();
+        } catch (error) {
+            console.error("Error generating image:", error);
+            Swal.fire('ผิดพลาด', 'ไม่สามารถสร้างรูปภาพตารางได้', 'error');
+        }
+    }
+
     async function deleteEvent() {
         const result = await Swal.fire({
             title: 'ต้องการลบกิจกรรม?',

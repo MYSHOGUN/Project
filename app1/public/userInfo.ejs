@@ -95,10 +95,10 @@
                             <table class="table mb-0" style="table-layout: fixed;">
                                 <thead class="bg-light small">
                                     <tr>
-                                        <th style="width: 30%;">นักศึกษา</th>
-                                        <th style="width: 20%;">เลขประจำตัว</th>
-                                        <th style="width: 15%;">สาขา</th>
-                                        <th style="width: 35%; text-align:center;">สถานะ</th>
+                                        <th style="width: 30%; cursor: pointer;" onclick="sortTable(this, 0)" title="คลิกเพื่อเรียงข้อมูล">นักศึกษา <i class="fas fa-sort ml-1 text-muted"></i></th>
+                                        <th style="width: 20%; cursor: pointer;" onclick="sortTable(this, 1)" title="คลิกเพื่อเรียงข้อมูล">เลขประจำตัว <i class="fas fa-sort ml-1 text-muted"></i></th>
+                                        <th style="width: 15%; cursor: pointer;" onclick="sortTable(this, 2)" title="คลิกเพื่อเรียงข้อมูล">สาขา <i class="fas fa-sort ml-1 text-muted"></i></th>
+                                        <th style="width: 35%; text-align:center; cursor: pointer;" onclick="sortTable(this, 3)" title="คลิกเพื่อเรียงข้อมูล">สถานะ <i class="fas fa-sort ml-1 text-muted"></i></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -215,4 +215,44 @@
         icon.classList.remove('rotate-180');
     }
 };
+
+    // ✅ ระบบเรียงข้อมูล (Sorting) สำหรับตารางรายชื่อ
+    const sortStates = {};
+    window.sortTable = function(th, colIndex) {
+        const table = th.closest('table');
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr.student-item'));
+        
+        // ใช้ id ของปีเป็นตัวแยกสถานะการ sort ของแต่ละตาราง เพื่อไม่ให้ตีกัน
+        const tableContainerId = table.closest('.collapse').id;
+        const stateKey = tableContainerId + '-' + colIndex;
+        
+        sortStates[stateKey] = !sortStates[stateKey];
+        const isAsc = sortStates[stateKey];
+
+        // รีเซ็ตไอคอนลูกศรทั้งหมดในตารางนี้
+        table.querySelectorAll('th i.fa-sort, th i.fa-sort-up, th i.fa-sort-down').forEach(icon => {
+            icon.className = 'fas fa-sort ml-1 text-muted';
+        });
+
+        // เปลี่ยนไอคอนลูกศรคอลัมน์ที่ถูกคลิก
+        const currentIcon = th.querySelector('i.fas');
+        if (currentIcon) {
+            currentIcon.className = isAsc ? 'fas fa-sort-up ml-1 text-primary' : 'fas fa-sort-down ml-1 text-primary';
+        }
+
+        // เรียงข้อมูล (รองรับทั้งภาษาไทยและตัวเลข)
+        rows.sort((a, b) => {
+            let valA = a.querySelectorAll('td')[colIndex].innerText.trim();
+            let valB = b.querySelectorAll('td')[colIndex].innerText.trim();
+
+            if (!isNaN(valA) && !isNaN(valB) && valA !== "" && valB !== "") {
+                return isAsc ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
+            }
+            return isAsc ? valA.localeCompare(valB, 'th') : valB.localeCompare(valA, 'th');
+        });
+
+        // อัปเดตตารางด้วยข้อมูลที่เรียงแล้ว
+        rows.forEach(row => tbody.appendChild(row));
+    };
 </script>
