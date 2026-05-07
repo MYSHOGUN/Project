@@ -143,7 +143,7 @@
                                             <tr class="schedule-row">
                                                 <% if (user.role === 'admin') { %>
                                                     <td class="p-1"><input type="text" name="data[<%= index %>][ลำดับ]" class="form-control border-0 text-center editable-input" value="<%= index+1 %>"></td>
-                                                    <td class="p-1 font-weight-bold"><input type="text" name="data[<%= index %>][ชื่อกลุ่ม]" class="form-control border-0 editable-input" value="<%= row.groupName %>"></td>
+                                                    <td class="p-1 font-weight-bold"><input type="text" name="data[<%= index %>][ชื่อกลุ่ม]" class="form-control border-0 editable-input" value="<%= row.groupName %>" data-toggle="tooltip" title="<%= row.groupName %>"></td>
                                                     <td class="p-0">
                                                         <input type="date" name="data[<%= index %>][dateOnly]" 
                                                             class="form-control border-0 text-center editable-input" 
@@ -154,12 +154,12 @@
                                                             class="form-control border-0 text-center font-weight-bold text-primary editable-input" 
                                                             value="<%= (d => String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))(new Date(row.date)) %>">
                                                     </td>
-                                                    <td class="p-1"><textarea name="data[<%= index %>][อาจารย์ที่ปรึกษา]" class="form-control border-0 editable-input small" rows="1"><%= row.advisor || '' %></textarea></td>
-                                                    <td class="p-1"><textarea name="data[<%= index %>][ประธานกรรมการ]" class="form-control border-0 editable-input small" rows="1"><%= row.greatDirector || '' %></textarea></td>
-                                                    <td class="p-1"><textarea name="data[<%= index %>][กรรมการ]" class="form-control border-0 editable-input small" rows="1"><%= row.director || '' %></textarea></td>
+                                                    <td class="p-1"><input type="text" name="data[<%= index %>][อาจารย์ที่ปรึกษา]" class="form-control border-0 editable-input small" value="<%= row.advisor || '' %>"></td>
+                                                    <td class="p-1"><input type="text" name="data[<%= index %>][ประธานกรรมการ]" class="form-control border-0 editable-input small" value="<%= row.greatDirector || '' %>"></td>
+                                                    <td class="p-1"><input type="text" name="data[<%= index %>][กรรมการ]" class="form-control border-0 editable-input small" value="<%= row.director || '' %>"></td>
                                                 <% } else { %>
                                                     <td class="text-center text-muted"><%= index+1 %></td>
-                                                    <td class="font-weight-bold text-gray-800"><%= row.groupName %></td>
+                                                    <td class="font-weight-bold text-gray-800" data-toggle="tooltip" title="<%= row.groupName %>"><%= row.groupName %></td>
                                                     <td class="text-center"><%= new Date(row.date).toLocaleDateString('th-TH', { dateStyle: 'long' }) || '-' %></td>
                                                     <td class="text-center font-weight-bold text-primary"><%= (d => String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))(new Date(row.date)) %></td>
                                                     <td class="small"><%= row.advisor || '-' %></td>
@@ -200,6 +200,12 @@
     async function downloadTableAsImage() {
         const tableContainer = document.querySelector('.table-responsive');
         
+        if (!tableContainer) {
+            Swal.fire('ผิดพลาด', 'ไม่พบตารางที่ต้องการสร้างรูปภาพ', 'error');
+            console.error("Error: .table-responsive element not found.");
+            return;
+        }
+
         // แสดง Loading ป้องกันผู้ใช้กดซ้ำ
         Swal.fire({
             title: 'กำลังสร้างรูปภาพ...',
@@ -218,6 +224,16 @@
                     if (clonedContainer) {
                         clonedContainer.style.setProperty('overflow', 'visible', 'important');
                         clonedContainer.style.setProperty('width', 'max-content', 'important');
+
+                        // Make input/textarea elements appear as plain text
+                        const inputs = clonedContainer.querySelectorAll('input, textarea');
+                        inputs.forEach(input => {
+                            input.style.border = 'none';
+                            input.style.backgroundColor = 'transparent';
+                            input.style.boxShadow = 'none';
+                            input.style.resize = 'none'; // For textareas
+                            input.style.color = 'inherit'; // Ensure text color is inherited
+                        });
                     }
                 }
             });
@@ -361,4 +377,9 @@
             }
         });
     }
+
+    // Initialise Tooltips
+    $(function () {
+        $('[data-toggle="tooltip"]').tooltip();
+    });
 </script>

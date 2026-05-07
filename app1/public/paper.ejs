@@ -271,15 +271,27 @@
                                 </a>
 
                                 ${((currentRole === 'teacher' || currentRole === 'admin') && (!paper.mention || !paper.mention.includes("แก้ไข"))) ? `
-                                    <label class="custom-check-container mb-0" for="check-${targetGroup._id}">
-                                        <input type="checkbox" class="mr-2" id="check-${targetGroup._id}" 
-                                            onchange="updateReadyStatus(this, '${targetGroup._id}', '${paperId}' , ${paperDate.getTime()})"
-                                            ${targetGroup.status.includes('พร้อมสอบ') ? 'checked' : ''}
-                                            ${targetGroup.status.includes('รอส่งเอกสาร') || targetGroup.status.includes('รอสอบ') || !targetPaperFile ? 'disabled' : ''}>
-                                        <span id="status-text-${paperId}" class="small font-weight-bold ${targetGroup.status.includes('พร้อมสอบ') ? 'text-success' : targetGroup.status.includes('รอส่งเอกสาร') || targetGroup.status.includes('รอสอบ') ? 'text-warning' : 'text-primary'}">
-                                            ${targetGroup.status.includes('พร้อมสอบ') ? 'พร้อมสอบแล้ว' : targetGroup.status.includes('รอส่งเอกสาร') ? 'รอส่งเอกสาร' : targetPaperFile ? "ส่งเอกสารเรียบร้อย" : 'ไม่ได้ส่งเอกสาร'}
-                                        </span>
-                                    </label>
+                                    <div class="custom-check-container mb-0 px-3 py-1">
+                                        <div class="custom-control custom-radio custom-control-inline mb-0 mr-3">
+                                            <input type="radio" id="ready-${paperId}" name="status-${paperId}" class="custom-control-input"
+                                                onchange="updateReadyStatus(true, '${targetGroup._id}', '${paperId}', ${paperDate.getTime()})"
+                                                ${targetGroup.status.includes('พร้อมสอบ') ? 'checked' : ''}
+                                            ${targetGroup.status.includes('รอสอบ') || !targetPaperFile ? 'disabled' : ''}>
+                                            <label class="custom-control-label small font-weight-bold text-success" style="cursor: pointer; padding-top: 2px;" for="ready-${paperId}">พร้อมสอบ</label>
+                                        </div>
+                                        <div class="custom-control custom-radio custom-control-inline mb-0 mr-0">
+                                            <input type="radio" id="notready-${paperId}" name="status-${paperId}" class="custom-control-input"
+                                                onchange="updateReadyStatus(false, '${targetGroup._id}', '${paperId}', ${paperDate.getTime()})"
+                                                ${(targetGroup.status.includes('ไม่พร้อม') || targetGroup.status.includes('แก้ไข')) ? 'checked' : ''}
+                                            ${targetGroup.status.includes('รอสอบ') || !targetPaperFile ? 'disabled' : ''}>
+                                            <label class="custom-control-label small font-weight-bold text-danger" style="cursor: pointer; padding-top: 2px;" for="notready-${paperId}">ไม่พร้อมสอบ</label>
+                                        </div>
+                                    ${(targetGroup.status.includes('รอสอบ') || !targetPaperFile) ? `
+                                        <span id="status-text-${paperId}" class="small font-weight-bold ml-3 border-left pl-3 ${!targetPaperFile ? 'text-primary' : 'text-warning'}">
+                                            ${!targetPaperFile ? 'ยังไม่ส่งเอกสาร' : 'รอสอบ'}
+                                            </span>
+                                        ` : ''}
+                                    </div>
                                 ` : ''}
                             </div>
                         </div>
@@ -349,16 +361,17 @@
                 const exactNow = new Date();
                 const examPaper = papers.find(ex => ex.groupId === p.groupId && ex.passTimes === p.passTimes && ex.mention && ex.mention.includes("จะมีการจัดสอบ"));
                 const isExamPassed = examPaper && exactNow.getTime() > new Date(examPaper.date).getTime();
+                const isExam = p.mention && p.mention.includes("จะมีการจัดสอบ");
 
                 initDragAndDrop(p._id, paperDate.getTime(), isExamPassed);
-                fetchFileList(p._id, paperDate.getTime(), isExamPassed);
+                fetchFileList(p._id, paperDate.getTime(), isExamPassed, isExam);
             });
 
         } catch (err) { console.error(err); }
     }
 
     // ✅ เพิ่มฟังก์ชัน Logic ทั้งหมด
-    async function fetchFileList(paperId, paperDate, isExamPassed = false) {
+    async function fetchFileList(paperId, paperDate, isExamPassed = false, isExam = false) {
         const listContainer = document.getElementById(`file-list-${paperId}`);
         if (!listContainer) return;
         try {
@@ -381,7 +394,7 @@
                 const today = new Date();
                 today.setHours(0,0,0,0);
                 const pd = new Date(Number(paperDate));
-                const date = (pd >= today || isExamPassed) && !statusSpan?.textContent.includes('พร้อมสอบแล้ว')
+                const date = (pd >= today || isExamPassed) && !statusSpan?.textContent.includes('พร้อมสอบแล้ว') && !isExam
                     ? `<div class="btn btn-danger btn-circle btn-sm shadow ml-auto" onclick="deleteFile('${fileId}', ${pd.getTime()}, ${isExamPassed})">
                             <i class="fas fa-trash-alt"></i>
                         </div>

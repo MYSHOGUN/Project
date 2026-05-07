@@ -2033,7 +2033,7 @@ app.post("/api/addEvent", apiLimiter, requireLogin, requireRole(['admin']), uplo
               // 1. สร้าง bucket เฉพาะกิจตรงนี้เลยเพื่อให้มั่นใจว่าไม่เป็น undefined
 
               const allGroups = await Group.find({ 
-                  status: { $nin: ["ผ่านการสอบป้องกันปริญญานิพนธ์", "ไม่มีสมาชิก" ,"ไม่ผ่านการสอบป้องกันปริญญานิพนธ์","พร้อมสอบนำเสนอหัวข้อปริญญานิพนธ์", "พร้อมสอบก้าวหน้าปริญญานิพนธ์",  "พร้อมสอบป้องกันปริญญานิพนธ์","รอส่งเอกสารก่อนสอบนำเสนอหัวข้อปริญญานิพนธ์","รอส่งเอกสารก่อนสอบก้าวหน้าปริญญานิพนธ์","รอส่งเอกสารก่อนสอบป้องกันปริญญานิพนธ์","ไม่มีอาจารย์ที่ปรึกษา","ไม่มีอาจารย์ที่ปรึกษา"] } 
+                  status: { $nin: ["ผ่านการสอบป้องกันปริญญานิพนธ์", "ไม่มีสมาชิก" ,"ไม่ผ่านการสอบป้องกันปริญญานิพนธ์","พร้อมสอบนำเสนอหัวข้อปริญญานิพนธ์", "พร้อมสอบก้าวหน้าปริญญานิพนธ์",  "พร้อมสอบป้องกันปริญญานิพนธ์","ไม่มีอาจารย์ที่ปรึกษา"] } 
               });
 
               for (const group of allGroups) {
@@ -2066,14 +2066,6 @@ app.post("/api/addEvent", apiLimiter, requireLogin, requireRole(['admin']), uplo
                       savedPaper = await newPaper.save(); 
                   }
 
-                  const mem1 = await User.findOne({ username: group.member1 });
-                  const mem2 = group.member2 ? await User.findOne({ username: group.member2 }) : null;
-
-                  const groupUpdate = await Group.findOneAndUpdate(
-                      { _id: group._id },
-                      { $set: { status: group.passTimes === 0 ? "รอส่งเอกสารก่อนสอบนำเสนอหัวข้อปริญญานิพนธ์" : mem1.branch === "ECT" || mem2?.branch === "ECT" ? "รอส่งเอกสารก่อนสอบก้าวหน้าปริญญานิพนธ์" : "รอส่งเอกสารก่อนสอบป้องกันปริญญานิพนธ์" } },
-                      { new: true }
-                  );
               }
           } else if (title === "วันสอบ" && examSchedule) {
             try{
@@ -2385,29 +2377,32 @@ app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
                         { groupId: g._id }
                     ] 
                 });
+                let baselineStatus = "รอนำเสนอหัวข้อ";
+                if (g.passTimes === 1) baselineStatus = "ผ่านการสอบหัวข้อปริญญานิพนธ์";
+                else if (g.passTimes === 2) baselineStatus = "ผ่านการสอบก้าวหน้าปริญญานิพนธ์";
                 if(g.status === "รอสอบป้องกันปริญญานิพนธ์"){
                     if(checkFile && checkFile.check === true){
                         g.status = "พร้อมสอบป้องกันปริญญานิพนธ์";
                     }else if(checkFile && checkFile.check === false){
-                        g.status = "ส่งเอกสารการสอบป้องกันปริญญานิพนธ์เรียบร้อย";
+                        g.status = "ไม่พร้อมสอบป้องกันปริญญานิพนธ์";
                     }else{
-                        g.status = "รอส่งเอกสารก่อนสอบป้องกันปริญญานิพนธ์";
+                        g.status = baselineStatus;
                     }
                 }else if(g.status === "รอสอบก้าวหน้าปริญญานิพนธ์"){
                     if(checkFile && checkFile.check === true){
                         g.status = "พร้อมสอบก้าวหน้าปริญญานิพนธ์";
                     }else if(checkFile && checkFile.check === false){
-                        g.status = "ส่งเอกสารการสอบก้าวหน้าปริญญานิพนธ์เรียบร้อย";
+                        g.status = "ไม่พร้อมสอบก้าวหน้าปริญญานิพนธ์";
                     }else{
-                        g.status = "รอส่งเอกสารก่อนสอบก้าวหน้าปริญญานิพนธ์";
+                        g.status = baselineStatus;
                     }
                 }else if(g.status === "รอสอบนำเสนอหัวข้อปริญญานิพนธ์"){
                     if(checkFile && checkFile.check === true){
                         g.status = "พร้อมสอบนำเสนอหัวข้อปริญญานิพนธ์";
                     }else if(checkFile && checkFile.check === false){
-                        g.status = "ส่งเอกสารการสอบนำเสนอหัวข้อปริญญานิพนธ์เรียบร้อย";
+                        g.status = "ไม่พร้อมสอบนำเสนอหัวข้อปริญญานิพนธ์";
                     }else{
-                        g.status = "รอส่งเอกสารก่อนสอบนำเสนอหัวข้อปริญญานิพนธ์";
+                        g.status = baselineStatus;
                     }
                 }
                 await Group.findByIdAndUpdate(g._id, { $set: { status: g.status } });
@@ -2420,45 +2415,6 @@ app.delete("/deleteEvent/:id", requireLogin, async (req, res) => {
             await Notification.deleteMany({ mention: uuidFromParams }); 
         }
 
-        const group = await Group.find({status: { $ne: "ผ่านการสอบป้องกันปริญญานิพนธ์" } });
-
-        if (event.title === "วันสอบ") {
-          const groupExamDone = group.filter(g => g.status === "รอสอบป้องกันปริญญานิพนธ์" || g.status === "รอสอบก้าวหน้าปริญญานิพนธ์" || g.status === "รอสอบนำเสนอหัวข้อปริญญานิพนธ์");
-          for (const g of groupExamDone) {
-            const checkFile = await PaperFile.findOne({
-                $and: [
-                    { paperId: { $in: paperIds } },
-                    { groupId: g._id }
-                ] 
-            });
-            if(g.status === "รอสอบป้องกันปริญญานิพนธ์"){
-                if(checkFile && checkFile.check === true){
-                    g.status = "พร้อมสอบป้องกันปริญญานิพนธ์";
-                }else if(checkFile && checkFile.check === false){
-                    g.status = "ส่งเอกสารการสอบป้องกันปริญญานิพนธ์เรียบร้อย";
-                }else{
-                    g.status = "รอส่งเอกสารก่อนสอบป้องกันปริญญานิพนธ์";
-                }
-            }else if(g.status === "รอสอบก้าวหน้าปริญญานิพนธ์"){
-                if(checkFile && checkFile.check === true){
-                    g.status = "พร้อมสอบก้าวหน้าปริญญานิพนธ์";
-                }else if(checkFile && checkFile.check === false){
-                    g.status = "ส่งเอกสารการสอบก้าวหน้าปริญญานิพนธ์เรียบร้อย";
-                }else{
-                    g.status = "รอส่งเอกสารก่อนสอบก้าวหน้าปริญญานิพนธ์";
-                }
-            }else if(g.status === "รอสอบนำเสนอหัวข้อปริญญานิพนธ์"){
-                if(checkFile && checkFile.check === true){
-                    g.status = "พร้อมสอบนำเสนอหัวข้อปริญญานิพนธ์";
-                }else if(checkFile && checkFile.check === false){
-                    g.status = "ส่งเอกสารการสอบนำเสนอหัวข้อปริญญานิพนธ์เรียบร้อย";
-                }else{
-                    g.status = "รอส่งเอกสารก่อนสอบนำเสนอหัวข้อปริญญานิพนธ์";
-                }
-            }
-            await Group.findByIdAndUpdate(g._id, { $set: { status: g.status } });
-          }
-        }
         
         // 5. ลบตัว Event เอง (ค้นหาด้วยฟิลด์ id แทน _id)
         const result = await Event.findOneAndDelete({ id: uuidFromParams });
@@ -2546,7 +2502,7 @@ app.get("/paper", requireLogin, requireNotRole(['secretary']), async (req, res) 
                 }else if(group.passTimes >= 1){
                     const mem1 = await User.findOne({ username: group.member1 });
                     const mem2 = group.member2 ? await User.findOne({ username: group.member2 }) : null;
-                    if(mem1.branch === "ECT" && mem2.branch === "ECT"){
+                    if(mem1.branch === "ECT" && mem2?.branch === "ECT"){
                         group.status = "รอสอบก้าวหน้าปริญญานิพนธ์";
                     }else{
                         group.status = "รอสอบป้องกันปริญญานิพนธ์";
@@ -2612,10 +2568,18 @@ app.post("/api/PaperUploadFile", requireLogin, apiLimiter,async (req, res) => {
             $set: { expireAt: null } 
         });
 
-        // 5. อัปเดตสถานะกลุ่ม (ใช้ findByIdAndUpdate เพื่อเลี่ยง Error engName)
-        await Group.findByIdAndUpdate(paperGroup._id, { 
-            $set: { status: "ส่งเอกสารเรียบร้อย" } 
-        });
+        // 5. อัปเดตสถานะกลุ่ม กลับสู่สภาวะปกติหากเคยเป็น ไม่พร้อมสอบ หรือ รอแก้ไข
+        let newStatus = paperGroup.status;
+        if (paperGroup.status.includes("ไม่พร้อมสอบ") || paperGroup.status.includes("รอแก้ไขเอกสาร")) {
+            if (paperGroup.passTimes === 0) newStatus = "รอนำเสนอหัวข้อ";
+            else if (paperGroup.passTimes === 1) newStatus = "ผ่านการสอบหัวข้อปริญญานิพนธ์";
+            else if (paperGroup.passTimes === 2) newStatus = "ผ่านการสอบก้าวหน้าปริญญานิพนธ์";
+        }
+        if (newStatus !== paperGroup.status) {
+            await Group.findByIdAndUpdate(paperGroup._id, { 
+                $set: { status: newStatus } 
+            });
+        }
 
         // เผื่อนักศึกษาไปส่งในกล่อง "ส่งเอกสารได้ตลอดเวลา" ให้ดึง username ของอาจารย์ที่สั่งแก้ (ถ้ามี)
         let extraRecipient = paper.commentBy;
@@ -3251,12 +3215,12 @@ app.post("/api/groups/mark-ready-for-exam", apiLimiter,async (req, res) => {
             }
         } else {
             if (group.passTimes === 0) {
-              statusCheck = "ส่งเอกสารการสอบนำเสนอหัวข้อปริญญานิพนธ์เรียบร้อย";
+                  statusCheck = "ไม่พร้อมสอบนำเสนอหัวข้อปริญญานิพนธ์";
             } else if(group.passTimes >= 1) {
               if(mem1.branch === "EnET" || mem2?.branch === "EnET"){
-                statusCheck = "ส่งเอกสารการสอบป้องกันปริญญานิพนธ์เรียบร้อย";
+                    statusCheck = "ไม่พร้อมสอบป้องกันปริญญานิพนธ์";
               }else{
-                statusCheck = "ส่งเอกสารการสอบก้าวหน้าปริญญานิพนธ์เรียบร้อย";
+                    statusCheck = "ไม่พร้อมสอบก้าวหน้าปริญญานิพนธ์";
               }
             }
         }
@@ -3529,7 +3493,6 @@ app.post("/update-exam-schedule", apiLimiter, requireLogin, async (req, res) => 
     try {
         const { eventId, data: updatedData } = req.body;
         const event = await Event.findOne({ id: eventId });
-
         if (!event) return res.status(404).send("ไม่พบข้อมูลกิจกรรม");
 
         let newTestData = [];
@@ -3542,11 +3505,30 @@ app.post("/update-exam-schedule", apiLimiter, requireLogin, async (req, res) => 
         };
 
         for (const row of updatedData) {
-            const groupNameStr = (row['ชื่อกลุ่ม'] || "").trim();
-            if (!groupNameStr) continue;
+            const newGroupName = (row['ชื่อกลุ่ม'] || "").trim();
+            const originalGroupName = (row['originalGroupName'] || "").trim();
 
-            const group = await Group.findOne({ projectName: groupNameStr });
-            if (!group) continue;
+            let targetGroup = null;
+            let finalGroupName = newGroupName; // Assume new name is valid by default
+
+            // 1. Try to find group by the new name
+            if (newGroupName) {
+                targetGroup = await Group.findOne({ projectName: newGroupName });
+            }
+
+            // 2. If new name didn't match, try to find by original name
+            if (!targetGroup && originalGroupName) {
+                targetGroup = await Group.findOne({ projectName: originalGroupName });
+                if (targetGroup) {
+                    finalGroupName = originalGroupName; // Revert to original name
+                }
+            }
+
+            // 3. If no group found at all, skip this row (or handle error)
+            if (!targetGroup) {
+                console.warn(`⚠️ Skipping row: No group found for new name "${newGroupName}" or original name "${originalGroupName}"`);
+                continue;
+            }
 
             // จัดการกรรมการ
                     const cleanAndSplit = (val) => {
@@ -3578,7 +3560,7 @@ app.post("/update-exam-schedule", apiLimiter, requireLogin, async (req, res) => 
 
             // 🚩 เก็บลง testData ของ Event
             newTestData.push({
-                 groupName: groupNameStr,
+                 groupName: finalGroupName, // Use the validated group name
                 advisor: advisorUsername.join(", "), // Store username
                 greatDirector: greatDirectorUsername.join(", "), // Store username
                 director: directorUsername.join(", "), // Store array of usernames as string
@@ -3587,11 +3569,11 @@ app.post("/update-exam-schedule", apiLimiter, requireLogin, async (req, res) => 
             });
 
             // อัปเดต Paper (Logic เดิม)
-            const testResultsExpire = new Date(finalDate);
+            const testResultsExpire = new Date(finalDate); // Use finalDate from the row
             testResultsExpire.setDate(testResultsExpire.getDate() + 7);
 
             await Paper.findOneAndUpdate(
-                { eventId: event.id, groupId: group._id }, 
+                { eventId: event.id, groupId: targetGroup._id }, // Use targetGroup._id here
                 { 
                     $set: {
                         advisor: advisorUsername.join(", "), // Store username
@@ -3858,7 +3840,7 @@ app.post("/api/addEventForGroup", apiLimiter, requireLogin, requireRole(['admin'
                     return res.status(404).json({ error: "กลุ่มนี้ไม่สามารถตั้งวันส่งเอกสารได้เนื่องจาก"+ group.status + group.status === 'ผ่านการสอบป้องกันปริญญานิพนธ์' ? 'แล้ว' : ''});
                 }
                 
-                if (group.status.includes('พร้อมสอบ') || group.status.includes('รอส่งเอกสาร')){
+                if (group.status.includes('พร้อมสอบ')){
                     return res.status(404).json({ error: "กลุ่มนี้ไม่สามารถตั้งวันส่งเอกสารได้เนื่องจาก"+ group.status + 'อยู่แล้ว'});
                 }
 
@@ -3887,13 +3869,9 @@ app.post("/api/addEventForGroup", apiLimiter, requireLogin, requireRole(['admin'
                       savedPaper = await newPaper.save(); 
                   }
 
-                  const mem1 = await User.findOne({ username: group.member1 });
-                  const mem2 = group.member2 ? await User.findOne({ username: group.member2 }) : null;
-
                   const groupUpdate = await Group.findOneAndUpdate(
                       { _id: group._id },
-                      { $set: { status: group.passTimes === 0 ? "รอส่งเอกสารก่อนสอบนำเสนอหัวข้อปริญญานิพนธ์" : mem1.branch === "ECT" || mem2.branch === "ECT" ? "รอส่งเอกสารก่อนสอบก้าวหน้าปริญญานิพนธ์" : "รอส่งเอกสารก่อนสอบป้องกันปริญญานิพนธ์" } },
-                      { fileTimes: group.fileTimes + 1},
+                      { $inc: { fileTimes: 1 } },
                       { new: true }
                   );
                   const saveGroup = await groupUpdate.save();
