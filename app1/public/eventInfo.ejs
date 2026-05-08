@@ -105,7 +105,7 @@
                     <div class="col-md-4">
                         <label class="text-primary font-weight-bold small text-uppercase">วันที่</label>
                         <p class="h5 font-weight-bold text-gray-800">
-                            <%= event.date ? new Date(event.date).toLocaleDateString('th-TH', { dateStyle: 'long' }) : 'ไม่ระบุ' %>
+                            <%= event.date ? new Date(event.date).toLocaleDateString('th-TH', { day: '2-digit', month: 'long', year: 'numeric', calendar: 'buddhist' }) : 'ไม่ระระบุ' %>
                         </p>
                     </div>
                 </div>
@@ -160,7 +160,7 @@
                                                 <% } else { %>
                                                     <td class="text-center text-muted"><%= index+1 %></td>
                                                     <td class="font-weight-bold text-gray-800" data-toggle="tooltip" title="<%= row.groupName %>"><%= row.groupName %></td>
-                                                    <td class="text-center"><%= new Date(row.date).toLocaleDateString('th-TH', { dateStyle: 'long' }) || '-' %></td>
+                                                    <td class="text-center"><%= new Date(row.date).toLocaleDateString('th-TH', { day: '2-digit', month: 'long', year: 'numeric', calendar: 'buddhist' }) || '-' %></td>
                                                     <td class="text-center font-weight-bold text-primary"><%= (d => String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))(new Date(row.date)) %></td>
                                                     <td class="small"><%= row.advisor || '-' %></td>
                                                     <td class="small"><%= row.greatDirector || '-' %></td>

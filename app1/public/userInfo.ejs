@@ -138,9 +138,9 @@
                                                 <span class="badge <%= badgeClass %> px-3 py-2 shadow-sm text-wrap" style="line-height: 1.5; font-size: 0.85rem;">
                                                     <i class="fas <%= iconClass %> mr-1"></i> <%= u.displayStatus %>
                                                 </span>
-                                                <% if (u.statusTimeAgo) { %>
+                                                <% if (u.statusTime) { %>
                                                     <div class="small text-muted mt-2" style="font-size: 0.75rem;">
-                                                        <i class="fas fa-history mr-1"></i>อัปเดต: <%= u.statusTimeAgo %>
+                                                        <i class="fas fa-history mr-1"></i>อัปเดต: <%= u.statusTime %>
                                                     </div>
                                                 <% } %>
                                             </td>

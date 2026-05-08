@@ -3445,9 +3445,10 @@ app.get("/userInfo", requireLogin, requireRole(['admin', 'secretary']) ,async (r
 
         // แมปสถานะของกลุ่มให้กับผู้ใช้แต่ละคน
         students.forEach(student => {
+            let rawStatusTime;
             if (student.status && (student.status.includes("ผ่านการสอบป้องกัน") || student.status === "จบแล้ว" || student.status === "สำเร็จการศึกษา")) {
                 student.displayStatus = student.status;
-                student.statusTimeAgo = timeSince(student.updatedAt || student.createdAt);
+                rawStatusTime = student.updatedAt || student.createdAt;
             } else {
                 const studentGroup = groups.find(g => 
                     g.member1 === student.username || 
@@ -3456,11 +3457,21 @@ app.get("/userInfo", requireLogin, requireRole(['admin', 'secretary']) ,async (r
                 );
                 if (studentGroup) {
                     student.displayStatus = studentGroup.status;
-                    student.statusTimeAgo = timeSince(studentGroup.updatedAt || studentGroup.lastUpdatedTime);
+                    rawStatusTime = studentGroup.updatedAt || studentGroup.lastUpdatedTime;
                 } else {
                     student.displayStatus = "ไม่มีกลุ่ม";
-                    student.statusTimeAgo = "";
+                    rawStatusTime = "";
                 }
+            }
+
+            if (rawStatusTime) {
+                student.statusTime = new Date(rawStatusTime).toLocaleString('th-TH', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                });
+            } else {
+                student.statusTime = "";
             }
         });
 
