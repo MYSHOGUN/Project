@@ -17,6 +17,7 @@
         width: 100%;
         max-width: 700px;
         border: 1px solid rgba(255, 255, 255, 0.8);
+        transition: max-width 0.5s ease-in-out;
         margin: 0 auto;
     }
 
@@ -435,6 +436,11 @@
         </div>
 
         <div id="exam-scheduler" class="animated--grow-in mt-4 mx-auto" style="display: none; width: 100%;">
+            <div class="d-flex justify-content-end mb-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="backToScheduleSettings()">
+                    <i class="fas fa-arrow-left mr-1"></i> กลับไปตั้งค่าวันและจำนวน
+                </button>
+            </div>
             <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; width: 100%; align-items: start;">
                 <!-- Left Column: Unassigned Groups -->
                 <div class="mb-4 h-100">
@@ -530,6 +536,9 @@
             Swal.fire({ icon: 'error', title: 'ไม่พบข้อมูลกลุ่ม', text: 'ไม่มีกลุ่มที่พร้อมสอบในขณะนี้' });
             return;
         }
+
+        // ✅ ขยาย Card เพื่อรองรับตาราง
+        document.querySelector('.glass-card').style.setProperty('max-width', '1400px', 'important');
 
         document.getElementById("group-select-number").style.display = "none";
         document.getElementById("exam-scheduler").style.display = "block";
@@ -662,6 +671,14 @@
         updateWorkloadUI();
     }
 
+    function backToScheduleSettings() {
+        // ย่อ Card กลับไปขนาดเดิม
+        document.querySelector('.glass-card').style.setProperty('max-width', '700px', 'important');
+        // แสดงส่วนตั้งค่า และซ่อนตารางลากวาง
+        document.getElementById("group-select-number").style.display = "block";
+        document.getElementById("exam-scheduler").style.display = "none";
+    }
+
     function initSortable() {
         const unassigned = document.getElementById('unassigned-groups');
         const dayLists = document.querySelectorAll('.day-slot-list');
@@ -671,6 +688,25 @@
             animation: 150,
             ghostClass: 'sortable-ghost',
             onEnd: function (evt) {
+                // ✅ ฟังก์ชันสำหรับอัปเดตเวลาในแต่ละช่องโดยอัตโนมัติ
+                const updateTimesInList = (listElement) => {
+                    // ทำงานเฉพาะกับกล่องของวัน (day-slot-list)
+                    if (listElement && listElement.classList.contains('day-slot-list')) {
+                        const items = listElement.querySelectorAll('.group-item');
+                        items.forEach((item, index) => {
+                            const timeSelect = item.querySelector('.time-select');
+                            if (timeSelect) {
+                                // เริ่ม 8:00 (480 นาที) และบวกไปทีละ 1 ชั่วโมง (60 นาที)
+                                const timeInMinutes = 480 + (index * 60);
+                                timeSelect.value = timeInMinutes;
+                            }
+                        });
+                    }
+                };
+
+                updateTimesInList(evt.to); // อัปเดตลิสต์ปลายทาง
+                if (evt.from !== evt.to) updateTimesInList(evt.from); // อัปเดตลิสต์ต้นทาง (ถ้ามีการย้ายข้าม)
+
                 updateCounts();
             }
         };

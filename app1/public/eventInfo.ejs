@@ -119,8 +119,8 @@
                                     <small class="text-muted d-block mt-2">(โหมดแก้ไขสำหรับผู้ดูแลระบบ)</small>
                                 <% } %>
                             </h5>
-                            <button type="button" class="btn btn-outline-primary btn-sm btn-rounded shadow-sm mt-2" onclick="downloadTableAsImage()">
-                                <i class="fas fa-download mr-1"></i> โหลดตารางเป็นรูปภาพ
+                            <button type="button" class="btn btn-outline-success btn-sm btn-rounded shadow-sm mt-2" onclick="downloadTableAsExcel()">
+                                <i class="fas fa-file-excel mr-1"></i> ดาวน์โหลดเป็น Excel
                             </button>
                         </div>
                         
@@ -194,60 +194,53 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script>
-    // ✅ ฟังก์ชันสำหรับดาวน์โหลดตารางออกมาเป็นไฟล์รูปภาพ PNG
-    async function downloadTableAsImage() {
-        const tableContainer = document.querySelector('.table-responsive');
-        
-        if (!tableContainer) {
-            Swal.fire('ผิดพลาด', 'ไม่พบตารางที่ต้องการสร้างรูปภาพ', 'error');
-            console.error("Error: .table-responsive element not found.");
-            return;
-        }
-
-        // แสดง Loading ป้องกันผู้ใช้กดซ้ำ
-        Swal.fire({
-            title: 'กำลังสร้างรูปภาพ...',
-            text: 'กรุณารอสักครู่',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
-
+    // ✅ ฟังก์ชันสำหรับดาวน์โหลดตารางออกมาเป็นไฟล์ Excel
+    function downloadTableAsExcel() {
         try {
-            const canvas = await html2canvas(tableContainer, {
-                scale: 2, // สเกล x2 ให้รูปภาพคมชัดขึ้น
-                backgroundColor: "#ffffff",
-                onclone: (clonedDoc) => {
-                    // ปรับแต่ง Clone เล็กน้อยเพื่อให้ตารางที่ล้นหน้าจอ (Scroll) ถูกเรนเดอร์ออกมาเต็มๆ ไม่โดนตัด
-                    const clonedContainer = clonedDoc.querySelector('.table-responsive');
-                    if (clonedContainer) {
-                        clonedContainer.style.setProperty('overflow', 'visible', 'important');
-                        clonedContainer.style.setProperty('width', 'max-content', 'important');
+            // 1. Safely get event title and create a valid filename.
+            // This prevents errors if the title has special characters like quotes.
+            const eventTitleRaw = JSON.stringify(event.title || "");
+            const eventTitle = eventTitleRaw.replace(/[^a-zA-Z0-9\u0E00-\u0E7F\s]/g, '').replace(/\s+/g, '_');
+            const fileName = `ตารางสอบ_${eventTitle}.xlsx`;
 
-                        // Make input/textarea elements appear as plain text
-                        const inputs = clonedContainer.querySelectorAll('input, textarea');
-                        inputs.forEach(input => {
-                            input.style.border = 'none';
-                            input.style.backgroundColor = 'transparent';
-                            input.style.boxShadow = 'none';
-                            input.style.resize = 'none'; // For textareas
-                            input.style.color = 'inherit'; // Ensure text color is inherited
-                        });
-                    }
-                }
+            // 2. Manually extract data into an array of arrays. This is the most stable method.
+            const data = [];
+            const table = document.getElementById('editableTable');
+            if (!table) throw new Error("Table element not found.");
+
+            // Extract headers
+            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+            data.push(headers);
+
+            // Extract body rows
+            const bodyRows = table.querySelectorAll('tbody tr');
+            bodyRows.forEach(tr => {
+                const rowData = [];
+                tr.querySelectorAll('td').forEach(td => {
+                    const input = td.querySelector('input');
+                    const cellValue = String(input ? input.value : td.textContent.trim());
+                    rowData.push(cellValue);
+                });
+                data.push(rowData);
             });
-            
-            const image = canvas.toDataURL("image/png");
-            const link = document.createElement("a");
-            link.href = image;
-            link.download = `ตารางสอบ_${new Date().getTime()}.png`;
-            link.click();
-            
-            Swal.close();
+
+            // 3. Create worksheet and workbook.
+            const ws = XLSX.utils.aoa_to_sheet(data);
+
+            // 4. (Optional but helpful) Auto-fit column widths.
+            ws['!cols'] = headers.map((h, i) => ({
+                wch: data.reduce((max, row) => Math.max(max, String(row[i] || '').length), h.length) + 1
+            }));
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "ตารางสอบ");
+            XLSX.writeFile(wb, fileName);
+
         } catch (error) {
-            console.error("Error generating image:", error);
-            Swal.fire('ผิดพลาด', 'ไม่สามารถสร้างรูปภาพตารางได้', 'error');
+            console.error("Excel download error:", error);
+            Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถสร้างไฟล์ Excel ได้: ' + error.message, 'error');
         }
     }
 

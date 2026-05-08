@@ -176,9 +176,15 @@
                 
                 const paperId = paper._id;
                 const targetGroup = groupsData.find(g => g._id === paper.groupId);
-                const targetResult = resultData.find(r => r.groupId === paper.groupId);
-                const targetPaperFile = paperFileData.find(f => f.paperId === paperId);
-                const isDirector = paper.director ? paper.director.includes(currentName) : false;
+                // ✅ FIX 2: ตรวจสอบว่าส่งไฟล์แล้วหรือยังให้แม่นยำขึ้น
+                const hasSubmittedFiles = paperFileData.some(f => f.paperId === paperId);
+                
+                // ✅ FIX 1: ตรวจสอบกรรมการโดยใช้ Username และเช็คทุกตำแหน่ง
+                const isCommittee = (
+                    (paper.director && paper.director.includes(currentUsername)) ||
+                    (paper.greatDirector && paper.greatDirector.includes(currentUsername)) ||
+                    (paper.advisor && paper.advisor.includes(currentUsername))
+                );
                 
                 if (!targetGroup) return '';
 
@@ -195,7 +201,9 @@
                 const examPaper = papers.find(p => p.groupId === paper.groupId && p.passTimes === paper.passTimes && p.mention && p.mention.includes("จะมีการจัดสอบ"));
                 const isExamPassed = examPaper && exactNow.getTime() > new Date(examPaper.date).getTime();
 
-                const Result = targetResult ? (!targetResult.pass.includes(currentUsername) && !targetResult.fail.includes(currentUsername)) && targetGroup.passTimes === targetResult.passTimes : true;
+                // ✅ FIX 1.1: ทำให้ Logic การเช็คว่าโหวตไปแล้วหรือยัง อ่านง่ายขึ้น
+                const targetResultForCurrentPass = resultData.find(r => r.groupId === paper.groupId && r.passTimes === paper.passTimes);
+                const hasVoted = targetResultForCurrentPass ? (targetResultForCurrentPass.pass.includes(currentUsername) || targetResultForCurrentPass.fail.includes(currentUsername)) : false;
 
                 const passTime = (paper.passTimes || 0);
 
@@ -204,13 +212,6 @@
                 let text;
 
                 const testText = passTime === 0 ? "ส่งเอกสารก่อนสอบนำเสนอหัวข้อปริญญานิพนธ์" : "ส่งเอกสารก่อนสอบป้องกันปริญญานิพนธ์" ;
-
-                if (currentRole === "teacher" || currentRole === "admin") {
-                    console.log(`Checking group: ${groupName}`);
-                    console.log(`- Date Match (<= today):`, paperDate.getTime() <= today.getTime(), `(${paperDate} vs ${today})`);
-                    console.log(`- Result Match (Not yet voted):`, Result);
-                    console.log(`- Final Decision:`, (paperDate.getTime() <= today.getTime() && Result));
-                }
 
                 if (paper.mention && paper.mention.includes("โปรดส่งเอกสาร")){
                     text = "โปรดส่งเอกสารภายในวันที่ "+paperDate.toLocaleDateString('th-TH', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -224,7 +225,7 @@
 
 
                 // ส่วนที่ 1: สำหรับอาจารย์ส่งผลสอบ
-                if ((isDirector && (currentRole === "teacher" || currentRole === "admin")) && paperDate.getTime() <= today.getTime() && Result && paper.mention.includes("จะมีการจัดสอบ")) {
+                if ((isCommittee && (currentRole === "teacher" || currentRole === "admin")) && paperDate.getTime() <= today.getTime() && !hasVoted && paper.mention.includes("จะมีการจัดสอบ")) {
                     teacherCount++;
                     teacherCards += `
                     <div class="card paper-card shadow mb-4 border-left-primary" style="grid-column: 1 / -1;">
@@ -276,19 +277,19 @@
                                             <input type="radio" id="ready-${paperId}" name="status-${paperId}" class="custom-control-input"
                                                 onchange="updateReadyStatus(true, '${targetGroup._id}', '${paperId}', ${paperDate.getTime()})"
                                                 ${targetGroup.status.includes('พร้อมสอบ') ? 'checked' : ''}
-                                            ${targetGroup.status.includes('รอสอบ') || !targetPaperFile ? 'disabled' : ''}>
+                                            ${targetGroup.status.includes('รอสอบ') || !hasSubmittedFiles ? 'disabled' : ''}>
                                             <label class="custom-control-label small font-weight-bold text-success" style="cursor: pointer; padding-top: 2px;" for="ready-${paperId}">พร้อมสอบ</label>
                                         </div>
                                         <div class="custom-control custom-radio custom-control-inline mb-0 mr-0">
                                             <input type="radio" id="notready-${paperId}" name="status-${paperId}" class="custom-control-input"
                                                 onchange="updateReadyStatus(false, '${targetGroup._id}', '${paperId}', ${paperDate.getTime()})"
                                                 ${(targetGroup.status.includes('ไม่พร้อม') || targetGroup.status.includes('แก้ไข')) ? 'checked' : ''}
-                                            ${targetGroup.status.includes('รอสอบ') || !targetPaperFile ? 'disabled' : ''}>
+                                            ${targetGroup.status.includes('รอสอบ') || !hasSubmittedFiles ? 'disabled' : ''}>
                                             <label class="custom-control-label small font-weight-bold text-danger" style="cursor: pointer; padding-top: 2px;" for="notready-${paperId}">ไม่พร้อมสอบ</label>
                                         </div>
-                                    ${(targetGroup.status.includes('รอสอบ') || !targetPaperFile) ? `
-                                        <span id="status-text-${paperId}" class="small font-weight-bold ml-3 border-left pl-3 ${!targetPaperFile ? 'text-primary' : 'text-warning'}">
-                                            ${!targetPaperFile ? 'ยังไม่ส่งเอกสาร' : 'รอสอบ'}
+                                    ${(targetGroup.status.includes('รอสอบ') || !hasSubmittedFiles) ? `
+                                        <span id="status-text-${paperId}" class="small font-weight-bold ml-3 border-left pl-3 ${!hasSubmittedFiles ? 'text-primary' : 'text-warning'}">
+                                            ${!hasSubmittedFiles ? 'ยังไม่ส่งเอกสาร' : 'รอสอบ'}
                                             </span>
                                         ` : ''}
                                     </div>
@@ -477,15 +478,13 @@
             });
 
             if (saveRes.ok) {
-                Swal.close(); // ✅ ปิดสถานะโหลดทันที
-                const statusSpan = document.getElementById(`status-text-${paperId}`);
-                if (statusSpan) {
-                    statusSpan.textContent = 'ส่งเอกสารเรียบร้อย';
-                    statusSpan.className = 'small font-weight-bold text-primary';
-                }
-                console.log("♻️ Refreshing list for:", paperId, "with date:", paperDate);
-                await fetchFileList(paperId, paperDate, isExamPassed); // ✅ โหลดรายการไฟล์ใหม่มาแสดง
-                Swal.fire({ icon: 'success', title: 'สำเร็จ' , text: 'อัปโหลดไฟล์เรียบร้อยแล้ว', timer: 1000, showConfirmButton: false });
+                Swal.fire({
+                    icon: 'success',
+                    title: 'สำเร็จ',
+                    text: 'อัปโหลดไฟล์เรียบร้อยแล้ว',
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => location.reload());
             } else {
                 throw new Error('Save metadata failed');
             }
@@ -505,11 +504,8 @@
     }
 
     // ✅ ฟังก์ชันอัปเดตสถานะพร้อมสอบ (สำหรับอาจารย์ที่ปรึกษา)
-    window.updateReadyStatus = async function(checkbox, groupId ,paperId ,paperDate) {
-        const isChecked = checkbox.checked;
-        checkbox.checked = !isChecked; // Revert temporarily until confirmed
-
-        let isReady = isChecked;
+    window.updateReadyStatus = async function(isReadyState, groupId, paperId, paperDate) {
+        let isReady = isReadyState;
         let comment = "";
 
         if (isReady) {
@@ -518,21 +514,18 @@
                 text: "คุณต้องการยืนยันว่ากลุ่มนี้พร้อมสำหรับการสอบใช่หรือไม่?",
                 icon: 'question',
                 showCancelButton: true,
-                showDenyButton: true,
                 confirmButtonText: 'ยืนยัน',
-                denyButtonText: 'ไม่พร้อม',
                 cancelButtonText: 'ยกเลิก'
             });
-            
+
             if (confirm.isConfirmed) {
                 // ไปต่อ (isReady = true)
-            } else if (confirm.isDenied) {
-                isReady = false; // อาจารย์กดปุ่ม 'ไม่พร้อม' แทน
             } else {
-                return; // อาจารย์กด 'ยกเลิก' หรือปิดหน้าต่าง
+                location.reload();
+                return;
             }
         }
-        
+
         if (!isReady) {
             const { value: text, isConfirmed: isTextConfirmed } = await Swal.fire({
                 title: 'เหตุผลที่ไม่พร้อมสอบ',
@@ -542,43 +535,30 @@
                 showCancelButton: true,
                 confirmButtonText: 'ยืนยัน',
                 cancelButtonText: 'ยกเลิก',
-                inputValidator: (value) => {
-                    if (!value) {
-                        return 'กรุณาระบุเหตุผล!';
-                    }
-                }
+                inputValidator: (value) => !value && 'กรุณาระบุเหตุผล!'
             });
 
             if (!isTextConfirmed) {
-                return; // ยกเลิกการอัปเดตสถานะถ้าอาจารย์กดปุ่มยกเลิก
+                location.reload();
+                return;
             }
             comment = text;
         }
 
         try {
-            const res = await fetch(`/api/groups/mark-ready-for-exam`, {
+            const res = await fetch('/api/groups/mark-ready-for-exam', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ groupId, paperId, isReady, comment })
             });
             if (res.ok) {
-                checkbox.checked = isReady;
-
-                const statusSpan = document.getElementById(`status-text-${paperId}`);
-                if (statusSpan) {
-                    statusSpan.textContent = isReady ? 'พร้อมสอบแล้ว' : 'ส่งเอกสารเรียบร้อย';
-                    statusSpan.className = `small font-weight-bold ${isReady ? 'text-success' : 'text-primary'}`;
-                }
-
-                fetchFileList(paperId, paperDate);
-                
-                Swal.fire('สำเร็จ', `อัปเดตสถานะเป็น "${isReady ? 'พร้อมสอบ' : 'ไม่พร้อมสอบ'}" แล้ว`, 'success');
+                Swal.fire('สำเร็จ', `อัปเดตสถานะเป็น "${isReady ? 'พร้อมสอบ' : 'ไม่พร้อมสอบ'}" แล้ว`, 'success').then(() => location.reload());
             } else {
                 const data = await res.json();
-                Swal.fire('ผิดพลาด', data.error || 'ไม่สามารถอัปเดตได้', 'error');
+                throw new Error(data.error || 'ไม่สามารถอัปเดตได้');
             }
         } catch (err) {
-            Swal.fire('ผิดพลาด', 'ไม่สามารถอัปเดตได้', 'error');
+            Swal.fire('ผิดพลาด', err.message, 'error').then(() => location.reload());
         }
     }
 
@@ -625,29 +605,17 @@
                 const result = await res.json(); 
 
                 if (res.ok && result.success) {
-                    console.log("✅ Delete success, refreshing ID:", result.paperId);
-                    
-                    // 🚩 2. ปิด Loading ก่อนเริ่ม Fetch ใหม่
-                    Swal.close(); 
-
-                    // 🚩 3. มั่นใจว่าชื่อ Parameter ตรงกับที่ Backend ส่งมา (paperId)
-                    if (result.paperId) {
-                        await fetchFileList(result.paperId, paperDate, isExamPassed); 
-                        
-                        // 🚩 4. แสดงแจ้งเตือนแบบไม่ต้องรอให้กดยืนยัน (Timer) เพื่อไม่ให้ขัดจังหวะการอัปเดต UI
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'ไฟล์ถูกลบแล้ว',
-                            showConfirmButton: false,
-                            timer: 1000
-                        });
-                    } else {
-                        console.error("⚠️ ไม่ได้รับ paperId กลับมาจาก Server");
-                        location.reload(); // ถ้าหา ID ไม่เจอ ให้รีโหลดหน้าแทนป้องกันรายการค้าง
-                    }
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'ไฟล์ถูกลบแล้ว',
+                        showConfirmButton: false,
+                        timer: 1000
+                    }).then(() => location.reload()); // ✅ รีโหลดหน้าใหม่เพื่อให้ข้อมูลอัปเดตทั้งหมด
+                } else {
+                    throw new Error(result.error || 'ไม่สามารถลบไฟล์ได้');
                 }
             } catch (err) {
-                Swal.fire('ผิดพลาด', 'ไม่สามารถลบไฟล์ได้', 'error');
+                Swal.fire('ผิดพลาด', err.message, 'error');
             }
         }
     }
