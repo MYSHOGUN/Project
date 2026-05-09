@@ -3480,11 +3480,29 @@ app.get("/ownedGroupInfo/:id", async (req, res) => {
         const allPapers = await Paper.find({ groupId: id }).sort({ submittedAt: -1 }).lean();
         const allFiles = await PaperFile.find({ groupId: id }).lean();
 
+        // 4. ดึงข้อมูลผลการสอบ (Result) และแปลงชื่ออาจารย์
+        const allResults = await Result.find({ groupId: id }).lean();
+        
+        let resultUsernames = [];
+        allResults.forEach(r => {
+            if (r.pass) resultUsernames = resultUsernames.concat(r.pass);
+            if (r.fail) resultUsernames = resultUsernames.concat(r.fail);
+        });
+        const resultUsers = await User.find({ username: { $in: resultUsernames } }).lean();
+        
+        const getResultUserFullName = (username) => {
+            const u = resultUsers.find(user => user.username === username);
+            return u ? `${u.title && u.title !== 'รอเพิ่มข้อมูล' ? u.title + ' ' : ''}${u.name} ${u.lastname}`.trim() : username;
+        };
+
         // นำไฟล์ไปใส่ไว้ในแต่ละ Paper
         const papersWithFiles = allPapers.map(paper => {
+            const rawResult = allResults.find(r => r.passTimes === paper.passTimes);
+            let formattedResult = rawResult ? { pass: (rawResult.pass || []).map(getResultUserFullName), fail: (rawResult.fail || []).map(getResultUserFullName) } : null;
             return {
                 ...paper,
-                submittedFiles: allFiles.filter(f => f.paperId.toString() === paper._id.toString())
+                submittedFiles: allFiles.filter(f => f.paperId.toString() === paper._id.toString()),
+                result: formattedResult
             };
         });
 
