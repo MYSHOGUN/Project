@@ -141,8 +141,13 @@
 
     async function loadPaperPlatforms() {
         try {
-            const res = await fetch('/api/getMyPapers');
+            const [res, usersRes] = await Promise.all([
+                fetch('/api/getMyPapers'),
+                fetch('/api/getUsers')
+            ]);
             const papers = await res.json();
+            const usersData = await usersRes.json();
+            const allUsers = usersData.users || [];
             const container = document.getElementById('paper-platform-container');
 
             // ฟังก์ชันช่วยตรวจสอบว่าเป็นเอกสารชุด "สำหรับลงคะแนนสอบ" หรือไม่
@@ -176,6 +181,11 @@
             let teacherCount = 0;
             let studentCount = 0;
             
+            const getUserFullName = (username) => {
+                const u = allUsers.find(user => user.username === username);
+                return u ? `${u.title && u.title !== 'รอเพิ่มข้อมูล' ? u.title + ' ' : ''}${u.name} ${u.lastname}`.trim() : username;
+            };
+
             visiblePapers.forEach(paper => {
                 
                 const paperId = paper._id;
@@ -186,8 +196,7 @@
                 // ✅ FIX 1: ตรวจสอบกรรมการโดยใช้ Username แบบแยกคำ ป้องกันชื่อคล้ายกัน (เช่น user1 กับ user10)
                 const checkCommittee = (field, username) => {
                     if (!field) return false;
-                    if (Array.isArray(field)) return field.includes(username);
-                    return field.split(',').map(s => s.trim().replace(" (Pending)", "")).includes(username);
+                    return String(field).split(',').map(s => s.trim().replace(" (Pending)", "")).includes(username);
                 };
 
                 const isCommittee = checkCommittee(paper.director, currentUsername) ||
@@ -233,28 +242,54 @@
 
 
                 // ส่วนที่ 1: สำหรับอาจารย์ส่งผลสอบ
-                if ((isCommittee && (currentRole === "teacher" || currentRole === "admin")) && paperDate.getTime() <= today.getTime() && !hasVoted && isExamPaper(paper.mention)) {
+                if ((isCommittee || currentRole === "admin") && isExamPaper(paper.mention)) {
+
+                    let votingFormHtml = '';
+                    if (isCommittee && paperDate.getTime() <= today.getTime() && !hasVoted) {
+                        votingFormHtml = `
+                            <div class="d-flex justify-content-center mb-3 mt-2" style="gap: 20px;">
+                                <div class="custom-control custom-radio">
+                                    <input type="radio" id="pass-${paperId}" name="choice-${paperId}" value="ผ่าน" class="custom-control-input" onchange="showComment('${paperId}')">
+                                    <label class="custom-control-label font-weight-bold text-success" for="pass-${paperId}">ผ่าน</label>
+                                </div>
+                                <div class="custom-control custom-radio">
+                                    <input type="radio" id="fail-${paperId}" name="choice-${paperId}" value="ไม่ผ่าน" class="custom-control-input" onchange="showComment('${paperId}')">
+                                    <label class="custom-control-label font-weight-bold text-danger" for="fail-${paperId}">ไม่ผ่าน</label>
+                                </div>
+                                <div class="custom-control custom-radio">
+                                    <input type="radio" id="fix-${paperId}" name="choice-${paperId}" value="แก้ไข" class="custom-control-input" onchange="showComment('${paperId}')">
+                                    <label class="custom-control-label font-weight-bold text-warning" for="fix-${paperId}">แก้ไข</label>
+                                </div>
+                            </div>
+                            <textarea class="form-control mb-3 d-none mx-auto shadow-sm" id="comment-${paperId}" rows="2" style="max-width: 500px; border-radius: 12px;" placeholder="ระบุสิ่งที่ต้องการให้แก้ไข (นักศึกษาจะเห็นข้อความนี้)..."></textarea>
+                            <button class="btn btn-primary px-5 shadow-sm rounded-pill font-weight-bold" onclick="submitResult('${paperId}')"><i class="fas fa-paper-plane mr-2"></i> ยืนยันส่งผลการสอบ</button>
+                        `;
+                    } else if (hasVoted) {
+                        votingFormHtml = `
+                            <div class="alert alert-success d-inline-block px-4 py-2 rounded-pill mb-0 shadow-sm">
+                                <i class="fas fa-check-circle mr-2"></i> คุณได้ลงคะแนนเรียบร้อยแล้ว
+                            </div>
+                        `;
+                    } else if (paperDate.getTime() > today.getTime()) {
+                        votingFormHtml = `
+                            <div class="alert alert-warning d-inline-block px-4 py-2 rounded-pill mb-0 shadow-sm">
+                                <i class="fas fa-clock mr-2"></i> ยังไม่ถึงกำหนดเวลาสอบ
+                            </div>
+                        `;
+                    } else if (!isCommittee && currentRole === "admin") {
+                        votingFormHtml = `
+                            <div class="alert alert-secondary d-inline-block px-4 py-2 rounded-pill mb-0 shadow-sm">
+                                <i class="fas fa-user-shield mr-2"></i> มุมมองผู้ดูแลระบบ (Admin)
+                            </div>
+                        `;
+                    }
+
                     teacherCount++;
                     teacherCards += `
                     <div class="card paper-card shadow mb-4 border-left-primary" style="grid-column: 1 / -1;">
                         <div class="card-body p-4 text-center">
-                            <h5 class="font-weight-bold text-primary mb-3">บันทึกผลการสอบ: ${groupName}</h5>
-                            <div class="d-flex justify-content-center mb-3" style="gap: 20px;">
-                                <div class="custom-control custom-radio">
-                                    <input type="radio" id="pass-${paperId}" name="choice-${paperId}" value="ผ่าน" class="custom-control-input" onchange="showComment('${paperId}')">
-                                    <label class="custom-control-label" for="pass-${paperId}">ผ่าน</label>
-                                </div>
-                                <div class="custom-control custom-radio">
-                                    <input type="radio" id="fail-${paperId}" name="choice-${paperId}" value="ไม่ผ่าน" class="custom-control-input" onchange="showComment('${paperId}')">
-                                    <label class="custom-control-label" for="fail-${paperId}">ไม่ผ่าน</label>
-                                </div>
-                                <div class="custom-control custom-radio">
-                                    <input type="radio" id="fix-${paperId}" name="choice-${paperId}" value="แก้ไข" class="custom-control-input" onchange="showComment('${paperId}')">
-                                    <label class="custom-control-label" for="fix-${paperId}">แก้ไข</label>
-                                </div>
-                            </div>
-                            <textarea class="form-control mb-3 d-none mx-auto" id="comment-${paperId}" rows="2" style="max-width: 500px; border-radius: 12px;" placeholder="ระบุสิ่งที่ต้องการให้แก้ไข..."></textarea>
-                            <button class="btn btn-success px-5 shadow-sm rounded-pill font-weight-bold" onclick="submitResult('${paperId}')">ยืนยันส่งผลการสอบ</button>
+                            <h5 class="font-weight-bold text-primary mb-3"><i class="fas fa-chalkboard-teacher mr-2"></i>บันทึกผลการสอบ: ${groupName}</h5>
+                            ${votingFormHtml}
                         </div>
                     </div>`;
                 }

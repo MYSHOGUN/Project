@@ -2735,14 +2735,14 @@ app.post("/api/paper/upload-raw", requireLogin, apiLimiter,upload.array("files")
 app.get("/api/getMyPapers", requireLogin, async (req, res) => {
     try {
         const userGroupIds = req.session.user.group;
-        const name = req.session.user.name;
+        const username = req.session.user.username; // เปลี่ยนจาก name เป็น username
 
         const platforms = await Paper.find({ 
             $or: [
                 { groupId: { $in: userGroupIds } },
-                { director: { $regex: name, $options: "i" } },
-                { advisor: { $regex: name, $options: "i" } },
-                { greatDirector: { $regex: name, $options: "i" } }
+                { director: { $regex: username, $options: "i" } },
+                { advisor: { $regex: username, $options: "i" } },
+                { greatDirector: { $regex: username, $options: "i" } }
             ]
         }).lean();
         
