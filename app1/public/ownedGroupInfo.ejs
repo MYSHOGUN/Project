@@ -128,6 +128,16 @@
     .stepper-item.active .step-name { color: #4e73df !important; }
     .stepper-item.completed .step-name { color: #1cc88a !important; }
     .stepper-item.failed .step-name { color: #e74a3b !important; }
+
+    /* Profile Link Hover */
+    .profile-link {
+        color: #5a5c69 !important;
+        text-decoration: none !important;
+        transition: color 0.2s ease;
+    }
+    .profile-link:hover {
+        color: #4e73df !important;
+    }
 </style>
 
 <div class="main-content-wrapper" style="min-height: 84vh;">
@@ -196,11 +206,25 @@
                         <div class="member-grid">
                             <div class="member-item member-item-card">
                                 <span class="text-label">หัวหน้ากลุ่ม</span>
-                                <div class="h6 font-weight-bold text-gray-800 mb-0"><i class="fas fa-user-graduate text-gray-400 mr-2"></i><%= member1Name %></div>
+                                <div class="h6 font-weight-bold text-gray-800 mb-0">
+                                    <i class="fas fa-user-graduate text-gray-400 mr-2"></i>
+                                    <% if (member1Id) { %>
+                                        <a href="/viewProfile/<%= member1Id %>" class="profile-link" title="คลิกเพื่อดูโปรไฟล์"><%= member1Name %></a>
+                                    <% } else { %>
+                                        <%= member1Name %>
+                                    <% } %>
+                                </div>
                             </div>
                             <div class="member-item member-item-card ml-2 mr-2">
                                 <span class="text-label">สมาชิก</span>
-                                <div class="h6 font-weight-bold text-gray-800 mb-0"><i class="fas fa-user text-gray-400 mr-2"></i><%= member2Name || '-' %></div>
+                                <div class="h6 font-weight-bold text-gray-800 mb-0">
+                                    <i class="fas fa-user text-gray-400 mr-2"></i>
+                                    <% if (member2Id) { %>
+                                        <a href="/viewProfile/<%= member2Id %>" class="profile-link" title="คลิกเพื่อดูโปรไฟล์"><%= member2Name || '-' %></a>
+                                    <% } else { %>
+                                        <%= member2Name || '-' %>
+                                    <% } %>
+                                </div>
                             </div>
                             <div class="member-item member-item-card">
                                 <span class="text-label">อาจารย์ที่ปรึกษา</span>

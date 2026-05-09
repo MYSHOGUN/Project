@@ -984,6 +984,78 @@ app.get("/group/messages/group/:groupId", requireLogin, async (req, res) => {
 app.get("/profile", requireLogin, (req, res) => {
   renderWithLayout(res, "profile", { title: "Profile" }, req.path,req);
 });
+
+app.get("/viewProfile/:id", requireLogin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    let viewUser;
+    
+    // 1. ลองค้นหาด้วย _id ของ MongoDB ก่อน
+    if (mongoose.Types.ObjectId.isValid(id)) {
+        viewUser = await User.findById(id);
+    }
+    // 2. ถ้าไม่เจอ หรือ ID ที่ส่งมาเป็นรหัสนักศึกษา/อาจารย์ (username) ให้หาด้วย username แทน
+    if (!viewUser) {
+        const cleanId = id.replace(" (Pending)", ""); // ลบ Pending ออกเผื่อมีติดมา
+        viewUser = await User.findOne({ username: cleanId });
+    }
+    if (!viewUser) {
+        return res.status(404).send("ไม่พบข้อมูลผู้ใช้งาน");
+    }
+
+    // แปลงข้อมูลเป็น Object เพื่อเพิ่มตัวแปรพิเศษ
+    let viewUserData = viewUser.toObject ? viewUser.toObject() : viewUser;
+    
+    // ค้นหากลุ่มทั้งหมดที่ผู้ใช้เคยอยู่ หรืออยู่ปัจจุบัน
+    const userGroups = await Group.find({ 
+        $or: [
+            { allMember: { $in: [viewUserData.username] } },
+            { member1: viewUserData.username },
+            { member2: viewUserData.username },
+            { member2: `${viewUserData.username} (Pending)` },
+            { advisor: viewUserData.username },
+            { advisor: `${viewUserData.username} (Pending)` }
+        ]
+    }).sort({ _id: -1 }).lean();
+    
+    let pastGroups = [];
+    let currentGroup = null;
+
+    userGroups.forEach(g => {
+        // เช็คว่าปัจจุบันยังอยู่ในกลุ่มนี้ไหม
+        if (g.member1 === viewUserData.username || 
+            g.member2 === viewUserData.username || 
+            g.member2 === `${viewUserData.username} (Pending)` ||
+            g.advisor === viewUserData.username ||
+            g.advisor === `${viewUserData.username} (Pending)`
+        ) {
+            if (!currentGroup) currentGroup = g;
+        } else {
+            pastGroups.push(g);
+        }
+    });
+
+    // หากเป็นนักศึกษา ให้ค้นหาสถานะโครงงานล่าสุดมาแสดง
+    if (viewUserData.role === 'user') {
+        if (currentGroup) {
+            viewUserData.displayStatus = currentGroup.status;
+        } else {
+            viewUserData.displayStatus = viewUserData.status || "ไม่มีกลุ่ม";
+        }
+    }
+
+    renderWithLayout(res, "viewProfile", { 
+        title: "KMUTNB Project - View Profile", 
+        viewUser: viewUserData,
+        currentGroup: currentGroup,
+        pastGroups: pastGroups
+    }, req.path, req);
+  } catch (err) {
+    console.error("Error loading user profile:", err);
+    res.status(500).send("เกิดข้อผิดพลาดในการโหลดโปรไฟล์");
+  }
+});
+
 app.get("/api/message", (req, res) => {
   res.json({ message: "Hello from Node.js API!" });
 });
@@ -3287,7 +3359,7 @@ app.post("/api/groups/mark-ready-for-exam", apiLimiter,async (req, res) => {
     }
 });
 
-app.get("/groupInfo/:id", async (req, res) => {
+app.get("/groupInfo/:id", requireLogin ,async (req, res) => {
     try {
         const id = req.params.id;
         
@@ -3315,6 +3387,11 @@ app.get("/groupInfo/:id", async (req, res) => {
         const getUserFullName = (username) => {
             const u = users.find(user => user.username === username);
             return u ? `${u.name} ${u.lastname}` : username || "ไม่มีข้อมูล";
+        };
+
+        const getUserId = (username) => {
+            const u = users.find(user => user.username === username);
+            return u ? u._id : null;
         };
 
         // 3. ดึงหัวข้อเอกสาร (Paper) ทั้งหมด และไฟล์ที่เคยส่ง (PaperFile)
@@ -3353,6 +3430,8 @@ app.get("/groupInfo/:id", async (req, res) => {
             member1Name: getUserFullName(group.member1),
             member2Name: getUserFullName(group.member2),
             advisorName: getUserFullName(group.advisor),
+            member1Id: getUserId(group.member1),
+            member2Id: getUserId(member2username),
             papers: papersWithFiles
         }, req.path, req);
 
@@ -3392,6 +3471,11 @@ app.get("/ownedGroupInfo/:id", async (req, res) => {
             return u ? `${u.name} ${u.lastname}` : username || "ไม่มีข้อมูล";
         };
 
+        const getUserId = (username) => {
+            const u = users.find(user => user.username === username);
+            return u ? u._id : null;
+        };
+
         // 3. ดึงหัวข้อเอกสาร (Paper) ทั้งหมด และไฟล์ที่เคยส่ง (PaperFile)
         const allPapers = await Paper.find({ groupId: id }).sort({ submittedAt: -1 }).lean();
         const allFiles = await PaperFile.find({ groupId: id }).lean();
@@ -3410,6 +3494,8 @@ app.get("/ownedGroupInfo/:id", async (req, res) => {
             member1Name: getUserFullName(group.member1),
             member2Name: getUserFullName(group.member2),
             advisorName: getUserFullName(group.advisor),
+            member1Id: getUserId(group.member1),
+            member2Id: getUserId(member2username),
             papers: papersWithFiles
         }, req.path, req);
 

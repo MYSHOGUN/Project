@@ -99,7 +99,7 @@
                 <div class="search-box-container">
                     <div class="position-relative">
                         <i class="fas fa-search position-absolute" style="top: 20px; right: 25px; color: #4e73df; font-size: 1.2rem;"></i>
-                        <input type="text" id="searchInput" class="form-control" placeholder="ค้นหาชื่อโครงงาน ชื่อนักศึกษา หรือสถานะ...">
+                        <input type="text" id="searchInput" class="form-control" placeholder="ค้นหาชื่อโครงงาน ชื่ออาจารย์ที่ปรึกษา หรือสถานะ...">
                     </div>
                 </div>
             </div>
@@ -117,9 +117,9 @@
                                             </h4>
                                         </div>
                                         <div class="mb-3">
-                                            <i class="fas fa-user-circle text-primary mr-2"></i>
+                                            <i class="fas fa-chalkboard-teacher text-primary mr-2"></i>
                                             <span class="text-dark font-weight-bold small">
-                                                หัวหน้า: <%= g.leaderName || " -" %>
+                                                ที่ปรึกษา: <%= Array.isArray(g.advisor) ? g.advisor[0] : (g.advisor || " -") %>
                                             </span>
                                         </div>
                                     </div>
@@ -161,10 +161,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
             groupCards.forEach(card => {
                 const projectName = card.querySelector('h4').textContent.toLowerCase();
-                const leaderName = card.querySelector('.text-dark').textContent.toLowerCase();
+                const advisorName = card.querySelector('.text-dark').textContent.toLowerCase();
                 const statusName = card.querySelector('.badge').textContent.toLowerCase();
 
-                if (projectName.includes(value) || leaderName.includes(value) || statusName.includes(value)) {
+                if (projectName.includes(value) || advisorName.includes(value) || statusName.includes(value)) {
                     card.style.display = ""; 
                 } else {
                     card.style.display = "none"; 

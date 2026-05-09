@@ -277,19 +277,19 @@
                                             <input type="radio" id="ready-${paperId}" name="status-${paperId}" class="custom-control-input"
                                                 onchange="updateReadyStatus(true, '${targetGroup._id}', '${paperId}', ${paperDate.getTime()})"
                                                 ${targetGroup.status.includes('พร้อมสอบ') ? 'checked' : ''}
-                                            ${targetGroup.status.includes('รอสอบ') || !hasSubmittedFiles ? 'disabled' : ''}>
+                                            ${!hasSubmittedFiles ? 'disabled' : ''}>
                                             <label class="custom-control-label small font-weight-bold text-success" style="cursor: pointer; padding-top: 2px;" for="ready-${paperId}">พร้อมสอบ</label>
                                         </div>
                                         <div class="custom-control custom-radio custom-control-inline mb-0 mr-0">
                                             <input type="radio" id="notready-${paperId}" name="status-${paperId}" class="custom-control-input"
                                                 onchange="updateReadyStatus(false, '${targetGroup._id}', '${paperId}', ${paperDate.getTime()})"
                                                 ${(targetGroup.status.includes('ไม่พร้อม') || targetGroup.status.includes('แก้ไข')) ? 'checked' : ''}
-                                            ${targetGroup.status.includes('รอสอบ') || !hasSubmittedFiles ? 'disabled' : ''}>
+                                            ${!hasSubmittedFiles ? 'disabled' : ''}>
                                             <label class="custom-control-label small font-weight-bold text-danger" style="cursor: pointer; padding-top: 2px;" for="notready-${paperId}">ไม่พร้อมสอบ</label>
                                         </div>
-                                    ${(targetGroup.status.includes('รอสอบ') || !hasSubmittedFiles) ? `
-                                        <span id="status-text-${paperId}" class="small font-weight-bold ml-3 border-left pl-3 ${!hasSubmittedFiles ? 'text-primary' : 'text-warning'}">
-                                            ${!hasSubmittedFiles ? 'ยังไม่ส่งเอกสาร' : 'รอสอบ'}
+                                    ${(!hasSubmittedFiles) ? `
+                                        <span id="status-text-${paperId}" class="small font-weight-bold ml-3 border-left pl-3 text-primary">
+                                            ยังไม่ส่งเอกสาร
                                             </span>
                                         ` : ''}
                                     </div>
