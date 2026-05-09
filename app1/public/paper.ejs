@@ -144,10 +144,14 @@
             const res = await fetch('/api/getMyPapers');
             const papers = await res.json();
             const container = document.getElementById('paper-platform-container');
+
+            // ฟังก์ชันช่วยตรวจสอบว่าเป็นเอกสารชุด "สำหรับลงคะแนนสอบ" หรือไม่
+            const isExamPaper = (mention) => mention && (mention.includes("จะมีการจัดสอบ") || mention === "วันสอบ");
+
             let visiblePapers = papers.filter(paper => {
                 // ถ้านักศึกษา: จะเห็นเฉพาะรายการที่ไม่ใช่แค่ "ประกาศวันสอบ" เฉยๆ (ต้องมีที่ให้ส่งไฟล์)
                 if (currentRole === "user") {
-                    return paper.mention !== "จะมีการจัดสอบในวันที่กำหนด โปรดเตรียมเอกสารในการสอบให้เรียบร้อย";
+                    return !isExamPaper(paper.mention);
                 }
                 // ถ้าอาจารย์/แอดมิน: เห็นทุกรายการ (เพื่อบันทึกผลสอบ)
                 return true; 
@@ -179,12 +183,16 @@
                 // ✅ FIX 2: ตรวจสอบว่าส่งไฟล์แล้วหรือยังให้แม่นยำขึ้น
                 const hasSubmittedFiles = paperFileData.some(f => f.paperId === paperId);
                 
-                // ✅ FIX 1: ตรวจสอบกรรมการโดยใช้ Username และเช็คทุกตำแหน่ง
-                const isCommittee = (
-                    (paper.director && paper.director.includes(currentUsername)) ||
-                    (paper.greatDirector && paper.greatDirector.includes(currentUsername)) ||
-                    (paper.advisor && paper.advisor.includes(currentUsername))
-                );
+                // ✅ FIX 1: ตรวจสอบกรรมการโดยใช้ Username แบบแยกคำ ป้องกันชื่อคล้ายกัน (เช่น user1 กับ user10)
+                const checkCommittee = (field, username) => {
+                    if (!field) return false;
+                    if (Array.isArray(field)) return field.includes(username);
+                    return field.split(',').map(s => s.trim().replace(" (Pending)", "")).includes(username);
+                };
+
+                const isCommittee = checkCommittee(paper.director, currentUsername) ||
+                                    checkCommittee(paper.greatDirector, currentUsername) ||
+                                    checkCommittee(paper.advisor, currentUsername);
                 
                 if (!targetGroup) return '';
 
@@ -198,7 +206,7 @@
                 paperDate.setHours(0,0,0,0);
 
                 const exactNow = new Date();
-                const examPaper = papers.find(p => p.groupId === paper.groupId && p.passTimes === paper.passTimes && p.mention && p.mention.includes("จะมีการจัดสอบ"));
+                const examPaper = papers.find(p => p.groupId === paper.groupId && p.passTimes === paper.passTimes && isExamPaper(p.mention));
                 const isExamPassed = examPaper && exactNow.getTime() > new Date(examPaper.date).getTime();
 
                 // ✅ FIX 1.1: ทำให้ Logic การเช็คว่าโหวตไปแล้วหรือยัง อ่านง่ายขึ้น
@@ -217,7 +225,7 @@
                     text = "โปรดส่งเอกสารภายในวันที่ "+paperDate.toLocaleDateString('th-TH', { day: '2-digit', month: 'long', year: 'numeric' });
                 } else if (paper.mention && paper.mention.includes("แก้ไข")){
                     text = paper.mention + " ภายในวันที่ "+paperDate.toLocaleDateString('th-TH', { day: '2-digit', month: 'long', year: 'numeric' });
-                } else if (paper.mention && paper.mention.includes("จะมีการจัดสอบ")){
+                } else if (isExamPaper(paper.mention)){
                     text = paper.mention
                 } else if (paperDate.getFullYear() === 2099) {
                     text = "สามารถส่งเอกสารได้ตลอดเวลา";
@@ -225,7 +233,7 @@
 
 
                 // ส่วนที่ 1: สำหรับอาจารย์ส่งผลสอบ
-                if ((isCommittee && (currentRole === "teacher" || currentRole === "admin")) && paperDate.getTime() <= today.getTime() && !hasVoted && paper.mention.includes("จะมีการจัดสอบ")) {
+                if ((isCommittee && (currentRole === "teacher" || currentRole === "admin")) && paperDate.getTime() <= today.getTime() && !hasVoted && isExamPaper(paper.mention)) {
                     teacherCount++;
                     teacherCards += `
                     <div class="card paper-card shadow mb-4 border-left-primary" style="grid-column: 1 / -1;">
@@ -252,7 +260,7 @@
                 }
 
                 // ส่วนที่ 2: Card หลัก (ส่งไฟล์และ Checkbox อาจารย์)
-                if ((isUserInGroup || currentRole === "admin") && (!paper.mention || !paper.mention.includes("จะมีการจัดสอบ"))) {
+                if ((isUserInGroup || currentRole === "admin") && !isExamPaper(paper.mention)) {
                     studentCount++;
                     // แก้ไขโครงสร้างในส่วน cardHtml (จุดที่ส่งไฟล์) ให้เป็นตามนี้ครับ
                 // เปลี่ยนโครงสร้างภายใน cardHtml ช่วงที่มีการส่งไฟล์
@@ -360,9 +368,9 @@
                 const paperDate = new Date(p.date);
                 paperDate.setHours(0,0,0,0);
                 const exactNow = new Date();
-                const examPaper = papers.find(ex => ex.groupId === p.groupId && ex.passTimes === p.passTimes && ex.mention && ex.mention.includes("จะมีการจัดสอบ"));
+                const examPaper = papers.find(ex => ex.groupId === p.groupId && ex.passTimes === p.passTimes && isExamPaper(ex.mention));
                 const isExamPassed = examPaper && exactNow.getTime() > new Date(examPaper.date).getTime();
-                const isExam = p.mention && p.mention.includes("จะมีการจัดสอบ");
+                const isExam = isExamPaper(p.mention);
 
                 initDragAndDrop(p._id, paperDate.getTime(), isExamPassed);
                 fetchFileList(p._id, paperDate.getTime(), isExamPassed, isExam);
