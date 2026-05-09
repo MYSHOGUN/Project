@@ -644,18 +644,17 @@
         let startDate = new Date(startDateStr);
         
         for (let d = 1; d <= daysCount; d++) {
-            while (startDate.getDay() === 0 || startDate.getDay() === 6) {
-                startDate.setDate(startDate.getDate() + 1);
-            }
             
             let localDate = new Date(startDate.getTime() - (startDate.getTimezoneOffset() * 60000));
             let currentDateStr = localDate.toISOString().split('T')[0];
-            let thaiDateStr = startDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
 
             const dayHtml = `
                 <div class="day-container mb-4" data-date="${currentDateStr}">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="m-0 font-weight-bold text-primary">สอบวันที่ ${thaiDateStr}</h6>
+                        <div class="d-flex align-items-center">
+                            <h6 class="m-0 font-weight-bold text-primary mr-2">สอบวันที่</h6>
+                            <input type="text" class="form-control custom-date-input day-date-input py-1 px-2 text-primary font-weight-bold" value="${currentDateStr}" style="height: 38px !important; border-radius: 8px !important; max-width: 140px; background-color: #fff !important; cursor: pointer;">
+                        </div>
                         <span class="badge badge-primary badge-counter px-2 py-1">0 กลุ่ม</span>
                     </div>
                     <div class="day-slot-list sortable-list"></div>
@@ -667,6 +666,7 @@
         }
 
         initSortable();
+        initDayDatePickers();
         
         updateWorkloadUI();
     }
@@ -714,6 +714,20 @@
         new Sortable(unassigned, sortableOptions);
         dayLists.forEach(list => {
             new Sortable(list, sortableOptions);
+        });
+    }
+
+    function initDayDatePickers() {
+        flatpickr(".day-date-input", {
+            locale: "th",
+            dateFormat: "Y-m-d",
+            disableMobile: true,
+            onChange: function(selectedDates, dateStr, instance) {
+                const container = instance.element.closest('.day-container');
+                if (container && dateStr) {
+                    container.dataset.date = dateStr;
+                }
+            }
         });
     }
 

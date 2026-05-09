@@ -113,14 +113,14 @@
                 <div class="search-box-container">
                     <div class="position-relative">
                         <i class="fas fa-search position-absolute" style="top: 20px; right: 25px; color: #4e73df; font-size: 1.2rem;"></i>
-                        <input type="text" id="searchInput" class="form-control" placeholder="ค้นหาชื่อโครงงาน ชื่อนักศึกษา หรือสถานะ...">
+                        <input type="text" id="searchInput" class="form-control" placeholder="ค้นหาชื่อโครงงาน ชื่อนักศึกษา ชื่ออาจารย์ หรือสถานะ...">
                     </div>
                 </div>
             </div>
 
             <div id="groupGrid" class="group-grid">
                 <% groups.forEach(g => { %>
-                    <div class="content-group">
+                    <div class="content-group" data-search-text="<%= g.projectName %> <%= g.leaderName || '' %> <%= g.member2 || '' %> <%= Array.isArray(g.advisor) ? g.advisor[0] : (g.advisor || '') %> <%= g.status %>">
                         <a href="/ownedGroupInfo/<%= g._id %>" class="text-decoration-none d-block h-100">
                             <div class="card shadow-sm">
                                 <div class="card-body p-4 d-flex flex-column justify-content-between">
@@ -175,11 +175,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const value = this.value.toLowerCase().trim();
 
             groupCards.forEach(card => {
-                const projectName = card.querySelector('h4').textContent.toLowerCase();
-                const leaderName = card.querySelector('.text-dark').textContent.toLowerCase();
-                const statusName = card.querySelector('.badge').textContent.toLowerCase();
+                const searchText = (card.getAttribute('data-search-text') || card.textContent).toLowerCase();
 
-                if (projectName.includes(value) || leaderName.includes(value) || statusName.includes(value)) {
+                if (searchText.includes(value)) {
                     card.style.display = ""; 
                 } else {
                     card.style.display = "none"; 
