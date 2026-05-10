@@ -16,8 +16,7 @@ const notificationSchema = new mongoose.Schema({
   mention: { type: String, default: null },
   expireAt: { 
         type: Date, 
-        default: undefined, 
-        index: { expires: '0s' } // ลบข้อมูลทันทีที่ถึงเวลาใน expireAt
+        default: undefined
   }
 });
 

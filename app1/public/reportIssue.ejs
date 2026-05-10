@@ -1,0 +1,111 @@
+<style>
+    .report-issue-grid {
+        display: grid;
+        gap: 1.5rem; /* ระยะห่างระหว่างกล่อง 24px */
+        grid-template-columns: 1fr; /* หน้าจอเล็กแสดงเป็น 1 คอลัมน์ (บน-ล่าง) */
+    }
+    @media (min-width: 992px) { /* ขนาดหน้าจอ lg (Desktop) ขึ้นไป */
+        .report-issue-grid {
+            grid-template-columns: 2fr 1fr; /* แบ่งสัดส่วนซ้าย 2 ส่วน ขวา 1 ส่วน (เทียบเท่า col-8 และ col-4) */
+        }
+    }
+</style>
+<!-- Begin Page Content -->
+<div class="container-fluid">
+
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between my-4">
+        <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-exclamation-triangle text-warning mr-2"></i>แจ้งปัญหาการใช้งาน</h1>
+    </div>
+
+    <div class="report-issue-grid">
+        <!-- ฟอร์มแจ้งปัญหา -->
+        <div>
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">แบบฟอร์มแจ้งปัญหาถึงผู้ดูแลระบบ</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-4">พบปัญหาในการใช้งานระบบ หรือต้องการเสนอแนะข้อคิดเห็น สามารถกรอกแบบฟอร์มด้านล่างเพื่อส่งตรงถึงผู้ดูแลระบบได้ทันที</p>
+                    <form id="reportIssueForm">
+                        <div class="form-group">
+                            <label for="subject" class="font-weight-bold text-dark">หัวข้อปัญหา <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="subject" name="subject" required placeholder="เช่น ไม่สามารถอัปโหลดไฟล์ได้, พบข้อผิดพลาด...">
+                        </div>
+                        <div class="form-group">
+                            <label for="description" class="font-weight-bold text-dark">รายละเอียดปัญหา <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="description" name="description" rows="6" required placeholder="อธิบายรายละเอียดปัญหา หรือขั้นตอนที่ทำให้เกิดข้อผิดพลาด..."></textarea>
+                        </div>
+                        <hr>
+                        <div class="text-right">
+                            <button type="reset" class="btn btn-secondary mr-2">
+                                <i class="fas fa-undo fa-sm text-white-50 mr-1"></i> ล้างข้อมูล
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane fa-sm text-white-50 mr-1"></i> ส่งข้อมูล
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ช่องทางการติดต่อ -->
+        <div>
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">ช่องทางการติดต่ออื่นๆ</h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center">
+                        <i class="fas fa-headset fa-6x text-gray-300 mt-4 mb-5"></i>
+                    </div>
+                    <p>หากปัญหาของคุณเป็นเรื่องเร่งด่วน หรือมีผลกระทบต่อกระบวนการสอบ กรุณาติดต่อ:</p>
+                    <ul class="pl-3">
+                        <li><strong>อีเมล:</strong> kmutnb.projectenet@gmail.com</li>
+                        <li><strong>หน่วยงาน:</strong> วิทยาลัยเทคโนโลยีอุตสาหกรรม</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#reportIssueForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> กำลังส่ง...');
+
+        const data = {
+            subject: $('#subject').val(),
+            description: $('#description').val()
+        };
+
+        $.ajax({
+            url: '/api/reportIssue',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(data),
+            success: function(response) {
+                if(response.success) {
+                    Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: response.message, confirmButtonText: 'ตกลง' })
+                    .then(() => $('#reportIssueForm')[0].reset());
+                } else {
+                    Swal.fire('ข้อผิดพลาด', response.message, 'error');
+                }
+            },
+            error: function(xhr) {
+                Swal.fire('ข้อผิดพลาด', xhr.responseJSON?.message || 'ไม่สามารถส่งข้อมูลได้', 'error');
+            },
+            complete: function() {
+                submitBtn.prop('disabled', false).html(originalText);
+            }
+        });
+    });
+});
+</script>

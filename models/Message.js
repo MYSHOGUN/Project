@@ -1,6 +1,5 @@
 // ===== Message model (Message.js) =====
 const mongoose = require("mongoose");
-const { t } = require("tar");
 
 const messageSchema = new mongoose.Schema({
   groupId: { type: mongoose.Schema.Types.ObjectId, ref: "Group", required: true },

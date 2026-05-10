@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const { c } = require("tar");
 
 const paperFileSchema = new mongoose.Schema({
   paperId: { type: mongoose.Schema.Types.ObjectId, ref: "Paper" }, // อ้างอิงกล่อง

@@ -28,6 +28,15 @@ const apiLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+// ✅ เพิ่ม Auth Limiter ให้เข้มงวดขึ้นสำหรับหน้า Login/Register
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 นาที
+    max: 10, // จำกัดแค่ 10 ครั้งต่อ IP
+    message: "คุณทำรายการเกี่ยวกับบัญชีหลายครั้งเกินไป กรุณาลองใหม่ในอีก 15 นาที",
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 const Log = require("./models/Log");
 
 const logger = require('./models/logger');
@@ -84,8 +93,6 @@ const User = require("./models/User"); // ✅ import model
 
 const multer = require("multer");
 const { GridFSBucket, ObjectId } = require("mongodb");
-const { userInfo, devNull } = require("os");
-const { group, table } = require("console");
 
 //GGEZ
 // ใช้ memory storage ของ multer
@@ -94,8 +101,6 @@ const upload = multer({ storage , limits: { fileSize: 20 * 1024 * 1024 }});
 
 const fs = require('fs'); // ต้องใช้ในการลบไฟล์ แต่ในกรณีนี้เราจะใช้ Buffer แทน
 const XLSX = require('xlsx'); // ✅ นำเข้าไลบรารีสำหรับอ่าน Excel
-const { send } = require("process");
-const { ALL } = require("dns");
 
 
 const processExcelFile = (buffer) => {
@@ -146,7 +151,7 @@ async function saveUsersFromExcel(dataArray) {
     }
 
     const bulkOps = [];
-    const saltRounds = 10;
+    const saltRounds = 12;
     const PENDING_PASS_STRING = crypto.randomBytes(16).toString('hex'); // สร้างรหัสผ่านชั่วคราวแบบสุ่ม
     const pendingHashedPassword = await bcrypt.hash(PENDING_PASS_STRING, saltRounds); 
 
@@ -343,14 +348,24 @@ async function createLog(req, action, details = {}) {
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// 🛡️ เพิ่ม Trust Proxy หากนำขึ้น Production รันผ่าน Nginx/Heroku เพื่อให้ secure: true ทำงานได้ปกติ
+app.set("trust proxy", 1);
+const MongoStore = require("connect-mongo");
+
 app.use(session({
   secret: process.env.SESSION_SECRET || "fallback-for-local-dev", // ควรใช้สตริงที่ยาวและเดายาก
   resave: false,
   saveUninitialized: false, // เปลี่ยนเป็น false เพื่อไม่ให้สร้าง session ว่างๆ ถ้ายังไม่ login
+  // 🛡️ เปลี่ยนไปเก็บ Session ใน MongoDB แทน Memory เพื่อป้องกัน Memory Leak และเก็บสถานะตอนเซิร์ฟเวอร์รีสตาร์ทได้
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI || "mongodb://localhost:27017/test",
+    collectionName: "sessions"
+  }),
   cookie: {
     httpOnly: true, // ✅ ป้องกัน JavaScript เข้าถึง cookie (กัน XSS)
-    secure: false,  // หากรันบน HTTPS (Production) ให้เปลี่ยนเป็น true
-    sameSite: 'lax' // ช่วยป้องกันการโจมตีแบบ CSRF
+    secure: process.env.NODE_ENV === "production", // 🛡️ เปิด Secure (HTTPS) อัตโนมัติเมื่อรันบน Production
+    sameSite: "strict" // 🛡️ เปลี่ยนจาก 'lax' เป็น 'strict' เพื่อป้องกันการโจมตีแบบ CSRF ข้ามโดเมนได้ 100%
   }
 }));
 app.use(helmet());
@@ -440,6 +455,37 @@ function truncateText(text, maxWords) {
     }
     return text;
 }
+
+// 🛡️ ฟังก์ชันสำหรับแปลงอักขระพิเศษ (Escape HTML) เพื่อป้องกัน XSS Attack
+const escapeHTML = (str) => {
+    if (!str) return "";
+    return str.toString().replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag)
+    );
+};
+
+// 🛡️ ฟังก์ชันตรวจสอบ Magic Number (File Signature) ของเอกสาร
+const isValidDocumentSignature = (buffer, mimetype) => {
+    if (!buffer || buffer.length < 8) return false;
+    const hex = buffer.toString('hex', 0, 8).toUpperCase();
+    if (mimetype === 'application/pdf') return hex.startsWith('25504446'); // %PDF
+    if (mimetype.includes('openxmlformats')) return hex.startsWith('504B0304'); // DOCX, PPTX, XLSX (ZIP)
+    if (mimetype === 'application/vnd.ms-powerpoint' || mimetype === 'application/msword') return hex.startsWith('D0CF11E0A1B11AE1'); // PPT, DOC (OLECF)
+    return false;
+};
+
+// 🛡️ ฟังก์ชันตรวจสอบ Magic Number (File Signature) ของรูปภาพ
+const isValidImageSignature = (buffer) => {
+    if (!buffer || buffer.length < 4) return false;
+    const hex = buffer.toString('hex', 0, 4).toUpperCase();
+    return hex.startsWith('FFD8FF') || hex === '89504E47' || hex === '47494638' || hex === '52494646'; // JPG, PNG, GIF, WEBP
+};
 
 function generateEventId() {
     return crypto.randomUUID(); 
@@ -692,6 +738,7 @@ app.post("/upload-file/:groupId", requireLogin, apiLimiter, upload.array("files"
 
     const groupId = req.params.groupId;
     group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ error: "ไม่พบข้อมูลกลุ่ม" });
 
     let hasMovement = false;
 
@@ -721,7 +768,7 @@ app.post("/upload-file/:groupId", requireLogin, apiLimiter, upload.array("files"
         senderUsername: req.session.user.username,
         senderName: req.session.user.name,
         type: "text",
-        text: req.body.text.trim(),
+        text: escapeHTML(req.body.text.trim()), // 🛡️ Escape HTML ป้องกัน XSS
         senderPic: req.session.user.picture,
         timestamp: new Date(),
         groupMember: [mem1,mem2,adv]
@@ -737,6 +784,35 @@ app.post("/upload-file/:groupId", requireLogin, apiLimiter, upload.array("files"
 
     // ถ้ามีไฟล์
     if(req.files && req.files.length > 0){
+      // 🛡️ 1. ตรวจสอบความปลอดภัยของทุกไฟล์ก่อนทำการอัปโหลด (Pre-flight Validation)
+      for (const file of req.files) {
+        const allowedMimeTypes = [
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp', // กลุ่มรูปภาพ
+            'application/pdf', // กลุ่ม PDF
+            'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // กลุ่ม Word
+            'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // กลุ่ม Excel
+            'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', // กลุ่ม Powerpoint
+            'application/zip', 'application/x-zip-compressed', 'application/x-rar-compressed', // กลุ่มไฟล์บีบอัด
+            'text/plain' // กลุ่มไฟล์ข้อความ
+        ];
+
+        if (!allowedMimeTypes.includes(file.mimetype)) {
+            return res.status(400).json({ error: `ไม่อนุญาตให้อัปโหลดไฟล์ ${file.originalname} (รองรับแค่รูปภาพ, เอกสาร Office, PDF, ZIP, RAR, TXT)` });
+        }
+
+        // ตรวจสอบ Magic Number ของรูปภาพ
+        if (file.mimetype.startsWith('image/') && !isValidImageSignature(file.buffer)) {
+            return res.status(400).json({ error: `ไฟล์รูปภาพ ${file.originalname} เสียหายหรือถูกปลอมแปลง` });
+        }
+
+        // ตรวจสอบ Magic Number ของเอกสาร Office/PDF
+        const docTypes = ['application/pdf', 'application/msword', 'application/vnd.ms-powerpoint', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+        if (docTypes.includes(file.mimetype) && !isValidDocumentSignature(file.buffer, file.mimetype)) {
+            return res.status(400).json({ error: `ไฟล์เอกสาร ${file.originalname} เสียหายหรือถูกปลอมแปลง` });
+        }
+      }
+
+      // 🛡️ 2. ดำเนินการอัปโหลดเมื่อไฟล์ทั้งหมดผ่านการตรวจสอบความปลอดภัย
       for (const file of req.files) {
         const uploadStream = bucket.openUploadStream(file.originalname, { contentType: file.mimetype });
 
@@ -1056,6 +1132,77 @@ app.get("/viewProfile/:id", requireLogin, async (req, res) => {
   }
 });
 
+app.get("/reportIssue", requireLogin, (req, res) => {
+  renderWithLayout(res, "reportIssue", { title: "KMUTNB Project - แจ้งปัญหาการใช้งาน" }, req.path, req);
+});
+
+app.post("/api/reportIssue", apiLimiter, requireLogin, async (req, res) => {
+    try {
+        const { subject, description } = req.body;
+        if (!subject || !description) {
+            return res.status(400).json({ success: false, message: "กรุณากรอกข้อมูลให้ครบถ้วน" });
+        }
+
+        const username = req.session.user.username;
+        const name = req.session.user.name;
+
+        // 1. หาแอดมินทั้งหมด
+        const admins = await User.find({ role: 'admin' });
+        const adminUsernames = admins.map(a => a.username);
+
+        // 2. ส่งแจ้งเตือนแบบ In-app ไปยังแอดมินทุกคน
+        if (adminUsernames.length > 0) {
+            const noti = new Notification({
+                recipient: adminUsernames,
+                senderUsername: username,
+                senderName: name,
+                type: 'new_alert',
+                text: `แจ้งปัญหา: ${subject} จาก ${name}`,
+                isRead: false
+            });
+            await noti.save();
+
+            adminUsernames.forEach(admin => {
+                io.to(admin).emit("new_notification", {
+                    recipient: adminUsernames,
+                    _id: noti._id,
+                    senderName: name,
+                    text: `แจ้งปัญหา: ${subject} จาก ${name}`,
+                    type: 'new_alert',
+                    senderPic: req.session.user.picture || null
+                });
+            });
+        }
+
+        // 3. (Optional) ส่งอีเมลแจ้งเตือนแอดมิน
+        if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+            const transporter = nodemailer.createTransport({
+                host: 'smtp.gmail.com',
+                port: 465,
+                secure: true,
+                auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+                tls: { rejectUnauthorized: false }
+            });
+            const mailOptions = {
+                from: `"KMUTNB System" <${process.env.EMAIL_USER}>`,
+                to: process.env.EMAIL_USER, // ส่งหาอีเมลระบบเอง
+                subject: `🚨 แจ้งปัญหาการใช้งานระบบ: ${subject}`,
+                html: `<h3>มีการแจ้งปัญหาการใช้งานใหม่</h3>
+                       <p><strong>ผู้แจ้ง:</strong> ${name} (${username})</p>
+                       <p><strong>หัวข้อ:</strong> ${escapeHTML(subject)}</p>
+                       <p><strong>รายละเอียด:</strong><br/>${escapeHTML(description).replace(/\n/g, '<br>')}</p>`
+            };
+            await transporter.sendMail(mailOptions).catch(e => console.warn("Email alert failed:", e.message));
+        }
+
+        await createLog(req, "REPORT_ISSUE", { subject });
+        res.json({ success: true, message: "ส่งการแจ้งปัญหาถึงผู้ดูแลระบบเรียบร้อยแล้ว" });
+    } catch (err) {
+        console.error("❌ Report Issue Error:", err);
+        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดในการส่งข้อมูล" });
+    }
+});
+
 app.get("/api/message", (req, res) => {
   res.json({ message: "Hello from Node.js API!" });
 });
@@ -1070,7 +1217,7 @@ app.get('/logout', (req, res) => {
   });
 });
 
-app.post("/login" , apiLimiter,async (req, res) => {
+app.post("/login" , authLimiter,async (req, res) => {
   const { username, password ,rememberMe} = req.body;
   const user = await User.findOne({ username });
 
@@ -1089,6 +1236,10 @@ app.post("/login" , apiLimiter,async (req, res) => {
     return req.session.save(() => res.redirect("/login"));
   }
   
+  // 🛡️ ป้องกัน Session Fixation Attack โดยสร้าง Session ID ใหม่หลังล็อกอินสำเร็จ
+  req.session.regenerate(async (err) => {
+    if (err) return res.status(500).send("Session error");
+
     req.session.user = {
       username: user.username,
       title: user.title,
@@ -1102,25 +1253,28 @@ app.post("/login" , apiLimiter,async (req, res) => {
       picture: user.picture && user.picture.id ? user.picture.id.toString() : null
     };
 
-  if (rememberMe === "on") {
-    // ถ้าติ๊ก Remember Me ให้ Cookie อยู่ได้ 30 วัน
-    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-    req.session.cookie.maxAge = thirtyDays;
-  } else {
-    // ถ้าไม่ติ๊ก ให้ Cookie ตายเมื่อปิด Browser
-    req.session.cookie.expires = false;
-  }
+    if (rememberMe === "on") {
+      // ถ้าติ๊ก Remember Me ให้ Cookie อยู่ได้ 30 วัน
+      const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+      req.session.cookie.maxAge = thirtyDays;
+    } else {
+      // ถ้าไม่ติ๊ก ให้ Cookie ตายเมื่อปิด Browser
+      req.session.cookie.expires = false;
+    }
 
-  await createLog(req, "LOGIN", { 
-        username: req.session.user.username
-    });
+    await createLog(req, "LOGIN", { 
+          username: req.session.user.username
+      });
 
-  return res.redirect("/");
+    return res.redirect("/");
+  });
 });
 
 // ค้นหาผู้ใช้ (ยกเว้นตัวเอง)
 app.get("/search-users", requireLogin, async (req, res) => {
   const keyword = req.query.keyword || "";
+  // ทำการ Escape อักขระพิเศษของ Regex เพื่อป้องกัน ReDoS Attack
+  const safeKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   try {
     const users = await User.find({
       $and: [
@@ -1130,9 +1284,9 @@ app.get("/search-users", requireLogin, async (req, res) => {
         { name: { $ne: "Pending"}}, // ไม่เอาบัญชีที่รอการลงทะเบียน
         {
           $or: [
-            { username: { $regex: keyword, $options: "i" } },
-            { name: { $regex: keyword, $options: "i" } },
-            { lastname: { $regex: keyword, $options: "i" } }
+                { username: { $regex: safeKeyword, $options: "i" } },
+                { name: { $regex: safeKeyword, $options: "i" } },
+                { lastname: { $regex: safeKeyword, $options: "i" } }
           ]
         }
       ]
@@ -1145,6 +1299,7 @@ app.get("/search-users", requireLogin, async (req, res) => {
 
 app.get("/search-advisor", requireLogin, async (req, res) => {
   const keyword = req.query.keyword || "";
+  const safeKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   try {
     const users = await User.find({
       $and: [
@@ -1152,9 +1307,9 @@ app.get("/search-advisor", requireLogin, async (req, res) => {
         { role: { $nin: ["user"] } }, // เอาอาจารย์
         {
           $or: [
-            { username: { $regex: keyword, $options: "i" } },
-            { name: { $regex: keyword, $options: "i" } },
-            { lastname: { $regex: keyword, $options: "i" } }
+                { username: { $regex: safeKeyword, $options: "i" } },
+                { name: { $regex: safeKeyword, $options: "i" } },
+                { lastname: { $regex: safeKeyword, $options: "i" } }
           ]
         }
       ]
@@ -1403,7 +1558,7 @@ app.post("/groups-update/:groupId", apiLimiter,requireLogin, async (req, res) =>
         addedMember2 = member2;
     }else if(mem2 && mem2.includes("Pending") && member2){
         return res.status(404).send("มีคำเชิญสมาชิกคนที่ 2 อยู่แล้ว")
-    }else if(member2Info && Array.isArray(member2Info.group) && member2Info.group.length > 0 && member2 && groupId !== member2Info.group[0].toString()){
+    }else if(member2Info && Array.isArray(member2Info.group) && member2Info.group.length > 0 && member2 && member2Info.group[0] && groupId !== member2Info.group[0].toString()){
         return res.status(404).send("ผู้ใช้คนนี้มีกลุ่มอยู่แล้ว")
     }
 
@@ -1683,6 +1838,12 @@ app.post("/profile/update", requireLogin, apiLimiter,upload.single("profileImage
         if (req.file) {
             // --- กรณีมีการเลือกรูปใหม่ ---
             
+            // 🛡️ ตรวจสอบความปลอดภัยของรูปภาพด้วย Magic Number
+            const safeImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (!safeImageTypes.includes(req.file.mimetype) || !isValidImageSignature(req.file.buffer)) {
+                return res.status(400).json({ success: false, message: "รองรับเฉพาะไฟล์รูปภาพของจริงเท่านั้น" });
+            }
+            
             // A. ลบรูปเก่าออกจาก GridFS (ถ้ามี) เพื่อไม่ให้รกเซิร์ฟเวอร์
             if (user.picture && user.picture.id) {
                 try {
@@ -1774,9 +1935,9 @@ app.post("/api/addUserSingle", apiLimiter,requireLogin , async (req, res) => {
 
         // 4. เตรียมข้อมูลก่อนบันทึก
         const PENDING_PASS_STRING = crypto.randomBytes(16).toString('hex');
-        const pendingHashedPassword = await bcrypt.hash(PENDING_PASS_STRING, 10);
+        const pendingHashedPassword = await bcrypt.hash(PENDING_PASS_STRING, 12);
         const trimmedUsername = String(username).trim();
-        const emailGenerated = "s" + trimmedUsername + "@kmutnb.ac.th";
+        const emailGenerated = ("s" + trimmedUsername + "@kmutnb.ac.th").toLowerCase();
 
         // ✅ ตัดส่วน branch ออกตามที่คุณต้องการ
         const newUser = new User({
@@ -1846,7 +2007,7 @@ app.get("/register", checkFailModal ,async (req, res) => {
   renderWithLayout(res, "register", { title: "KMUTNB Project - Register" ,failModal: res.locals.failModal}, req.path,req);
 });
 
-app.post("/register", apiLimiter, upload.single("profileImage"), async (req, res) => {
+app.post("/register", authLimiter, upload.single("profileImage"), async (req, res) => {
   console.log("Body data:", req.body); // ต้องมีข้อมูลชื่อ นามสกุล ฯลฯ
   console.log("File data:", req.file);
   let username = (req.body.username || "").toString().trim();
@@ -1902,7 +2063,7 @@ app.post("/register", apiLimiter, upload.single("profileImage"), async (req, res
     }
 
     
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     if (existingUser && existingUser.email && existingUser.phone === null && existingUser.name === name && existingUser.lastname === lastname && existingUser.role !== "teacher" && existingUser.role !== "secretary") {
       await User.findOneAndUpdate(
@@ -1919,8 +2080,8 @@ app.post("/register", apiLimiter, upload.single("profileImage"), async (req, res
       req.session.successModal = "success";
       req.session.save(() => res.redirect("/login"));
     }else if (!existingUser) {
-      req.session.failModal = "exists"; // ตั้งค่าเพื่อแสดง modal
-      req.session.save(() => res.reload());
+      req.session.failModal = "not_found"; // เปลี่ยนเป็น not_found เพื่อไม่ให้สับสน
+      req.session.save(() => res.redirect("/register"));
     }else{
       req.session.failModal = "complete"; // ตั้งค่าเพื่อแสดง modal
       req.session.save(() => res.redirect("/register"));
@@ -2221,7 +2382,7 @@ app.post("/api/addEvent", apiLimiter, requireLogin, requireRole(['admin']), uplo
                         if(group.passTimes === 0){
                             group.status = "รอสอบนำเสนอหัวข้อปริญญานิพนธ์"
                         }else if (group.passTimes >= 1){
-                            if(mem1.branch === "ECT" || mem2?.branch === "ECT"){
+                            if(mem1?.branch === "ECT" || mem2?.branch === "ECT"){
                             group.status = "รอสอบก้าวหน้าปริญญานิพนธ์";
                             }else{
                             group.status = "รอสอบป้องกันปริญญานิพนธ์";
@@ -2553,7 +2714,7 @@ app.get("/paper", requireLogin, requireNotRole(['secretary']), async (req, res) 
                 }
             }
 
-            const latestPaper = await Paper.findOne({ groupId: group._id }).sort({ createdAt: -1 });// หา Paper ล่าสุดของกลุ่มนี้เพื่อดูวันหมดอายุ
+            const latestPaper = await Paper.findOne({ groupId: group._id }).sort({ _id: -1 });// หา Paper ล่าสุดของกลุ่มนี้เพื่อดูวันหมดอายุ
             if (latestPaper && latestPaper.expireAt && now > latestPaper.expireAt) {
             // เช็คว่าสถานะปัจจุบันต้องไม่ใช่สถานะที่ "จบกระบวนการแล้ว" หรือ "เป็นค่าที่ต้องการอยู่แล้ว"
             const forbiddenStatus = [
@@ -2574,7 +2735,7 @@ app.get("/paper", requireLogin, requireNotRole(['secretary']), async (req, res) 
                 }else if(group.passTimes >= 1){
                     const mem1 = await User.findOne({ username: group.member1 });
                     const mem2 = group.member2 ? await User.findOne({ username: group.member2 }) : null;
-                    if(mem1.branch === "ECT" && mem2?.branch === "ECT"){
+                    if(mem1?.branch === "ECT" || mem2?.branch === "ECT"){
                         group.status = "รอสอบก้าวหน้าปริญญานิพนธ์";
                     }else{
                         group.status = "รอสอบป้องกันปริญญานิพนธ์";
@@ -2704,10 +2865,16 @@ app.post("/api/paper/upload-raw", requireLogin, apiLimiter,upload.array("files")
                 if (!allowedMimeTypes.includes(file.mimetype)) {
                     return res.status(400).send("รองรับเฉพาะไฟล์ PDF DOCX PPT และ PPTX เท่านั้น");
                 }
-                // 3. จำกัดขนาด (เช่น 10MB)
-                if (file.size > 10 * 1024 * 1024) {
-                    return res.status(400).send("ไฟล์ต้องมีขนาดไม่เกิน 10MB");
+                // 3. จำกัดขนาด (เช่น 50MB)
+                if (file.size > 50 * 1024 * 1024) {
+                    return res.status(400).send("ไฟล์ต้องมีขนาดไม่เกิน 50MB");
                 }
+                
+                // 🛡️ ป้องกันการปลอมแปลงนามสกุลไฟล์ด้วย Magic Number
+                if (!isValidDocumentSignature(file.buffer, file.mimetype)) {
+                    return res.status(400).send("ไฟล์ถูกปลอมแปลงนามสกุล หรือข้อมูลเสียหาย");
+                }
+
                 const uploadStream = bucket.openUploadStream(file.originalname, { 
                     contentType: file.mimetype 
                 });
@@ -2781,15 +2948,13 @@ app.post("/api/submitPaperResult", apiLimiter,requireLogin, async (req, res) => 
         const username = req.session.user.username;
 
         const currentPaper = await Paper.findById(paperId);
+        if (!currentPaper) return res.status(404).json({ error: "ไม่พบรายการเอกสาร" });
 
         group = await Group.findById(currentPaper.groupId);
         if (!group) return res.status(404).json({ error: "ไม่พบข้อมูลกลุ่ม" });
 
         const mem1 = await User.findOne({ username: group.member1 });
         const mem2 = group.member2 ? await User.findOne({ username: group.member2 }) : null;
-
-        // ดึงข้อมูล Paper ต้นทางเพื่อเอา groupId และ eventId
-        if (!currentPaper) return res.status(404).json({ error: "ไม่พบรายการเอกสาร" });
 
         const expire = new Date();
         expire.setDate(expire.getDate() + 7);
@@ -2819,11 +2984,11 @@ app.post("/api/submitPaperResult", apiLimiter,requireLogin, async (req, res) => 
             await textMessage.save();
             io.to(currentPaper.groupId.toString()).emit("group message", textMessage);
 
-            sendGroupNotification('alert_paper', null, username, user, `กลุ่ม ${group.projectName} ต้องมีการแก้ไข`, req.session.user.picture || null , currentPaper.eventId , group.member1 , group.member2 , group.advisor);
+            sendGroupNotification('alert_paper', group._id, username, user, `กลุ่ม ${group.projectName} ต้องมีการแก้ไข`, req.session.user.picture || null , currentPaper.eventId , expire, group.member1 , group.member2 , group.advisor);
 
             const fixGroupPaper = await Group.findByIdAndUpdate(
                 currentPaper.groupId,
-                { $set: { status: group.passTimes === 0 ? "รอแก้ไขเอกสารการสอบนำเสนอหัวข้อปริญญานิพนธ์" : mem1.branch === "ECT" || mem2.branch === "ECT" ? "รอแก้ไขเอกสารการสอบก้าวหน้าปริญญานิพนธ์" : "รอแก้ไขเอกสารการสอบป้องกันปริญญานิพนธ์" } },
+                { $set: { status: group.passTimes === 0 ? "รอแก้ไขเอกสารการสอบนำเสนอหัวข้อปริญญานิพนธ์" : mem1?.branch === "ECT" || mem2?.branch === "ECT" ? "รอแก้ไขเอกสารการสอบก้าวหน้าปริญญานิพนธ์" : "รอแก้ไขเอกสารการสอบป้องกันปริญญานิพนธ์" } },
                 { new: true }
             );
           
@@ -2851,6 +3016,9 @@ app.post("/api/submitPaperResult", apiLimiter,requireLogin, async (req, res) => 
             else examResult.fail.push(username);
         }
         await examResult.save();
+
+        // 🔔 แจ้งเตือนเวลาอาจารย์แต่ละท่านทำการประเมินผลเสร็จสิ้น
+        sendGroupNotification('alert_group', group._id, username, user, `อาจารย์ ${user} ได้ส่งผลการประเมินการสอบสำหรับกลุ่ม ${group.projectName} เรียบร้อยแล้ว`, req.session.user.picture || null , currentPaper.eventId , expire, group.member1 , group.member2 , group.advisor);
 
         // คำนวณจำนวนกรรมการทั้งหมด (นับจาก string ที่อาจคั่นด้วยลูกน้ำ)
         const countVoters = (str) => str ? str.split(",").filter(s => s.trim() !== "").length : 0;
@@ -2909,7 +3077,7 @@ app.post("/api/submitPaperResult", apiLimiter,requireLogin, async (req, res) => 
                 }
             }
             await group.save();
-            sendGroupNotification('alert_group', null, username, user, `ผลการสอบของกลุ่ม ${group.projectName} เสร็จสิ้นแล้ว ${group.status}`, req.session.user.picture || null , currentPaper.eventId , group.member1 , group.member2 , group.advisor);
+            sendGroupNotification('alert_group', group._id, username, user, `ผลการสอบของกลุ่ม ${group.projectName} เสร็จสิ้นแล้ว ${group.status}`, req.session.user.picture || null , currentPaper.eventId , expire, group.member1 , group.member2 , group.advisor);
         }
 
         res.status(200).json({ success: true, message: "บันทึกผลการสอบเรียบร้อยแล้ว" });
@@ -2997,7 +3165,7 @@ app.get("/forgotPassword" ,checkFailModal, (req, res) => {
     renderWithLayout(res, "forgotPassword", { title: "Forgot Password" , failModal: res.locals.failModal}, req.path, req);
 });
 
-app.post("/forgot-password" , apiLimiter,async (req, res) => {
+app.post("/forgot-password" , authLimiter,async (req, res) => {
     const { email } = req.body;
     const user = await User.findOne({ email }); // ประกาศตัวแปร user ไว้ข้างนอกเพื่อให้เข้าถึงได้ในส่วนของ createLog หลังจากการดำเนินการทั้งหมดแล้ว
     try {
@@ -3086,7 +3254,7 @@ app.get("/reset-password/:token", checkFailModal , async (req, res) => {
 
 
 
-app.post("/reset-password/:token", apiLimiter,async (req, res) => {
+app.post("/reset-password/:token", authLimiter,async (req, res) => {
     let user; // ประกาศตัวแปร user ไว้ข้างนอกเพื่อให้เข้าถึงได้ในส่วนของ createLog หลังจากการดำเนินการทั้งหมดแล้ว
     try {
         const { password, passwordConfirm } = req.body;
@@ -3107,7 +3275,7 @@ app.post("/reset-password/:token", apiLimiter,async (req, res) => {
         }
 
         // 1. Hash รหัสผ่านใหม่
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(password, 12);
         user.password = hashedPassword;
 
         // 2. ล้างค่า Token และวันหมดอายุทิ้ง (เพื่อไม่ให้ใช้ซ้ำได้อีก)
@@ -3129,7 +3297,7 @@ app.post("/reset-password/:token", apiLimiter,async (req, res) => {
 
 });
 
-app.post("/change-password" , requireLogin, apiLimiter,async (req, res) => {
+app.post("/change-password" , requireLogin, authLimiter,async (req, res) => {
     try{
         const {username} = req.body;
         const userData = await User.findOne({username: username});
@@ -3209,7 +3377,7 @@ app.get("/changePassword/:token", checkFailModal , async (req, res) => {
 
 
 
-app.post("/changePassword/:token", apiLimiter,async (req, res) => {
+app.post("/changePassword/:token", authLimiter,async (req, res) => {
     let user; // ประกาศตัวแปร user ไว้ข้างนอกเพื่อให้เข้าถึงได้ในส่วนของ createLog หลังจากการดำเนินการทั้งหมดแล้ว
     try {
         const { password, passwordConfirm } = req.body;
@@ -3230,7 +3398,7 @@ app.post("/changePassword/:token", apiLimiter,async (req, res) => {
         }
 
         // 1. Hash รหัสผ่านใหม่
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(password, 12);
         user.password = hashedPassword;
 
         // 2. ล้างค่า Token และวันหมดอายุทิ้ง (เพื่อไม่ให้ใช้ซ้ำได้อีก)
@@ -3270,6 +3438,7 @@ app.post("/api/groups/mark-ready-for-exam", apiLimiter,async (req, res) => {
         const { groupId , paperId, isReady, comment } = req.body;
 
         const group = await Group.findById(groupId);
+        if (!group) return res.status(404).json({ error: "ไม่พบข้อมูลกลุ่ม" });
 
         const mem1 = await User.findOne({username: group.member1})
         const mem2 = group.member2 ? await User.findOne({username: group.member2}) : null;
@@ -3279,7 +3448,7 @@ app.post("/api/groups/mark-ready-for-exam", apiLimiter,async (req, res) => {
             if (group.passTimes === 0) {
               statusCheck = "พร้อมสอบนำเสนอหัวข้อปริญญานิพนธ์";
             } else if(group.passTimes >= 1) {
-              if(mem1.branch === "EnET" || mem2?.branch === "EnET"){
+              if(mem1?.branch === "EnET" || mem2?.branch === "EnET"){
                 statusCheck = "พร้อมสอบป้องกันปริญญานิพนธ์";
               }else{
                 statusCheck = "พร้อมสอบก้าวหน้าปริญญานิพนธ์";
@@ -3289,7 +3458,7 @@ app.post("/api/groups/mark-ready-for-exam", apiLimiter,async (req, res) => {
             if (group.passTimes === 0) {
                   statusCheck = "ไม่พร้อมสอบนำเสนอหัวข้อปริญญานิพนธ์";
             } else if(group.passTimes >= 1) {
-              if(mem1.branch === "EnET" || mem2?.branch === "EnET"){
+              if(mem1?.branch === "EnET" || mem2?.branch === "EnET"){
                     statusCheck = "ไม่พร้อมสอบป้องกันปริญญานิพนธ์";
               }else{
                     statusCheck = "ไม่พร้อมสอบก้าวหน้าปริญญานิพนธ์";
@@ -3730,6 +3899,14 @@ app.post("/api/addSecretary", apiLimiter, requireLogin, async (req, res) => {
         return res.status(403).json({ error: "คุณไม่มีสิทธิ์ดำเนินการในส่วนนี้" });
     }
 
+    // 🛡️ ตรวจสอบไฟล์ Excel ของจริงด้วย Magic Number
+    const hex = req.file.buffer.toString('hex', 0, 8).toUpperCase();
+    const isXlsx = hex.startsWith('504B0304'); // .xlsx
+    const isXls = hex.startsWith('D0CF11E0A1B11AE1'); // .xls
+    if (!isXlsx && !isXls) {
+        return res.status(400).json({ error: 'ไฟล์ Excel ไม่ถูกต้องหรือถูกปลอมแปลง' });
+    }
+
     try {
         const { username , email} = req.body;
         console.log(username , email);
@@ -3740,7 +3917,7 @@ app.post("/api/addSecretary", apiLimiter, requireLogin, async (req, res) => {
 
         const checkUser = await User.find({username: username});
         if(checkUser.length > 0) return res.status(400).json({ error: "ชื่อผู้ใช้ถูกใช้ไปแล้ว" });
-        const pendingHashedPassword = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 10); 
+        const pendingHashedPassword = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 12); 
         
         const newSecretary = new User({
             username: username.trim(),
@@ -3891,14 +4068,15 @@ app.delete("/api/PaperFile/delete", apiLimiter, requireLogin, async (req, res) =
 
 app.get("/search-group", requireLogin, async (req, res) => {
   const keyword = req.query.keyword || "";
+  const safeKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   try {
     const groups = await Group.find({
       $and: [
         { status: { $nin: ["ผ่านการสอบป้องกันปริญญานิพนธ์", "ไม่มีสมาชิก" ,"ไม่ผ่านการสอบป้องกันปริญญานิพนธ์"] } }, // ไม่เอาตัวเอง
         {
           $or: [
-            { projectName: { $regex: keyword, $options: "i" } },
-            { engName: { $regex: keyword, $options: "i" } }
+                { projectName: { $regex: safeKeyword, $options: "i" } },
+                { engName: { $regex: safeKeyword, $options: "i" } }
           ]
         }
       ]
@@ -3917,12 +4095,11 @@ app.post("/api/addEventForGroup", apiLimiter, requireLogin, requireRole(['admin'
         const group = await Group.findById(chosenGroup);
         let missingGroups = [];
 
-        const rawGroupName = group.projectName;
-        groupNameStr = rawGroupName.toString().trim();
-
         if (!group) {
             return res.status(404).json({ error: "ไม่พบข้อมูลกลุ่ม" });
         }
+        const rawGroupName = group.projectName;
+        groupNameStr = rawGroupName.toString().trim();
 
         if (!title || !date) {
             return res.status(400).json({ error: "ข้อมูลไม่ครบถ้วน" });
@@ -4076,7 +4253,7 @@ app.post("/api/addEventForGroup", apiLimiter, requireLogin, requireRole(['admin'
             if(group.passTimes === 0){
                 group.status = "รอสอบนำเสนอหัวข้อปริญญานิพนธ์"
             }else if (group.passTimes >= 1){
-                if(mem1.branch === "ECT" || mem2.branch === "ECT"){
+                if(mem1?.branch === "ECT" || mem2?.branch === "ECT"){
                   group.status = "รอสอบก้าวหน้าปริญญานิพนธ์";
                 }else{
                   group.status = "รอสอบป้องกันปริญญานิพนธ์";
@@ -4173,6 +4350,7 @@ io.on("connection", (socket) => {
   if (username) {
       socket.username = username;
       socket.join(username); // เข้าห้องส่วนตัวเพื่อรับ Notification
+      userSockets.set(username, socket.id); // บันทึกข้อมูลลง Map
       console.log(`🔗 User ${username} connected and joined private room.`);
   }
   

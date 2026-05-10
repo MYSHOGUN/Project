@@ -164,6 +164,16 @@
             </li>
         <% } %>
 
+        <% if (typeof user !== 'undefined') { %>
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item <%= currentPath === '/reportIssue' ? 'active' : '' %>">
+                <a class="nav-link" href="/reportIssue">
+                    <i class="fas fa-fw fa-exclamation-triangle"></i>
+                    <span>แจ้งปัญหาการใช้งาน</span></a>
+            </li>
+        <% } %>
+
         <!-- Divider -->
         <hr class="sidebar-divider d-none d-md-block">
 

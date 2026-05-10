@@ -30,8 +30,7 @@ const eventSchema = new mongoose.Schema({
     toDate : { type: Date, default: null },
     expireAt: { 
         type: Date, 
-        default: undefined, 
-        index: { expires: '0s' } 
+        default: undefined
     }
 },{timestamps: true});
 

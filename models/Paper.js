@@ -13,8 +13,7 @@ const paperSchema = new mongoose.Schema({
   },
   submittedAt: { type: Date, default: Date.now }, 
   expireAt: { 
-    type: Date, 
-    index: { expires: 0 } // จะลบข้อมูลอัตโนมัติเมื่อถึงเวลา
+    type: Date
   },
   passTimes: { type: Number, default: 0 },
   date: { type: Date, default: null }, 
