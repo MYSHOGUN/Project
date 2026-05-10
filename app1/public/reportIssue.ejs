@@ -86,6 +86,16 @@ $(document).ready(function() {
             description: $('#description').val()
         };
 
+        // แสดง SweetAlert แบบ Loading ระหว่างกำลังส่งข้อมูล
+        Swal.fire({
+            title: 'กำลังส่งข้อมูล...',
+            text: 'กรุณารอสักครู่',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
         $.ajax({
             url: '/api/reportIssue',
             method: 'POST',

@@ -1,3 +1,4 @@
+require('dotenv').config(); // ✅ โหลดตัวแปรจากไฟล์ .env
 const Message = require("./models/Message"); // ✅ import model
 
 const Group = require("./models/Group"); // ✅ import group model
@@ -3216,6 +3217,7 @@ app.post("/forgot-password" , authLimiter,async (req, res) => {
         req.session.successModal = "forget_success";
         req.session.save(() => res.redirect("/login"));
     } catch (err) {
+            console.error("❌ Forgot Password Error:", err); // ✅ ให้ปริ้นท์สาเหตุที่แท้จริงออกมาดู
         req.session.failModal = "forget_failed";
         return req.session.save(() => res.redirect("/forgotPassword"));
     }
@@ -3345,6 +3347,7 @@ app.post("/change-password" , requireLogin, authLimiter,async (req, res) => {
         res.json({ success: true });
 
     }catch(err){
+            console.error("❌ Change Password Email Error:", err);
         return res.status(500).send("เกิดข้อผิดพลาด: " + err.message);
     }
 });
