@@ -10,6 +10,8 @@ const connectDB = async () => {
     });
     console.log("✅ MongoDB connected");
   } catch (err) {
+    // Log whether MONGODB_URI is being loaded correctly
+    console.error("🔍 MONGODB_URI Loaded:", process.env.MONGODB_URI ? "Yes" : "No (using localhost fallback)");
     console.error("❌ MongoDB connection error:", err.message);
     process.exit(1);
   }
