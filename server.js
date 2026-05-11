@@ -1095,7 +1095,13 @@ app.get("/viewProfile/:id", requireLogin, async (req, res) => {
         ]
     }).sort({ _id: -1 }).lean();
     
-    let pastGroups = [];
+    let pastGroups = (viewUserData.pastGroups || []).map(pg => ({
+        _id: pg.groupId,
+        projectName: pg.projectName,
+        engName: pg.engName,
+        joinedAt: pg.joinedAt,
+        leftAt: pg.leftAt
+    }));
     let currentGroup = null;
 
     userGroups.forEach(g => {
@@ -1106,9 +1112,14 @@ app.get("/viewProfile/:id", requireLogin, async (req, res) => {
             g.advisor === viewUserData.username ||
             g.advisor === `${viewUserData.username} (Pending)`
         ) {
-            if (!currentGroup) currentGroup = g;
-        } else {
-            pastGroups.push(g);
+            if (g.status === "ผ่านการสอบป้องกันปริญญานิพนธ์" || g.status.includes("ไม่ผ่าน")) {
+                const isDuplicate = pastGroups.some(pg => pg._id && pg._id.toString() === g._id.toString());
+                if (!isDuplicate) {
+                    pastGroups.push({ _id: g._id, projectName: g.projectName, engName: g.engName, joinedAt: g.createdAt, leftAt: g.updatedAt || new Date() });
+                }
+            } else {
+                if (!currentGroup) currentGroup = g;
+            }
         }
     });
 
@@ -1387,7 +1398,7 @@ app.post("/groups", apiLimiter,requireLogin, async (req, res) => {
 
     await User.findOneAndUpdate(
       { username: member1 }, // หรือฟิลด์สำหรับค้นหาผู้ใช้ เช่น { username: member1 }
-      { $set: { group: [newGroup._id] } }
+      { $set: { group: [newGroup._id], currentGroupJoinedAt: new Date() } }
     );
 
     // อัปเดต session.user.group = "true"
@@ -1455,13 +1466,13 @@ app.post("/group/accept-invitation/:groupId/:notiId", apiLimiter,requireLogin, a
     if (req.session.user.role !== "teacher" && req.session.user.role !== "admin") {
         updatedUser = await User.findOneAndUpdate(
             { username: username },
-            { $set: { group: group._id } },
+            { $set: { group: [group._id], currentGroupJoinedAt: new Date() } },
             { new: true } // ✅ คืนค่าที่อัปเดตแล้วกลับมา
         );
     } else {
         updatedUser = await User.findOneAndUpdate(
             { username: username },
-            { $addToSet: { group: group._id } },
+            { $addToSet: { group: group._id }, $set: { currentGroupJoinedAt: new Date() } },
             { new: true } // ✅ คืนค่าที่เพิ่มกลุ่มใหม่เข้าไปแล้วกลับมา
         );
     }
@@ -1651,18 +1662,35 @@ app.post("/groups/leave/:groupId", apiLimiter,async (req, res) => {
 
     await group.save();
 
+    const currentUser = await User.findOne({ username });
+    const joinedAt = currentUser.currentGroupJoinedAt || group.createdAt;
+
+    const pastGroupData = {
+        groupId: group._id,
+        projectName: group.projectName,
+        engName: group.engName,
+        joinedAt: joinedAt,
+        leftAt: new Date()
+    };
+
     let updatedUser;
     // อัปเดต User ด้วย (ถ้า User มี field group)
     if (req.session.user.role !== "teacher" && req.session.user.role !== "admin"){
         updatedUser = await User.findOneAndUpdate(
         { username },
-        { $set: { group: [] } }, // เอา group ออก
+        { 
+            $set: { group: [], currentGroupJoinedAt: null },
+            $push: { pastGroups: pastGroupData }
+        },
         { new: true }
         );
     }else{
         updatedUser = await User.findOneAndUpdate(
         { username },
-        { $pull: { group: groupId } },
+        { 
+            $pull: { group: groupId },
+            $push: { pastGroups: pastGroupData }
+        },
         { new: true }
         );
     }

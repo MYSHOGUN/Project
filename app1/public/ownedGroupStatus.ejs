@@ -159,6 +159,43 @@
                     </div>
                 <% }) %>
             </div>
+
+            <% if (typeof pastGroups !== 'undefined' && pastGroups.length > 0) { %>
+                <div class="text-center mt-5 mb-4 pt-4">
+                    <h4 class="font-weight-bold text-secondary">
+                        <i class="fas fa-history mr-2"></i>ประวัติกลุ่มที่เคยเป็นที่ปรึกษา
+                    </h4>
+                    <hr style="width: 100px; border-top: 3px solid #858796;">
+                </div>
+                <div class="group-grid" style="opacity: 0.75;">
+                    <% pastGroups.forEach(g => { %>
+                        <div class="content-group" data-search-text="<%= g.projectName %> <%= g.status %> สิ้นสุดการทำโครงงาน">
+                            <a href="/ownedGroupInfo/<%= g._id %>" class="text-decoration-none d-block h-100">
+                                <div class="card shadow-sm" style="border-left-color: #858796 !important; background: #f8f9fc;">
+                                    <div class="card-body p-4 d-flex flex-column justify-content-between">
+                                        <div>
+                                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                                <h4 class="project-title mb-0 text-secondary">
+                                                    <%= g.projectName %>
+                                                </h4>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <hr class="my-3" style="opacity: 0.1;">
+                                            <div class="d-flex align-items-center justify-content-between">
+                                                <span class="text-muted small font-weight-bold">สถานะ</span>
+                                                <span class="badge rounded-pill px-4 py-2 bg-secondary text-white shadow-sm text-truncate">
+                                                    สิ้นสุดการทำโครงงาน
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    <% }) %>
+                </div>
+            <% } %>
             <% } %>
         </div>
 

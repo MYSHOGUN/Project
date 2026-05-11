@@ -178,10 +178,18 @@
                                     <div class="d-flex flex-column" style="gap: 12px;">
                                         <% pastGroups.forEach(g => { %>
                                             <div class="project-history-card p-3 border-left-secondary" style="border-left-width: 4px !important;">
-                                                <div class="font-weight-bold text-gray-800 h6 mb-1"><%= g.projectName %></div>
-                                                <div class="small text-muted mb-2"><%= g.engName || '-' %></div>
-                                                <div>
-                                                    <span class="badge badge-secondary px-2 py-1 shadow-sm">สิ้นสุดสถานะภาพสมาชิกแล้ว</span>
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <div class="font-weight-bold text-gray-800 h6 mb-1"><%= g.projectName %></div>
+                                                        <div class="small text-muted mb-2"><%= g.engName || '-' %></div>
+                                                    </div>
+                                                    <span class="badge badge-secondary px-2 py-1 shadow-sm">สิ้นสุดสถานภาพ</span>
+                                                </div>
+                                                <hr class="my-2">
+                                                <div class="small text-muted">
+                                                    <!-- สมมติว่า Backend ส่งข้อมูล joinedAt และ leftAt มาใน object ของ g -->
+                                                    <i class="fas fa-calendar-plus mr-1 text-success"></i> เข้าร่วมเมื่อ: <%= g.joinedAt ? new Date(g.joinedAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : '-' %> <br>
+                                                    <i class="fas fa-calendar-times mr-1 text-danger mt-1"></i> ออกจากกลุ่มเมื่อ: <%= g.leftAt ? new Date(g.leftAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : '-' %>
                                                 </div>
                                             </div>
                                         <% }) %>
