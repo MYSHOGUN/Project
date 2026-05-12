@@ -31,10 +31,6 @@ bower_components
 # Compiled binary addons (https://nodejs.org/api/addons.html)
 build/Release
 
-# Dependency directories
-node_modules/
-jspm_packages/
-
 # TypeScript v1 declaration files
 typings/
 
@@ -85,22 +81,8 @@ typings/
 .tern-port
 
 # Logs
-logs
+logs/
 *.log
-
-# Runtime data
-pids
-*.pid
-*.seed
-
-# Coverage directory used by tools like istanbul
-coverage
-
-# Grunt intermediate storage
-.grunt
-
-# Compiled binary addons
-build/Release
 
 # Users Environment Variables
 .lock-wscript
