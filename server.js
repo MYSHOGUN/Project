@@ -4400,7 +4400,41 @@ io.on("connection", (socket) => {
   });
 });
 
-// Start server
-server.listen(port, () => {
+// Start server with error handling
+server.listen(port, '0.0.0.0', () => {
   console.log(`✅ Server running at http://localhost:${port}`);
+}).on('error', (err) => {
+  console.error('❌ Server error:', err);
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${port} is already in use`);
+  }
+  process.exit(1);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('🔄 SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('🔄 SIGINT received, shutting down gracefully');
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
 });
