@@ -1,70 +1,91 @@
-# Getting Started with Create React App
+# KMUTNB Project Management System
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+ระบบจัดการโปรเจกต์สำหรับนักศึกษาวิทยาลัยเทคโนโลยีอุตสาหกรรม สาขาคอมพิวเตอร์
 
-## Available Scripts
+## เทคโนโลยีที่ใช้
+- **Backend:** Node.js, Express.js
+- **Frontend:** EJS (Embedded JavaScript Templates)
+- **Database:** MongoDB (Mongoose)
+- **Real-time:** Socket.IO
+- **Authentication:** bcrypt, express-session
+- **File Upload:** Multer, GridFS
+- **Security:** Helmet, express-rate-limit, express-mongo-sanitize
 
-In the project directory, you can run:
+## การติดตั้งและรันโปรเจกต์
 
-### `npm start`
+### 1. ติดตั้ง Dependencies
+```bash
+npm install
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### 2. ตั้งค่า Environment Variables
+สร้างไฟล์ `.env` ในโฟลเดอร์รากของโปรเจกต์:
+```env
+MONGODB_URI=mongodb://localhost:27017/test
+SESSION_SECRET=your-secret-key-change-this-in-production-please
+PORT=8080
+NODE_ENV=development
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASS=your-app-password
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### 3. เริ่มต้น MongoDB
+ตรวจสอบให้แน่ใจว่า MongoDB กำลังทำงานอยู่:
+```bash
+# สำหรับ Windows
+net start MongoDB
 
-### `npm test`
+# สำหรับ macOS/Linux
+sudo systemctl start mongod
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### 4. รันเซิร์ฟเวอร์
+```bash
+npm start
+```
 
-### `npm run build`
+เปิดเบราว์เซอร์ที่ `http://localhost:8080`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## โครงสร้างโปรเจกต์
+```
+My Project/
+├── server.js              # ไฟล์เซิร์ฟเวอร์หลัก
+├── db.js                  # การเชื่อมต่อฐานข้อมูล
+├── models/                # Schema ของ MongoDB
+│   ├── User.js
+│   ├── Group.js
+│   ├── Event.js
+│   └── ...
+├── app1/
+│   ├── public/            # ไฟล์ EJS templates
+│   └── src/               # Static files (CSS, JS, Images)
+└── .env                   # Environment variables
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## ฟีเจอร์หลัก
+- 🔐 ระบบล็อกอิน/ลงทะเบียนผู้ใช้
+- 👥 การจัดการกลุ่มโปรเจกต์
+- 📅 การจัดการกิจกรรม/ตารางสอบ
+- 💬 ระบบแชทและการแจ้งเตือนแบบ Real-time
+- 📄 การจัดการเอกสารและไฟล์ PDF
+- 📊 ระบบรายงานและการติดตามสถานะ
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## บทบาทผู้ใช้
+- **Admin:** จัดการผู้ใช้ทั้งหมด
+- **Teacher:** ดูแลกลุ่มที่ปรึกษา
+- **Secretary:** จัดการเอกสาร
+- **User:** นักศึกษาทั่วไป
 
-### `npm run eject`
+## การตั้งค่าอีเมล (Optional)
+สำหรับฟีเจอร์การส่งอีเมล (ลืมรหัสผ่าน, แจ้งเตือน):
+1. เปิดใช้งาน 2-Step Verification ใน Gmail
+2. สร้าง App Password
+3. อัปเดตค่า `EMAIL_USER` และ `EMAIL_PASS` ในไฟล์ `.env`
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## การพัฒนาต่อ
+- ทำตามโครงสร้าง MVC (Models, Views, Controllers)
+- ทุก Route ใหม่ต้องมี Error Handling
+- ใช้ภาษาไทยสำหรับคอมเมนต์และข้อความ
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## License
+KMUTNB Computer Engineering Project

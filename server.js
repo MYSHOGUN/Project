@@ -725,7 +725,7 @@ app.get("/" ,requireLogin, async (req, res) => {
     renderWithLayout(res, "index", { title: "KMUTNB Project - Main" ,news: newsData,user: req.session.user,truncateText: truncateText} , req.path,req);
   }catch(err){
     console.error("Error fetching news:", err);
-    res.status(500).send("Error loading news");
+    return res.status(500).send("Error loading news");
   }
 });
 app.get("/upload", requireLogin, (req, res) => {
@@ -895,7 +895,7 @@ app.get('/file/download/:id', async (req, res) => {
 
     } catch (err) {
         console.error("❌ Error:", err);
-        res.status(500).send("ID ไฟล์ไม่ถูกต้อง");
+        return res.status(500).send("ID ไฟล์ไม่ถูกต้อง");
     }
 });
 
@@ -1036,7 +1036,7 @@ app.get("/chat", requireLogin, async (req, res) => {
       user: req.session.user
     }, req.path, req);
   } catch (err) {
-    res.status(500).send("Error loading users");
+    return res.status(500).send("Error loading users");
   }
 });
 app.get("/group/messages/group/:groupId", requireLogin, async (req, res) => {
@@ -1140,7 +1140,7 @@ app.get("/viewProfile/:id", requireLogin, async (req, res) => {
     }, req.path, req);
   } catch (err) {
     console.error("Error loading user profile:", err);
-    res.status(500).send("เกิดข้อผิดพลาดในการโหลดโปรไฟล์");
+    return res.status(500).send("เกิดข้อผิดพลาดในการโหลดโปรไฟล์");
   }
 });
 
@@ -1407,7 +1407,7 @@ app.post("/groups", apiLimiter,requireLogin, async (req, res) => {
     res.status(201).send("บันทึกกลุ่มสำเร็จ");
   } catch (err) {
     console.error("❌ Error saving group:", err);
-    res.status(500).send("เกิดข้อผิดพลาดในการบันทึกกลุ่ม");
+    return res.status(500).send("เกิดข้อผิดพลาดในการบันทึกกลุ่ม");
   }
   await createLog(req, "CREATE_GROUP", { 
         groupName: projectName,
@@ -1491,7 +1491,7 @@ app.post("/group/accept-invitation/:groupId/:notiId", apiLimiter,requireLogin, a
 
   } catch (err) {
     console.error("❌ Error accepting invitation:", err);
-    res.status(500).send("เกิดข้อผิดพลาดในการเข้าร่วมกลุ่ม");
+    return res.status(500).send("เกิดข้อผิดพลาดในการเข้าร่วมกลุ่ม");
   }
   await createLog(req, "ACCEPT_INVITATION", { 
         username: req.session.user.username,
@@ -1534,7 +1534,7 @@ app.post("/group/deny-invitation/:groupId/:notiId", apiLimiter,requireLogin, asy
     });
   } catch (err) {
     console.error("❌ Error denying invitation:", err);
-    res.status(500).send("เกิดข้อผิดพลาดในการปฏิเสธ");
+    return res.status(500).send("เกิดข้อผิดพลาดในการปฏิเสธ");
   }
   await createLog(req, "DENY_INVITATION", { 
         username: req.session.user.username,
@@ -1621,7 +1621,7 @@ app.post("/groups-update/:groupId", apiLimiter,requireLogin, async (req, res) =>
     });
   } catch (err) {
     console.error("❌ Error:", err);
-    res.status(500).send("เกิดข้อผิดพลาดที่ server");
+    return res.status(500).send("เกิดข้อผิดพลาดที่ server");
   }
 });*/
 
@@ -1752,7 +1752,7 @@ app.get("/addGroup", requireLogin, requireNotRole(["secretary"]), async (req, re
     }, req.path,req);
     }catch(err){
     console.error("❌ Error deleting news:", err);
-    res.status(500).send("Error loading groups");
+    return res.status(500).send("Error loading groups");
   }
 });
 
@@ -1824,7 +1824,7 @@ app.get("/updateGroup", requireLogin, requireRole(["user"]), async (req, res) =>
 
   } catch (err) {
     console.error("❌ Crash in /updateGroup:", err);
-    res.status(500).send("เกิดข้อผิดพลาดในการโหลดข้อมูลกลุ่ม");
+    return res.status(500).send("เกิดข้อผิดพลาดในการโหลดข้อมูลกลุ่ม");
   }
 });
 
@@ -1847,7 +1847,7 @@ app.get("/image/:id", async (req, res) => {
         bucket.openDownloadStream(fileId).pipe(res);
     } catch (err) {
         console.error("Error streaming news image:", err);
-        res.status(500).send("Error streaming image");
+        return res.status(500).send("Error streaming image");
     }
 });
 
@@ -2576,7 +2576,7 @@ app.get("/eventInfo/:id", requireLogin,requireNotRole(['secretary']), async (req
 
     } catch (err) {
         console.error("❌ Error fetching event info:", err);
-        res.status(500).send("เกิดข้อผิดพลาดในการดึงข้อมูลกิจกรรม");
+        return res.status(500).send("เกิดข้อผิดพลาดในการดึงข้อมูลกิจกรรม");
     }
 });
 
@@ -2795,7 +2795,7 @@ app.get("/paper", requireLogin, requireNotRole(['secretary']), async (req, res) 
       
   } catch (err) {
       console.error("Fetch Groups Error:", err);
-      res.status(500).send("Internal Server Error");
+      return res.status(500).send("Internal Server Error");
   }
 });
 
@@ -2870,7 +2870,7 @@ app.post("/api/PaperUploadFile", requireLogin, apiLimiter,async (req, res) => {
         res.status(200).send("สำเร็จ");
     } catch (err) { 
         console.error("❌ PaperUpload Error:", err.message);
-        res.status(500).send("เกิดข้อผิดพลาดในการบันทึกข้อมูล: " + err.message); 
+        return res.status(500).send("เกิดข้อผิดพลาดในการบันทึกข้อมูล: " + err.message); 
     }
     await createLog(req, "PAPER_UPLOAD", {
         username: req.session.user.username,
@@ -3126,7 +3126,7 @@ app.get("/admin", requireLogin, requireRole(['admin']), async (req, res) => {
       renderWithLayout(res, "admin", { title: "KMUTNB Project - Admin Panel" }, req.path,req);
   } catch (err) {
       console.error("Admin Panel Error:", err);
-      res.status(500).send("Internal Server Error");
+      return res.status(500).send("Internal Server Error");
   }
 });
 
