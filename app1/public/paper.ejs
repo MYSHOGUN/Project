@@ -84,6 +84,96 @@
         .paper-content-grid {
             grid-template-columns: 1fr !important; /* จอเล็กซ้อนบรรทัดกัน */
         }
+
+        /* ปรับ header ของ card ให้เป็นแนวตั้งตอนจอเล็ก */
+        .paper-card .card-body .d-flex.justify-content-between {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 1rem !important;
+        }
+
+        /* ปรับปุ่มและ checkbox ให้ชิดซ้ายตอนจอเล็ก */
+        .paper-card .card-body .d-flex.align-items-center {
+            width: 100% !important;
+            justify-content: flex-start !important;
+        }
+
+        /* ปรับ header หลักให้ responsive */
+        .platform-container h1 {
+            font-size: 1.5rem !important;
+        }
+
+        /* ปรับ voting form สำหรับอาจารย์ */
+        .paper-card .d-flex.justify-content-center {
+            flex-direction: column !important;
+            gap: 0.8rem !important;
+            align-items: flex-start !important;
+        }
+
+        /* ปรับ textarea ให้เต็มความกว้าง */
+        .paper-card textarea {
+            max-width: 100% !important;
+        }
+
+        /* ปรับ custom-check-container ให้ responsive */
+        .custom-check-container {
+            padding: 6px 12px !important;
+            flex-wrap: wrap !important;
+        }
+
+        /* ปรับ accordion header ให้ responsive */
+        .task-grade-header, .task-doc-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 0.5rem !important;
+        }
+
+        .task-grade-header .d-flex, .task-doc-header .d-flex {
+            width: 100% !important;
+            justify-content: space-between !important;
+        }
+
+        /* ปรับ file scroll area และ drop zone ให้ responsive */
+        .file-scroll-area {
+            height: 150px !important;
+            min-height: 150px !important;
+        }
+
+        .custom-drop-zone {
+            min-height: 150px !important;
+        }
+
+        /* ปรับ button ให้ responsive */
+        .paper-card .btn {
+            font-size: 0.875rem !important;
+            padding: 0.375rem 0.75rem !important;
+        }
+
+        /* ปรับ radio label ให้ responsive */
+        .custom-control-label {
+            font-size: 0.875rem !important;
+        }
+
+        /* ปรับการแสดงรายการไฟล์ให้ responsive */
+        .file-scroll-area .d-flex.justify-content-between {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 0.5rem !important;
+        }
+
+        .file-scroll-area .d-flex.justify-content-between .d-flex {
+            width: 100% !important;
+            justify-content: flex-start !important;
+        }
+
+        .file-scroll-area .text-truncate {
+            max-width: 100% !important;
+        }
+
+        .file-scroll-area .btn-circle {
+            margin-left: 0 !important;
+            margin-right: 0.5rem !important;
+        }
     }
 
     /* ปรับให้ Drop Zone มีความสูงเต็มพื้นที่คอลัมน์ */

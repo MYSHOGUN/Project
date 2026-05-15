@@ -179,7 +179,7 @@
                 if ($("body").hasClass("sidebar-toggled")) {
                     $(".sidebar").addClass("toggled");
                     // ลบกฎ !important ของการซ่อนเมนูออกเพื่อให้ระบบ Bootstrap กลับมาคุมเองได้
-                    $(".sidebar .collapse").collapse('hide');
+                    $(".sidebar .collapse").removeClass('show');
                 }
             });
         </script>

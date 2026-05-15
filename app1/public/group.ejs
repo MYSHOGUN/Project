@@ -84,6 +84,13 @@
   }
 
   #card { box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important; border: 1px solid #eaecf4 !important; transition: margin 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important; overflow: hidden; }
+
+  /* ปิด transition สำหรับ mobile เพื่อป้องกันการขยับ */
+  @media (max-width: 576px) {
+    #card { transition: none !important; }
+    .group-item { transition: none !important; }
+    .custom-expand-menu { transition: none !important; }
+  }
 </style>
 
 <div class="container-fluid" style="padding: 0; margin: 0; line-height: normal;">
@@ -548,6 +555,15 @@ setTimeout(initializeChat, 1000);
       showChatSection();
     }
   });
+
+  // ✅ เติม: แก้ไข Logic การเลือกกลุ่ม (ห้ามคลิกทะลุปุ่มลูกศร)
+  groupList.addEventListener("click", (e) => {
+    if (e.target.closest('.btn') || e.target.closest('.custom-expand-menu')) {
+      return; 
+    }
+    const li = e.target.closest('.group-item');
+    if (li) joinGroup(li.dataset.groupid, li.dataset.groupname);
+  });
 });
 
 // ✅ เติม: ฟังก์ชันสลับการ "ดัน" บรรทัดล่าง
@@ -602,13 +618,4 @@ window.confirmLeaveGroup = async (e, groupId) => {
       }
     }
   };
-
-  // ✅ เติม: แก้ไข Logic การเลือกกลุ่ม (ห้ามคลิกทะลุปุ่มลูกศร)
-  groupList.addEventListener("click", (e) => {
-    if (e.target.closest('.btn') || e.target.closest('.custom-expand-menu')) {
-      return; 
-    }
-    const li = e.target.closest('.group-item');
-    if (li) joinGroup(li.dataset.groupid, li.dataset.groupname);
-  });
 </script>

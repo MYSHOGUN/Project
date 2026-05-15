@@ -192,7 +192,7 @@
             if (matchCount > 0) {
                 group.style.display = "";
                 // ถ้ามีการค้นหา ให้กาง Accordion ออกดูทันที
-                if (val !== "") $(group.querySelector('.collapse')).collapse('show');
+                if (val !== "") group.querySelector('.collapse').classList.add('show');
             } else {
                 group.style.display = "none";
             }

@@ -131,6 +131,12 @@ html {
   border-radius: 0.5rem;
   box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
   animation: dropdownSlideIn 0.2s ease;
+  z-index: 9999 !important; /* เพิ่ม z-index เพื่อไม่ให้โดนบังโดยช่อง search */
+}
+
+/* เฉพาะ dropdown ใน navbar */
+.navbar .dropdown-menu {
+  z-index: 9999 !important;
 }
 
 @keyframes dropdownSlideIn {
@@ -257,8 +263,8 @@ html {
   }
 }
 
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
+/* Dark Mode Support - DISABLED to prevent unwanted color changes */
+/* @media (prefers-color-scheme: dark) {
   .card {
     background-color: #2d3748;
     color: #e2e8f0;
@@ -273,7 +279,7 @@ html {
   .navbar {
     background: rgba(45, 55, 72, 0.95);
   }
-}
+} */
 
 /* Print Styles */
 @media print {

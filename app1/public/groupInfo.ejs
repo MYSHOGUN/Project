@@ -121,6 +121,107 @@
     .stepper-item.active .step-name { color: #4e73df !important; }
     .stepper-item.completed .step-name { color: #1cc88a !important; }
     .stepper-item.failed .step-name { color: #e74a3b !important; }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .content-container {
+            width: 95% !important;
+            margin: 0 auto !important;
+        }
+
+        .stepper-wrapper {
+            flex-direction: column !important;
+            gap: 15px !important;
+        }
+
+        .stepper-item::before,
+        .stepper-item::after {
+            display: none !important;
+        }
+
+        .stepper-item {
+            flex-direction: row !important;
+            justify-content: flex-start !important;
+            gap: 15px !important;
+            padding: 10px !important;
+        }
+
+        .step-name {
+            text-align: left !important;
+            font-size: 0.85rem !important;
+        }
+
+        .member-grid {
+            flex-direction: column !important;
+            gap: 10px !important;
+        }
+
+        .member-item {
+            width: 100% !important;
+            padding: 10px !important;
+        }
+
+        .info-card-body {
+            flex-direction: column !important;
+            min-height: auto !important;
+        }
+
+        .col-lg-6 {
+            width: 100% !important;
+            max-width: 100% !important;
+            flex: 0 0 100% !important;
+        }
+
+        .paper-entry {
+            padding: 15px !important;
+        }
+
+        .file-pill {
+            min-width: auto !important;
+            width: 100% !important;
+        }
+
+        .text-truncate {
+            max-width: 150px !important;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .content-container {
+            width: 100% !important;
+            padding: 0 10px !important;
+        }
+
+        .step-counter {
+            width: 35px !important;
+            height: 35px !important;
+            font-size: 1rem !important;
+        }
+
+        .step-name {
+            font-size: 0.75rem !important;
+        }
+
+        .text-truncate {
+            max-width: 100px !important;
+        }
+
+        .paper-files-display {
+            flex-direction: column !important;
+        }
+
+        .file-pill {
+            width: 100% !important;
+        }
+
+        .badge {
+            font-size: 0.8rem !important;
+            padding: 8px 12px !important;
+            white-space: normal !important;
+            word-wrap: break-word !important;
+            max-width: 100% !important;
+        }
+    }
 </style>
 
 <div class="main-content-wrapper" style="min-height: 84vh;">
