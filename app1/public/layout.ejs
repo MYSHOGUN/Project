@@ -13,7 +13,7 @@
     
         <!-- Open Graph / Facebook -->
         <meta property="og:type" content="website">
-        <meta property="og:url" content="<%= process.env.BASE_URL || 'http://localhost:8080' %><%= req.path %>">
+        <meta property="og:url" content="<%= process.env.BASE_URL || 'http://localhost:8080' %><%= currentPath %>">
         <meta property="og:title" content="<%= title %> - KMUTNB Project Management">
         <meta property="og:description" content="ระบบจัดการโปรเจกต์สำหรับนักศึกษาวิทยาลัยเทคโนโลยีอุตสาหกรรม สาขาคอมพิวเตอร์">
         <meta property="og:image" content="<%= process.env.BASE_URL || 'http://localhost:8080' %>/img/LOGO-KMUTNB--300x300.png">
@@ -22,7 +22,7 @@
         
         <!-- Twitter -->
         <meta property="twitter:card" content="summary_large_image">
-        <meta property="twitter:url" content="<%= process.env.BASE_URL || 'http://localhost:8080' %><%= req.path %>">
+        <meta property="twitter:url" content="<%= process.env.BASE_URL || 'http://localhost:8080' %><%= currentPath %>">
         <meta property="twitter:title" content="<%= title %> - KMUTNB Project Management">
         <meta property="twitter:description" content="ระบบจัดการโปรเจกต์สำหรับนักศึกษาวิทยาลัยเทคโนโลยีอุตสาหกรรม สาขาคอมพิวเตอร์">
         <meta property="twitter:image" content="<%= process.env.BASE_URL || 'http://localhost:8080' %>/img/LOGO-KMUTNB--300x300.png">
