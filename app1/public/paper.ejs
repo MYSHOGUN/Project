@@ -251,7 +251,6 @@
                 // ถ้าอาจารย์/แอดมิน: เห็นทุกรายการ (เพื่อบันทึกผลสอบ)
                 return true; 
             });
-            console.log(`Checking: ${visiblePapers.length} paper ${papers.length}`);
             // 2. ตรวจสอบว่าหลังจากกรองแล้ว เหลือสิ่งที่ต้องแสดงไหม
             if (!papers || papers.length === 0 || visiblePapers.length === 0) {
                 container.innerHTML = `

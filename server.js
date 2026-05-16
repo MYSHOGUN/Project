@@ -67,14 +67,12 @@ const migrateOldNotis = async () => {
         { isRead: { $exists: false } }, 
         { $set: { isRead: true } }
     );
-    console.log("✅ Migrated old notifications to read state.");
 };
 
 let bucket;
 
 mongoose.connection.once("open", () => {
     bucket = new GridFSBucket(mongoose.connection.db, { bucketName: "uploads" });
-    console.log("✅ GridFSBucket initialized and ready");
     
     // เรียก Migration แจ้งเตือนเก่าตรงนี้เลย (ถ้าต้องการรัน)
     migrateOldNotis().catch(err => console.error("Migration error:", err));
@@ -211,7 +209,6 @@ async function generateAutoFilledPDF(groupData) {
         // ใช้ฟอนต์ Bold ตามที่คุณต้องการ
         const fontPath = path.join(__dirname, 'app1', 'src', 'fonts', 'THSarabunNew Bold.ttf');
         
-        console.log("🔍 กำลังโหลดฟอนต์จาก:", fontPath);
 
         const templateBuffer = fs.readFileSync(templatePath);
         const fontBuffer = fs.readFileSync(fontPath);
@@ -341,7 +338,6 @@ async function createLog(req, action, details = {}) {
                 req.connection.remoteAddress
         });
         await newLog.save();
-        console.log(`[LOG]: ${action} by ${newLog.username}`);
     } catch (err) {
         logger.error(`Failed to save log to DB: ${err.message}`);
     }
@@ -880,7 +876,6 @@ app.get('/file/download/:id', async (req, res) => {
         const fileFromFS = await bucket.find({ _id: new mongoose.Types.ObjectId(fileId) }).toArray().then(files => files[0]);
         
         if (!fileFromFS) {
-            console.log("❌ ไม่พบใน fs.files, ลองหาในคอลเลกชันอื่น...");
             // ลองหาในคอลเลกชันที่คุณอาจจะตั้งชื่อไว้เอง (ถ้ามี)
             return res.status(404).send(`ไม่พบไฟล์ ID: ${fileId} ในระบบ`);
         }
@@ -946,7 +941,6 @@ app.get("/ownedGroupStatus", requireLogin, async (req, res) => {
     }));
 
     // ✅ ต้องมี return เพื่อป้องกัน Error Headers Sent
-    console.log("DEBUG GROUPS:", JSON.stringify(groupsWithData));
     return renderWithLayout(res, "ownedGroupStatus", { title: "KMUTNB Project - Group Status", groups: groupsWithData }, req.path, req);
     
   } catch (err) {
@@ -957,7 +951,6 @@ app.get("/ownedGroupStatus", requireLogin, async (req, res) => {
 });
 
 app.get("/login", checkFailModal, checkSuccessModal, (req, res) => {
-  //console.log("Session failModal:", req.session.failModal);
   const inputUsername = req.session.inputUsername || "";
   req.session.inputUsername = null; // ล้างค่าหลังใช้งาน
   renderWithLayout(res, "login", { 
@@ -1233,10 +1226,8 @@ app.post("/login" , authLimiter,async (req, res) => {
   const { username, password ,rememberMe} = req.body;
   const user = await User.findOne({ username });
 
-  //console.log("✅ User from DB:", user); // <-- ใส่ตรงนี้
   if (!user) {
     req.session.failModal = "user"; // ตั้งค่าเพื่อแสดง modal
-    console.log("Set failModal = user");
     return req.session.save(() => res.redirect("/login"));
   }
 
@@ -1244,7 +1235,6 @@ app.post("/login" , authLimiter,async (req, res) => {
   if (!match) {
     req.session.failModal = "password"; // ตั้งค่าเพื่อแสดง modal
     req.session.inputUsername = username; // เก็บ username ไว้
-    console.log("Set failModal = password");
     return req.session.save(() => res.redirect("/login"));
   }
   
@@ -1368,7 +1358,6 @@ app.post("/groups", apiLimiter,requireLogin, async (req, res) => {
   }
 
     if (existingGroup) {
-      console.log(existingGroup, " สมาชิกนี้มีกลุ่มอยู่แล้ว");
       return res.status(400).send("สมาชิกนี้มีกลุ่มอยู่แล้ว");
     }
 
@@ -1560,7 +1549,6 @@ app.post("/groups-update/:groupId", apiLimiter,requireLogin, async (req, res) =>
 
     const member2Info = member2 ? await User.findOne({username: member2}) : null;
 
-    console.log(mem2,adv,member2,advisor);
 
     let addedMember2 = null;
     let addedAdvisor = null;
@@ -1716,7 +1704,6 @@ app.post("/groups/leave/:groupId", apiLimiter,async (req, res) => {
 
 app.get("/addGroup", requireLogin, requireNotRole(["secretary"]), async (req, res) => {
   if(req.session.user && Array.isArray(req.session.user.group) && req.session.user.group.length > 0){
-    console.log("User already in group, redirecting to /group");
       return res.redirect("/group");
   }
   try{
@@ -1775,7 +1762,6 @@ app.get("/updateGroup", requireLogin, requireRole(["user"]), async (req, res) =>
 
     // 2. ถ้าไม่พบกลุ่ม ให้ Redirect หรือส่งค่าว่างไปป้องกันการ Crash
     if (!groups || groups.length === 0) {
-      console.log("⚠️ No groups found for user:", username);
       return res.redirect("/group"); // หรือส่ง [] ไปที่ render
     }
 
@@ -2037,8 +2023,6 @@ app.get("/register", checkFailModal ,async (req, res) => {
 });
 
 app.post("/register", authLimiter, upload.single("profileImage"), async (req, res) => {
-  console.log("Body data:", req.body); // ต้องมีข้อมูลชื่อ นามสกุล ฯลฯ
-  console.log("File data:", req.file);
   let username = (req.body.username || "").toString().trim();
   try {
     const {password, name, lastname, phone ,passwordConfirm ,email} = req.body;
@@ -2253,7 +2237,6 @@ app.get("/addEvent", requireLogin,requireRole(['admin']) ,(req, res) => {
 app.post("/api/addEvent", apiLimiter, requireLogin, requireRole(['admin']), upload.single("file"), async (req, res) => {
     try {
         const { title, date, description ,examSchedule} = req.body;
-        console.log("ดูๆ"+date);
         const file = req.file;
         let missingGroups = [];
         let testData = [];
@@ -2771,8 +2754,7 @@ app.get("/paper", requireLogin, requireNotRole(['secretary']), async (req, res) 
                     }
                 }
                 await group.save();
-                console.log(`📡 Auto-updated: Group ${group.projectName} is now ready for exam.`);
-
+        
                 await createLog(req, "AUTO_EXPIRE_UPDATE", {
                     projectName: group.projectName,
                     from: oldStatus,
@@ -3459,11 +3441,9 @@ app.post("/changePassword/:token", authLimiter,async (req, res) => {
 
 app.post("/api/groups/mark-ready-for-exam", apiLimiter,async (req, res) => {
     // ตรวจสอบสิทธิ์ (ต้องเป็นอาจารย์เท่านั้น)
-    console.log("🔍 Checking permissions for marking group ready for exam...");
     if (!req.session.user || (req.session.user.role !== 'teacher' && req.session.user.role !== 'admin')) {
         return res.status(403).json({ error: "คุณไม่มีสิทธิ์ดำเนินการนี้" });
     }
-    console.log("✅ Permission check passed. Processing request...");
 
     try {
         const { groupId , paperId, isReady, comment } = req.body;
@@ -3497,7 +3477,6 @@ app.post("/api/groups/mark-ready-for-exam", apiLimiter,async (req, res) => {
             }
         }
         
-        console.log(`📡 Marking group ${groupId} as ready for exam with status: ${statusCheck}`);
 
         const result = await PaperFile.updateMany(
             { $and: [
@@ -3506,13 +3485,11 @@ app.post("/api/groups/mark-ready-for-exam", apiLimiter,async (req, res) => {
             ] },
             { $set: { check: isReady !== false } }
         );
-        console.log(`📡 Updating paper files for group ${groupId} with paper ID ${paperId}`);
 
         if (result.matchedCount === 0) {
             return res.status(400).json({ error: "ยังไม่มีการส่งเอกสารสำหรับการสอบนี้" });
         }
 
-        console.log(`📡 Paper files updated: ${result.modifiedCount} document(s) marked as ready for exam.`);
 
         
         // อัปเดตสถานะเฉพาะกลุ่มที่ส่ง ID มา
@@ -3521,7 +3498,6 @@ app.post("/api/groups/mark-ready-for-exam", apiLimiter,async (req, res) => {
             { status: statusCheck },
             { new: true }
         );
-        console.log(`📡 Group ${updatedGroup.projectName} is now marked as ready for exam: ${statusCheck}`);
 
         if (!updatedGroup) {
             return res.status(404).json({ error: "ไม่พบข้อมูลกลุ่ม" });
@@ -3940,7 +3916,6 @@ app.post("/api/addSecretary", apiLimiter, requireLogin, async (req, res) => {
 
     try {
         const { username , email} = req.body;
-        console.log(username , email);
 
         if (!username || !email) {
             return res.status(400).json({ error: "ข้อมูลไม่ครบ" });
@@ -4074,7 +4049,6 @@ app.delete("/api/PaperFile/delete", apiLimiter, requireLogin, async (req, res) =
         if (!oldFiles) {
             return res.status(404).json({ error: "ไม่พบไฟล์เอกสารที่ต้องการลบ" });
         }
-        console.log("🗑️ Deleting PaperFile with fileId:", fileId, "and record ID:", oldFiles._id);
         if (oldFiles.file?.fileId) {
             try { 
                 // ลบไฟล์จริงออกจาก GridFS
@@ -4083,7 +4057,6 @@ app.delete("/api/PaperFile/delete", apiLimiter, requireLogin, async (req, res) =
                 console.warn(`⚠️ Warning: ไม่สามารถลบไฟล์ ${oldFiles.file.fileId} ได้:`, err.message); 
             }
         }
-        console.log("🗑️ Deleting PaperFile record from database with fileId:", fileId);
         await PaperFile.deleteOne({ "file.fileId": fileId }); // ลบเรคคอร์ด PaperFile ที่อ้างถึงไฟล์นี้ออกจากฐานข้อมูล
 
         res.json({ 
@@ -4122,7 +4095,6 @@ app.post("/api/addEventForGroup", apiLimiter, requireLogin, requireRole(['admin'
     let groupNameStr;
     try {
         const { title, date, toDate, description, chosenGroup, advisor, greatDirector, director, dateTest, time } = req.body;
-        console.log("Received data:", { title, date, toDate, description, chosenGroup, advisor, greatDirector, director, dateTest, time });
         const group = await Group.findById(chosenGroup);
         let missingGroups = [];
 
@@ -4198,7 +4170,6 @@ app.post("/api/addEventForGroup", apiLimiter, requireLogin, requireRole(['admin'
                       { new: true }
                   );
                   const saveGroup = await groupUpdate.save();
-                  console.log(`💾 บันทึกสำเร็จ! ID: ${saveGroup._id}`);
           }else if (title === "วันสอบ") {
             if (group.status.includes('ผ่านการสอบป้องกันปริญญานิพนธ์') || group.status.includes('ไม่มีสมาชิก') || group.status.includes('ไม่ผ่านการสอบป้องกันปริญญานิพนธ์')){
                 return res.status(404).json({ error: "กลุ่มนี้ไม่สามารถสอบได้" });
@@ -4382,27 +4353,23 @@ io.on("connection", (socket) => {
       socket.username = username;
       socket.join(username); // เข้าห้องส่วนตัวเพื่อรับ Notification
       userSockets.set(username, socket.id); // บันทึกข้อมูลลง Map
-      console.log(`🔗 User ${username} connected and joined private room.`);
   }
   
   // รับข้อความใหม่
   socket.on("join group", (groupId) => {
       socket.join(groupId);
-      console.log(`👥 User ${socket.username} joined group: ${groupId}`);
   });
 
 
   socket.on("disconnect", () => {
     if (socket.username) {
       userSockets.delete(socket.username);
-      console.log(`🔌 Disconnected: ${socket.username} (socketId: ${socket.id})`);
     }
   });
 });
 
 // Start server with error handling
 server.listen(port, '0.0.0.0', () => {
-  console.log(`✅ Server running at http://localhost:${port}`);
 }).on('error', (err) => {
   console.error('❌ Server error:', err);
   if (err.code === 'EADDRINUSE') {
@@ -4413,17 +4380,13 @@ server.listen(port, '0.0.0.0', () => {
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('🔄 SIGTERM received, shutting down gracefully');
   server.close(() => {
-    console.log('✅ Server closed');
     process.exit(0);
   });
 });
 
 process.on('SIGINT', () => {
-  console.log('🔄 SIGINT received, shutting down gracefully');
   server.close(() => {
-    console.log('✅ Server closed');
     process.exit(0);
   });
 });

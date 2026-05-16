@@ -1,6 +1,10 @@
 <!-- Topbar -->
  <% if (typeof user !== "undefined" && user) { %>
     <div id="socket-bridge" data-username="<%= user.username %>" style="display: none;"></div>
+<% } else { %>
+    <script>
+        window.location.href = '/login';
+    </script>
 <% } %>
 <nav class="navbar navbar-expand navbar-light bg-white topbar static-top shadow">
 

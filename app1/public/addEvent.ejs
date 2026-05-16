@@ -467,8 +467,8 @@
             </div>
         </div>
 
-        <div id="buttons" class="justify-content-center mt-4" style="display: none; width: 100%;">
-            <button class="btn btn-save shadow-sm" id="saveEventBtn">
+        <div id="buttons" class="justify-content-center mt-4" style="display: flex; width: 100%;">
+            <button class="btn btn-save shadow-sm" id="saveEventBtn" disabled>
                 <i class="fas fa-save mr-2"></i> บันทึกกิจกรรม
             </button>
             <button class="btn btn-cancel shadow-sm" id="cancelEventBtn" onclick="resetForm()">
@@ -484,7 +484,7 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script>
     let startLabel = document.getElementById("start-label");
@@ -521,8 +521,35 @@
 
     function checkAppear(){
         const groupOnly = document.getElementById("groupOnlyCheckbox").checked;
-        document.getElementById('searchGroupShip').classList.toggle('d-none', !groupOnly); 
+        document.getElementById('searchGroupShip').classList.toggle('d-none', !groupOnly);
         document.getElementById('selectedGroupContainer').classList.toggle('d-none', !groupOnly);
+        validateForm();
+    }
+
+    function validateForm() {
+        const eventDateVal = document.getElementById("eventDate").value;
+        const groupOnly = document.getElementById("groupOnlyCheckbox").checked;
+        const Name = eventName.value.trim();
+        let desc = eventDescription.value.trim();
+
+        let isValid = false;
+
+        if (selectedValue === "วันสอบ") {
+            const dayContainers = document.querySelectorAll('.day-container');
+            isValid = dayContainers.length > 0;
+        } else if (selectedValue && selectedValue !== "เลือกกิจกรรม") {
+            if (selectedValue === "อื่นๆ") {
+                isValid = Name && desc;
+            } else {
+                isValid = eventDateVal;
+            }
+        }
+
+        if (groupOnly && !chosenGroup) {
+            isValid = false;
+        }
+
+        saveEventBtn.disabled = !isValid;
     }
 
     function createDragDropSchedule() {
@@ -669,8 +696,9 @@
 
         initSortable();
         initDayDatePickers();
-        
+
         updateWorkloadUI();
+        validateForm();
     }
 
     function backToScheduleSettings() {
@@ -832,20 +860,20 @@
             onlyGroup.style.display = "none";
             startLabel.innerText = "เริ่มวันที่"
             groupSelectNumber.style.display = "block";
-            document.getElementById("exam-scheduler").style.display = "none"; 
+            document.getElementById("exam-scheduler").style.display = "none";
             eventDescription.style.display = "none";
             eventName.style.display = "none";
             startDate.style.display = "none";
             document.getElementById("groupOnlyCheckbox").checked = false;
         } else {
             document.querySelector('.glass-card').style.setProperty('max-width', '700px', 'important');
-            document.getElementById("exam-scheduler").style.display = "none"; 
+            document.getElementById("exam-scheduler").style.display = "none";
             teacherSum.style.display = "none";
             onlyGroup.style.display = "block";
             startLabel.innerText = "ถึงวันที่"
             startDate.style.display = "block";
             groupSelectNumber.style.display = "none";
-            
+
             if (selectedValue === "อื่นๆ") {
                 eventName.style.display = "block";
                 eventDescription.style.display = "block";
@@ -854,6 +882,7 @@
                 eventDescription.style.display = "none";
             }
         }
+        validateForm();
     }
 
     function updateWorkloadUI() {
@@ -1111,6 +1140,11 @@
     }
 
     $(document).ready(function() {
+        // เพิ่ม event listeners สำหรับ input fields
+        $("#eventDate").on("change", validateForm);
+        $("#eventName").on("input", validateForm);
+        $("#eventDescription").on("input", validateForm);
+
         // 1. ตรวจจับการพิมพ์
         $("#searchGroup").on("input", function() {
             const keyword = $(this).val().trim();
@@ -1145,15 +1179,16 @@
         $(document).on("click", ".group-li", function() {
             const groupName = $(this).data("groupname");
             const groupId = $(this).data("groupid");
-            
+
             chosenGroup = groupId;
             $("#selectedGroup").text(groupName);
-            
+
             // จัดการ UI
             $("#searchGroupResults").hide().empty();
             $("#searchGroup").val(""); // ล้างช่องค้นหา
             $("#searchGroupContainer").hide();
             $("#selectedGroupContainer").css("display", "flex").show();
+            validateForm();
         });
 
         // 3. ยกเลิกการเลือก
@@ -1161,6 +1196,7 @@
             chosenGroup = null;
             $("#selectedGroup").text("");
             $("#selectedGroupContainer").hide();
+            validateForm();
             $("#searchGroupContainer").show();
             $("#searchGroup").focus(); // ให้ Cursor ไปรอที่ช่องพิมพ์
         });

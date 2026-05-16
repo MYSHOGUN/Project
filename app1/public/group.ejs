@@ -280,7 +280,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // ถ้าไม่ใช่การ Force และเป็นกลุ่มเดิม ให้หยุดทำงาน
     if (!isForce && currentGroupId === groupId && window.innerWidth > 576) return;
 
-    console.log("🚀 กำลังเข้ากลุ่ม:", groupId, "Force:", isForce);
     
     currentGroupId = groupId;
     chatWithEl.textContent = groupName;
@@ -514,7 +513,6 @@ document.addEventListener("DOMContentLoaded", () => {
         // กรณี 1: มาจาก Notification
         const targetItem = document.querySelector(`.group-item[data-groupid="${openId}"]`);
         if (targetItem) {
-            console.log("✅ เปิดจาก Notification ID:", openId);
             joinGroup(openId, targetItem.dataset.groupname, true);
             targetItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
         } else {
@@ -530,7 +528,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function openDefaultGroup() {
     if (currentGroupId) {
-        console.log("✅ เปิดกลุ่มเริ่มต้น:", currentGroupId);
         joinGroup(currentGroupId, currentGroupName, true);
     } else {
         showGroupListSection();
@@ -541,7 +538,6 @@ function openDefaultGroup() {
 // *** จุดสำคัญ ***
 // รอให้ Socket พร้อมก่อน แล้วค่อยเริ่มทำงาน
 socket.on('connect', () => {
-    console.log("🌐 Socket connected! Initializing chat...");
     initializeChat();
 });
 
