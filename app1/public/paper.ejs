@@ -292,6 +292,9 @@
                                     checkCommittee(paper.greatDirector, currentUsername) ||
                                     checkCommittee(paper.advisor, currentUsername);
                 
+                const isAdvisorOnly = checkCommittee(paper.advisor, currentUsername);
+                const canApproveAll = paper.editCount > 0 && isAdvisorOnly;
+
                 if (!targetGroup) return '';
 
                 const groupName = targetGroup.projectName;
@@ -307,9 +310,28 @@
                 const examPaper = papers.find(p => p.groupId === paper.groupId && p.passTimes === paper.passTimes && isExamPaper(p.mention));
                 const isExamPassed = examPaper && exactNow.getTime() > new Date(examPaper.date).getTime();
 
-                // ✅ FIX 1.1: ทำให้ Logic การเช็คว่าโหวตไปแล้วหรือยัง อ่านง่ายขึ้น
                 const targetResultForCurrentPass = resultData.find(r => r.groupId === paper.groupId && r.passTimes === paper.passTimes);
-                const hasVoted = targetResultForCurrentPass ? (targetResultForCurrentPass.pass.includes(currentUsername) || targetResultForCurrentPass.fail.includes(currentUsername)) : false;
+                const votedUsers = targetResultForCurrentPass ? [...(targetResultForCurrentPass.pass || []), ...(targetResultForCurrentPass.fail || [])] : [];
+                const hasVoted = votedUsers.includes(currentUsername);
+
+                let committeeOptions = '';
+                let unvotedCount = 0;
+                
+                if (canApproveAll) {
+                    const allC = new Set();
+                    if (paper.advisor) paper.advisor.split(",").forEach(s => allC.add(s.trim()));
+                    if (paper.greatDirector) paper.greatDirector.split(",").forEach(s => allC.add(s.trim()));
+                    if (paper.director) paper.director.split(",").forEach(s => allC.add(s.trim()));
+                    
+                    allC.forEach(c => {
+                        if (c && !votedUsers.includes(c)) {
+                            unvotedCount++;
+                            committeeOptions += `<option value="${c}">${c === currentUsername ? 'ตัวเอง (' + getUserFullName(c) + ')' : getUserFullName(c)}</option>`;
+                        }
+                    });
+                }
+
+                const shouldShowVotingForm = isCommittee && paperDate.getTime() <= today.getTime() && (!hasVoted || (canApproveAll && unvotedCount > 0));
 
                 const passTime = (paper.passTimes || 0);
 
@@ -334,8 +356,18 @@
                 if ((isCommittee || currentRole === "admin") && isExamPaper(paper.mention)) {
 
                     let votingFormHtml = '';
-                    if (isCommittee && paperDate.getTime() <= today.getTime() && !hasVoted) {
+                    if (shouldShowVotingForm) {
                         votingFormHtml = `
+                            ${canApproveAll && committeeOptions ? `
+                            <div class="alert alert-info py-2 px-3 mb-3 small shadow-sm text-left">
+                                <i class="fas fa-info-circle mr-1"></i> <strong>สิทธิ์พิเศษสำหรับอาจารย์ที่ปรึกษา:</strong> เนื่องจากมีการแก้ไขเอกสาร คุณสามารถลงคะแนนแทนกรรมการท่านอื่นได้
+                                <div class="mt-2">
+                                    <label class="font-weight-bold">ลงคะแนนในนาม:</label>
+                                    <select class="form-control form-control-sm" id="voteFor-${paperId}">
+                                        ${committeeOptions}
+                                    </select>
+                                </div>
+                            </div>` : ''}
                             <div class="d-flex justify-content-center mb-3 mt-2" style="gap: 20px;">
                                 <div class="custom-control custom-radio">
                                     <input type="radio" id="pass-${paperId}" name="choice-${paperId}" value="ผ่าน" class="custom-control-input" onchange="showComment('${paperId}')">
@@ -348,6 +380,33 @@
                                 <div class="custom-control custom-radio">
                                     <input type="radio" id="fix-${paperId}" name="choice-${paperId}" value="แก้ไข" class="custom-control-input" onchange="showComment('${paperId}')">
                                     <label class="custom-control-label font-weight-bold text-warning" for="fix-${paperId}">แก้ไข</label>
+                                </div>
+                            </div>
+                            <div id="editCheckboxContainer-${paperId}" class="d-none text-left mx-auto mb-3" style="max-width: 500px; padding: 15px; border: 1px solid #dee2e6; border-radius: 5px; background-color: #f8f9fa;">
+                                <label class="d-block mb-2 text-danger"><strong>ตัวเลือกเพิ่มเติมสำหรับการแก้ไข (Test):</strong></label>
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input edit-option-${paperId}" type="checkbox" id="extraEditOption1-${paperId}" value="การนำเสนอผลงาน">
+                                    <label class="form-check-label text-dark" for="extraEditOption1-${paperId}">การนำเสนอผลงาน</label>
+                                </div>
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input edit-option-${paperId}" type="checkbox" id="extraEditOption2-${paperId}" value="ความสำเร็จของปริญญานิพนธ์ตามวัตถุประสงค์">
+                                    <label class="form-check-label text-dark" for="extraEditOption2-${paperId}">ความสำเร็จของปริญญานิพนธ์ตามวัตถุประสงค์</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input edit-option-${paperId}" type="checkbox" id="extraEditOption3-${paperId}" value="บทคัดย่อ">
+                                    <label class="form-check-label text-dark" for="extraEditOption3-${paperId}">บทคัดย่อ</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input edit-option-${paperId}" type="checkbox" id="extraEditOption4-${paperId}" value="ผลการศึกษา">
+                                    <label class="form-check-label text-dark" for="extraEditOption4-${paperId}">ผลการศึกษา</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input edit-option-${paperId}" type="checkbox" id="extraEditOption5-${paperId}" value="สรุปผลการศึกษา">
+                                    <label class="form-check-label text-dark" for="extraEditOption5-${paperId}">สรุปผลการศึกษา</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input edit-option-${paperId}" type="checkbox" id="extraEditOption6-${paperId}" value="ความถูกต้องเรียบร้อยของรูปเล่ม">
+                                    <label class="form-check-label text-dark" for="extraEditOption6-${paperId}">ความถูกต้องเรียบร้อยของรูปเล่ม</label>
                                 </div>
                             </div>
                             <textarea class="form-control mb-3 d-none mx-auto shadow-sm" id="comment-${paperId}" rows="2" style="max-width: 500px; border-radius: 12px;" placeholder="ระบุสิ่งที่ต้องการให้แก้ไข (นักศึกษาจะเห็นข้อความนี้)..."></textarea>
@@ -377,7 +436,10 @@
                     teacherCards += `
                     <div class="card paper-card shadow mb-4 border-left-primary" style="grid-column: 1 / -1;">
                         <div class="card-body p-4 text-center">
-                            <h5 class="font-weight-bold text-primary mb-3"><i class="fas fa-chalkboard-teacher mr-2"></i>บันทึกผลการสอบ: ${groupName}</h5>
+                            <h5 class="font-weight-bold text-primary mb-3">
+                                <i class="fas fa-chalkboard-teacher mr-2"></i>บันทึกผลการสอบ: ${groupName}
+                                ${paper.editCount > 0 ? `<span class="badge badge-warning ml-2">แก้ไขครั้งที่ ${paper.editCount}</span>` : ''}
+                            </h5>
                             ${votingFormHtml}
                         </div>
                     </div>`;
@@ -395,7 +457,10 @@
                         <div class="d-flex justify-content-between align-items-start mb-4">
                             <div>
                                 <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">${text || paper.mention}</div>
-                                <h5 class="font-weight-bold text-gray-800 mb-0">${groupName} ${testText}</h5>
+                                <h5 class="font-weight-bold text-gray-800 mb-0">
+                                    ${groupName} ${testText}
+                                    ${paper.editCount > 0 ? `<span class="badge badge-warning ml-2">แก้ไขครั้งที่ ${paper.editCount}</span>` : ''}
+                                </h5>
                             </div>
                             
                             <div class="d-flex align-items-center" style="gap: 10px;">
@@ -697,19 +762,38 @@
     window.showComment = (pId) => {
         const fixChecked = document.getElementById(`fix-${pId}`).checked;
         document.getElementById(`comment-${pId}`).classList.toggle('d-none', !fixChecked);
+        
+        const checkboxContainer = document.getElementById(`editCheckboxContainer-${pId}`);
+        if (checkboxContainer) {
+            checkboxContainer.classList.toggle('d-none', !fixChecked);
+            if (!fixChecked) {
+                // รีเซ็ตค่าทั้งหมดถ้าไม่ได้เลือกปุ่มแก้ไข
+                document.querySelectorAll(`.edit-option-${pId}`).forEach(cb => cb.checked = false);
+            }
+        }
     }
 
     window.submitResult = async function(paperId) {
         const selected = document.querySelector(`input[name="choice-${paperId}"]:checked`)?.value;
         const comment = document.getElementById(`comment-${paperId}`).value;
+        const voteFor = document.getElementById(`voteFor-${paperId}`)?.value || null;
         if (!selected) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกผลการสอบ', 'warning');
+        
+        // ดึงเฉพาะ value ของ checkbox ที่ถูกเลือก (จะได้ข้อมูลเป็น Array เช่น ["บทคัดย่อ", "ผลการศึกษา"])
+        const selectedOptions = Array.from(document.querySelectorAll(`.edit-option-${paperId}:checked`)).map(cb => cb.value);
 
         const confirm = await Swal.fire({ title: 'ยืนยัน?', text: `บันทึกผล: ${selected}`, icon: 'question', showCancelButton: true });
         if (confirm.isConfirmed) {
             const res = await fetch('/api/submitPaperResult', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ paperId, result: selected, comment })
+                body: JSON.stringify({ 
+                    paperId, 
+                    result: selected, 
+                    comment,
+                    editOptions: selectedOptions,
+                    voteFor: voteFor
+                })
             });
             if ((await res.json()).success) {
                 Swal.fire('สำเร็จ', 'บันทึกเรียบร้อย', 'success').then(() => location.reload());

@@ -23,6 +23,14 @@
         padding-bottom: 100px !important; 
     }
 
+    #flatTableContainer {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding-bottom: 100px !important; 
+    }
+    #flatTableContainer::-webkit-scrollbar { width: 6px; }
+    #flatTableContainer::-webkit-scrollbar-thumb { background: #d1d3e2; border-radius: 10px; }
+
     /* ปรับแต่ง Scrollbar ของส่วนรายชื่อ */
     #userAccordion::-webkit-scrollbar { width: 6px; }
     #userAccordion::-webkit-scrollbar-thumb { background: #d1d3e2; border-radius: 10px; }
@@ -86,6 +94,16 @@
             <i class="fas fa-search search-icon"></i>
             <input type="text" id="mainSearch" class="form-control search-input" placeholder="ค้นหารหัส ชื่อนักศึกษา สาขา หรือสถานะ...">
         </div>
+
+        <!-- ปุ่มกรองสถานะ (ดูแบบไม่แยกปี) -->
+        <div class="status-filters mb-2">
+            <span class="mr-2 text-muted small font-weight-bold"><i class="fas fa-filter mr-1"></i>ตัวกรอง:</span>
+            <button class="btn btn-sm btn-primary filter-btn active" data-filter="all">ทั้งหมด (แยกปี)</button>
+            <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="ไม่มีกลุ่ม">ไม่มีกลุ่ม</button>
+            <button class="btn btn-sm btn-outline-warning filter-btn" data-filter="รอ">รอสอบ/พร้อมสอบ</button>
+            <button class="btn btn-sm btn-outline-success filter-btn" data-filter="ผ่าน">ผ่าน/สำเร็จ</button>
+            <button class="btn btn-sm btn-outline-danger filter-btn" data-filter="ไม่ผ่าน">ไม่ผ่าน</button>
+        </div>
     </div>
 
     <div id="userAccordion">
@@ -112,8 +130,22 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <% groupedData[year].forEach(u => { %>
-                                        <tr class="student-item" data-search-text="<%= u.username %> <%= u.name %> <%= u.lastname %> <%= u.branch || 'EnET' %> <%= u.displayStatus %>">
+                                    <% groupedData[year].forEach(u => { 
+                                        let badgeClass = "badge-primary";
+                                        let iconClass = "fa-info-circle";
+                                        let filterCategory = "อื่นๆ";
+                                        
+                                        if (u.displayStatus === "ไม่มีกลุ่ม") {
+                                            badgeClass = "badge-secondary"; iconClass = "fa-user-slash"; filterCategory = "ไม่มีกลุ่ม";
+                                        } else if (u.displayStatus.includes("ผ่านการสอบป้องกัน") || u.displayStatus.includes("สำเร็จ") || u.displayStatus.includes("จบแล้ว")) {
+                                            badgeClass = "badge-success"; iconClass = "fa-check-circle"; filterCategory = "ผ่าน";
+                                        } else if (u.displayStatus.includes("ไม่ผ่าน")) {
+                                            badgeClass = "badge-danger"; iconClass = "fa-times-circle"; filterCategory = "ไม่ผ่าน";
+                                        } else if (u.displayStatus.includes("รอ") || u.displayStatus.includes("พร้อมสอบ") || u.displayStatus.includes("อยู่ระหว่างการแก้ไข")) {
+                                            badgeClass = "badge-warning text-dark"; iconClass = "fa-clock"; filterCategory = "รอ";
+                                        }
+                                    %>
+                                        <tr class="student-item" data-category="<%= filterCategory %>" data-search-text="<%= u.username %> <%= u.name %> <%= u.lastname %> <%= u.branch || 'EnET' %> <%= u.displayStatus %>">
                                             <td class="align-middle">
                                                 <div class="d-flex align-items-center">
                                                     <% if (u.picture && u.picture.id && u.picture !== "" && u.picture !== "null" && u.picture !== undefined) { %>
@@ -129,24 +161,6 @@
                                             <td class="align-middle text-muted"><%= u.username %></td>
                                             <td class="align-middle"><%= u.branch || 'EnET' %></td>
                                             <td class="text-center align-middle">
-                                                <% 
-                                                let badgeClass = "badge-primary";
-                                                let iconClass = "fa-info-circle";
-                                                
-                                                if (u.displayStatus === "ไม่มีกลุ่ม") {
-                                                    badgeClass = "badge-secondary";
-                                                    iconClass = "fa-user-slash";
-                                                } else if (u.displayStatus.includes("ผ่านการสอบป้องกัน") || u.displayStatus.includes("สำเร็จ") || u.displayStatus.includes("จบแล้ว")) {
-                                                    badgeClass = "badge-success";
-                                                    iconClass = "fa-check-circle";
-                                                } else if (u.displayStatus.includes("ไม่ผ่าน")) {
-                                                    badgeClass = "badge-danger";
-                                                    iconClass = "fa-times-circle";
-                                                } else if (u.displayStatus.includes("รอ") || u.displayStatus.includes("พร้อมสอบ")) {
-                                                    badgeClass = "badge-warning text-dark";
-                                                    iconClass = "fa-clock";
-                                                } 
-                                                %>
                                                 <span class="badge <%= badgeClass %> px-3 py-2 shadow-sm text-wrap" style="line-height: 1.5; font-size: 0.85rem;">
                                                     <i class="fas <%= iconClass %> mr-1"></i> <%= u.displayStatus %>
                                                 </span>
@@ -166,21 +180,133 @@
             </div>
         <% }) %>
     </div>
+
+    <!-- ตารางแบบ Flat (ไม่แยกปี) แสดงเฉพาะเวลากรองสถานะ -->
+    <div id="flatTableContainer" class="card shadow-sm d-none group-container" style="border-radius: 15px;">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table mb-0" id="flatTable" style="table-layout: fixed;">
+                    <thead class="bg-light small" style="position: sticky; top: 0; z-index: 10;">
+                        <tr>
+                            <th style="width: 30%; cursor: pointer;" onclick="sortTable(this, 0)" title="คลิกเพื่อเรียงข้อมูล">นักศึกษา <i class="fas fa-sort ml-1 text-muted"></i></th>
+                            <th style="width: 20%; cursor: pointer;" onclick="sortTable(this, 1)" title="คลิกเพื่อเรียงข้อมูล">เลขประจำตัว <i class="fas fa-sort ml-1 text-muted"></i></th>
+                            <th style="width: 15%; cursor: pointer;" onclick="sortTable(this, 2)" title="คลิกเพื่อเรียงข้อมูล">สาขา <i class="fas fa-sort ml-1 text-muted"></i></th>
+                            <th style="width: 35%; text-align:center; cursor: pointer;" onclick="sortTable(this, 3)" title="คลิกเพื่อเรียงข้อมูล">สถานะ <i class="fas fa-sort ml-1 text-muted"></i></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% 
+                        const allStudents = Object.values(groupedData).flat();
+                        allStudents.forEach(u => { 
+                            let badgeClass = "badge-primary";
+                            let iconClass = "fa-info-circle";
+                            let filterCategory = "อื่นๆ";
+                            
+                            if (u.displayStatus === "ไม่มีกลุ่ม") {
+                                badgeClass = "badge-secondary"; iconClass = "fa-user-slash"; filterCategory = "ไม่มีกลุ่ม";
+                            } else if (u.displayStatus.includes("ผ่านการสอบป้องกัน") || u.displayStatus.includes("สำเร็จ") || u.displayStatus.includes("จบแล้ว")) {
+                                badgeClass = "badge-success"; iconClass = "fa-check-circle"; filterCategory = "ผ่าน";
+                            } else if (u.displayStatus.includes("ไม่ผ่าน")) {
+                                badgeClass = "badge-danger"; iconClass = "fa-times-circle"; filterCategory = "ไม่ผ่าน";
+                            } else if (u.displayStatus.includes("รอ") || u.displayStatus.includes("พร้อมสอบ") || u.displayStatus.includes("อยู่ระหว่างการแก้ไข")) {
+                                badgeClass = "badge-warning text-dark"; iconClass = "fa-clock"; filterCategory = "รอ";
+                            }
+                        %>
+                            <tr class="flat-student-item" data-category="<%= filterCategory %>" data-search-text="<%= u.username %> <%= u.name %> <%= u.lastname %> <%= u.branch || 'EnET' %> <%= u.displayStatus %>">
+                                <td class="align-middle">
+                                    <div class="d-flex align-items-center">
+                                        <% if (u.picture && u.picture.id && u.picture !== "" && u.picture !== "null" && u.picture !== undefined) { %>
+                                            <img src="/image/<%= u.picture.id %>" class="student-avatar mr-2" onerror="this.src='/img/undraw_profile.svg'">
+                                        <% } else { %>
+                                            <img src="/img/undraw_profile.svg" class="student-avatar mr-2">
+                                        <% } %>
+                                        <div class="font-weight-bold text-truncate" style="max-width: 250px;">
+                                            <a href="/viewProfile/<%= u._id %>" class="profile-link" title="คลิกเพื่อดูโปรไฟล์"><%= u.name %> <%= u.lastname %></a>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="align-middle text-muted"><%= u.username %></td>
+                                <td class="align-middle"><%= u.branch || 'EnET' %></td>
+                                <td class="text-center align-middle">
+                                    <span class="badge <%= badgeClass %> px-3 py-2 shadow-sm text-wrap" style="line-height: 1.5; font-size: 0.85rem;">
+                                        <i class="fas <%= iconClass %> mr-1"></i> <%= u.displayStatus %>
+                                    </span>
+                                    <% if (u.statusTime) { %>
+                                        <div class="small text-muted mt-2" style="font-size: 0.75rem;">
+                                            <i class="fas fa-history mr-1"></i>อัปเดต: <%= u.statusTime %>
+                                        </div>
+                                    <% } %>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
-    // ✅ ระบบค้นหาแบบ Real-time (ซ่อน/แสดง อัตโนมัติ)
+    // ✅ จัดการปุ่มสลับมุมมอง (View Toggle)
+    document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.view-btn').forEach(b => {
+                b.classList.remove('active');
+                b.className = b.className.replace('btn-primary', 'btn-outline-primary');
+            });
+            this.classList.add('active');
+            this.className = this.className.replace('btn-outline-primary', 'btn-primary');
+
+            const view = this.dataset.view;
+            if (view === 'grouped') {
+                document.getElementById('userAccordion').classList.remove('d-none');
+                document.getElementById('flatTableContainer').classList.add('d-none');
+            } else {
+                document.getElementById('userAccordion').classList.add('d-none');
+                document.getElementById('flatTableContainer').classList.remove('d-none');
+            }
+        });
+    });
+
+    // ✅ จัดการปุ่มกรองสถานะ (Status Filter)
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.classList.remove('active');
+                if(b.dataset.filter === 'all') b.className = b.className.replace('btn-dark', 'btn-outline-dark');
+                if(b.dataset.filter === 'ไม่มีกลุ่ม') b.className = b.className.replace('btn-secondary', 'btn-outline-secondary');
+                if(b.dataset.filter === 'รอ') b.className = b.className.replace('btn-warning', 'btn-outline-warning');
+                if(b.dataset.filter === 'ผ่าน') b.className = b.className.replace('btn-success', 'btn-outline-success');
+                if(b.dataset.filter === 'ไม่ผ่าน') b.className = b.className.replace('btn-danger', 'btn-outline-danger');
+            });
+
+            this.classList.add('active');
+            const filter = this.dataset.filter;
+            if(filter === 'all') this.className = this.className.replace('btn-outline-dark', 'btn-dark');
+            if(filter === 'ไม่มีกลุ่ม') this.className = this.className.replace('btn-outline-secondary', 'btn-secondary');
+            if(filter === 'รอ') this.className = this.className.replace('btn-outline-warning', 'btn-warning');
+            if(filter === 'ผ่าน') this.className = this.className.replace('btn-outline-success', 'btn-success');
+            if(filter === 'ไม่ผ่าน') this.className = this.className.replace('btn-outline-danger', 'btn-danger');
+
+            document.getElementById('mainSearch').dispatchEvent(new Event('input'));
+        });
+    });
+
+    // ✅ ระบบค้นหาและกรอง Real-time
     document.getElementById('mainSearch').addEventListener('input', function(e) {
         const val = e.target.value.toLowerCase();
-        const groups = document.querySelectorAll('.group-container');
-
+        const activeFilter = document.querySelector('.filter-btn.active').dataset.filter;
+        
+        // 1. จัดการมุมมองแบบกลุ่มแยกปี (Accordion)
+        const groups = document.querySelectorAll('#userAccordion .group-container');
         groups.forEach(group => {
             const rows = group.querySelectorAll('.student-item');
             let matchCount = 0;
 
             rows.forEach(row => {
+                const category = row.getAttribute('data-category');
                 const text = row.getAttribute('data-search-text').toLowerCase();
-                if (text.includes(val)) {
+                if ((activeFilter === 'all' || category === activeFilter) && text.includes(val)) {
                     row.style.display = "";
                     matchCount++;
                 } else {
@@ -188,16 +314,28 @@
                 }
             });
 
-            // ถ้าในกลุ่มปีนั้นไม่มีข้อมูลที่ตรงเลย ให้ซ่อนทั้งกลุ่ม
             if (matchCount > 0) {
                 group.style.display = "";
-                // ถ้ามีการค้นหา ให้กาง Accordion ออกดูทันที
-                if (val !== "") group.querySelector('.collapse').classList.add('show');
+                if (val !== "" || activeFilter !== 'all') group.querySelector('.collapse').classList.add('show');
             } else {
                 group.style.display = "none";
             }
         });
+
+        // 2. จัดการมุมมองแบบเรียงรวม (Flat Table)
+        const flatRows = document.querySelectorAll('.flat-student-item');
+        flatRows.forEach(row => {
+            const category = row.getAttribute('data-category');
+            const text = row.getAttribute('data-search-text').toLowerCase();
+            
+            if ((activeFilter === 'all' || category === activeFilter) && text.includes(val)) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        });
     });
+
     window.toggleExpand = (e, btn) => {
     e.stopPropagation();
     const li = btn.closest('.group-item');
@@ -234,9 +372,11 @@
         const table = th.closest('table');
         const tbody = table.querySelector('tbody');
         const rows = Array.from(tbody.querySelectorAll('tr.student-item'));
+        const flatRows = Array.from(tbody.querySelectorAll('tr.flat-student-item'));
+        const allRowsToProcess = rows.length > 0 ? rows : flatRows; // เลือกว่ากำลังเรียงในตารางไหน
         
-        // ใช้ id ของปีเป็นตัวแยกสถานะการ sort ของแต่ละตาราง เพื่อไม่ให้ตีกัน
-        const tableContainerId = table.closest('.collapse').id;
+        // ป้องกัน Error หากกำลังคลิกในหน้าตารางรวม (Flat Table)
+        const tableContainerId = table.closest('.collapse') ? table.closest('.collapse').id : 'flatTable';
         const stateKey = tableContainerId + '-' + colIndex;
         
         sortStates[stateKey] = !sortStates[stateKey];
@@ -254,7 +394,7 @@
         }
 
         // เรียงข้อมูล (รองรับทั้งภาษาไทยและตัวเลข)
-        rows.sort((a, b) => {
+        allRowsToProcess.sort((a, b) => {
             let valA = a.querySelectorAll('td')[colIndex].innerText.trim();
             let valB = b.querySelectorAll('td')[colIndex].innerText.trim();
 
@@ -265,6 +405,6 @@
         });
 
         // อัปเดตตารางด้วยข้อมูลที่เรียงแล้ว
-        rows.forEach(row => tbody.appendChild(row));
+        allRowsToProcess.forEach(row => tbody.appendChild(row));
     };
 </script>

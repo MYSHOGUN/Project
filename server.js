@@ -1631,6 +1631,35 @@ app.post("/groups/leave/:groupId", apiLimiter,async (req, res) => {
     group = await Group.findById(groupId);
     if (!group) return res.status(404).send("ไม่พบกลุ่ม");
 
+    // ✅ ตรวจสอบสถานะว่าต้องขออนุมัติหรือไม่ (ถ้าเป็น user และสถานะไม่ใช่รอนำเสนอหัวข้อ และไม่ใช่ไม่มีอาจารย์ที่ปรึกษา)
+    if (req.session.user.role === 'user' && group.status !== 'รอนำเสนอหัวข้อ' && group.status !== 'ไม่มีอาจารย์ที่ปรึกษา' && group.advisor) {
+        const advisorClean = group.advisor.replace(" (Pending)", "");
+        
+        // ป้องกันการส่งคำขอซ้ำ
+        const existingNoti = await Notification.findOne({
+            type: 'leave_group_request',
+            group: groupId,
+            senderUsername: username
+        });
+        if (existingNoti) {
+            return res.status(400).send("คุณได้ส่งคำขอออกกลุ่มไปแล้ว กรุณารออาจารย์ที่ปรึกษาอนุมัติ");
+        }
+
+        const newNoti = new Notification({
+            recipient: [advisorClean],
+            senderUsername: username,
+            senderName: req.session.user.name,
+            type: 'leave_group_request',
+            group: groupId,
+            text: `นักศึกษา ${req.session.user.name} ขออนุมัติออกจากกลุ่ม ${group.projectName}`,
+            isRead: false
+        });
+        await newNoti.save();
+        
+        await createLog(req, "REQUEST_LEAVE_GROUP", { groupName: group.projectName, requestBy: username });
+        return res.status(200).send("REQUEST_SENT"); // ให้หน้าบ้านรู้ว่าต้องรออนุมัติ
+    }
+
     // ตรวจสอบว่า user อยู่ field ไหน
     if (group.member1 === username) {
       group.member1 = group.member2; // เลื่อน member2 ขึ้นมาแทนที่
@@ -1700,6 +1729,60 @@ app.post("/groups/leave/:groupId", apiLimiter,async (req, res) => {
         groupName: group ? group.projectName : "Unknown Group",
         leaveBy: req.session.user.username // ดึงชื่อกิจกรรมมาเก็บไว้ดูย้อนหลังได้
     });
+});
+
+// ✅ เส้นทางสำหรับให้อาจารย์อนุมัติการออกจากกลุ่ม
+app.post("/group/accept-leave/:groupId/:notiId/:targetUser", apiLimiter, requireLogin, async (req, res) => {
+    try {
+        const { groupId, notiId, targetUser } = req.params;
+        const group = await Group.findById(groupId);
+
+        if (group) {
+            // ถอดชื่อผู้ใช้ออกจากกลุ่ม
+            if (group.member1 === targetUser) {
+                group.member1 = group.member2;
+                group.member2 = null;
+            } else if (group.member2 === targetUser) {
+                group.member2 = null;
+            }
+
+            if (group.member1 === null && !group.status.includes('ไม่ผ่าน')) {
+                group.status = 'ไม่มีสมาชิก';
+            }
+
+            if (group.allMember) {
+                group.allMember = group.allMember.filter(m => m !== targetUser);
+            }
+            await group.save();
+
+            // อัปเดตข้อมูลนักศึกษาที่ถูกถอดออก
+            const currentUser = await User.findOne({ username: targetUser });
+            if (currentUser) {
+                const joinedAt = currentUser.currentGroupJoinedAt || group.createdAt;
+                await User.findOneAndUpdate(
+                    { username: targetUser },
+                    { 
+                        $set: { group: [], currentGroupJoinedAt: null },
+                        $push: { pastGroups: { groupId: group._id, projectName: group.projectName, engName: group.engName, joinedAt: joinedAt, leftAt: new Date() } }
+                    }
+                );
+            }
+        }
+        await Notification.findByIdAndDelete(notiId);
+        res.status(200).send("อนุมัติการออกจากกลุ่มสำเร็จ");
+    } catch (err) {
+        res.status(500).send("เกิดข้อผิดพลาดในการอนุมัติ");
+    }
+});
+
+// ✅ เส้นทางสำหรับปฏิเสธการขอออกกลุ่ม
+app.post("/group/deny-leave/:groupId/:notiId/:targetUser", apiLimiter, requireLogin, async (req, res) => {
+    try {
+        await Notification.findByIdAndDelete(req.params.notiId);
+        res.status(200).send("ปฏิเสธการออกจากกลุ่มเรียบร้อย");
+    } catch (err) {
+        res.status(500).send("เกิดข้อผิดพลาดในการปฏิเสธ");
+    }
 });
 
 app.get("/addGroup", requireLogin, requireNotRole(["secretary"]), async (req, res) => {
@@ -2208,7 +2291,8 @@ app.get("/api/notifications/count", requireLogin, async (req, res) => {
                 { recipient: username, type: 'group_alert' }, // นับการดึงเข้ากลุ่มเป็น Alert
                 { recipient: username, type: 'new_alert' },
                 { recipient: username, type: 'alert_event' },
-                { recipient: username, type: 'alert_paper' }
+                { recipient: username, type: 'alert_paper' },
+                { recipient: username, type: 'leave_group_request' }
             ],
             _id: { $nin: readIds }
         });
@@ -2735,7 +2819,10 @@ app.get("/paper", requireLogin, requireNotRole(['secretary']), async (req, res) 
                 "ไม่มีสมาชิก",
                 "รอสอบป้องกันปริญญานิพนธ์",
                 "รอสอบก้าวหน้าปริญญานิพนธ์",
-                "รอสอบนำเสนอหัวข้อปริญญานิพนธ์" // ✅ ถ้าเป็นค่านี้อยู่แล้ว ไม่ต้อง save ซ้ำ
+                "รอสอบนำเสนอหัวข้อปริญญานิพนธ์", // ✅ ถ้าเป็นค่านี้อยู่แล้ว ไม่ต้อง save ซ้ำ
+                "อยู่ระหว่างการแก้ไข", // 🛡️ ป้องกันไม่ให้ระบบเขียนทับตอนอาจารย์สั่งให้แก้
+                "รอแก้ไขเอกสาร", // 🛡️ เผื่อสถานะเก่าตกค้าง
+                "ไม่พร้อมสอบ" // 🛡️ ป้องกันไม่ให้โดนเขียนทับตอนอาจารย์กดไม่พร้อมสอบ
             ];
 
             const isFinished = forbiddenStatus.some(status => group.status.includes(status));
@@ -2812,9 +2899,9 @@ app.post("/api/PaperUploadFile", requireLogin, apiLimiter,async (req, res) => {
             $set: { expireAt: null } 
         });
 
-        // 5. อัปเดตสถานะกลุ่ม กลับสู่สภาวะปกติหากเคยเป็น ไม่พร้อมสอบ หรือ รอแก้ไข
+        // 5. อัปเดตสถานะกลุ่ม กลับสู่สภาวะปกติหากเคยเป็น ไม่พร้อมสอบ, รอแก้ไข หรือ อยู่ระหว่างการแก้ไข
         let newStatus = paperGroup.status;
-        if (paperGroup.status.includes("ไม่พร้อมสอบ") || paperGroup.status.includes("รอแก้ไขเอกสาร")) {
+        if (paperGroup.status.includes("ไม่พร้อมสอบ") || paperGroup.status.includes("รอแก้ไขเอกสาร") || paperGroup.status.includes("อยู่ระหว่างการแก้ไข")) {
             if (paperGroup.passTimes === 0) newStatus = "รอนำเสนอหัวข้อ";
             else if (paperGroup.passTimes === 1) newStatus = "ผ่านการสอบหัวข้อปริญญานิพนธ์";
             else if (paperGroup.passTimes === 2) newStatus = "ผ่านการสอบก้าวหน้าปริญญานิพนธ์";
@@ -2953,8 +3040,8 @@ app.get("/api/getPaperFiles/:paperId", requireLogin, async (req, res) => {
 app.post("/api/submitPaperResult", apiLimiter,requireLogin, async (req, res) => {
     let group; // ประกาศตัวแปร group ไว้ข้างนอกเพื่อให้เข้าถึงได้ในส่วนของ createLog หลังจากการบันทึกข้อมูลทั้งหมดแล้ว
     try {
-        // 1. รับค่าให้ตรงกับที่ Client ส่งมา (paperId, result, comment)
-        const { paperId, result, comment } = req.body;
+        // 1. รับค่าให้ตรงกับที่ Client ส่งมา
+        const { paperId, result, comment, editOptions, voteFor } = req.body;
         const user = req.session.user.name;
         const username = req.session.user.username;
 
@@ -2971,10 +3058,30 @@ app.post("/api/submitPaperResult", apiLimiter,requireLogin, async (req, res) => 
         expire.setDate(expire.getDate() + 7);
         expire.setHours(23, 59, 59, 999);
 
+        // ตรวจสอบว่าเป็นที่ปรึกษาที่ลงคะแนนแทนหลังจากที่เคยมีการให้ "แก้ไข" มาก่อนหรือไม่
+        const isAdvisor = currentPaper.advisor && currentPaper.advisor.split(",").map(s => s.trim()).includes(username);
+        let actualVoterUsername = username;
+        let actualVoterName = user;
+        
+        if (voteFor && voteFor !== username) {
+            if (currentPaper.editCount > 0 && isAdvisor) {
+                actualVoterUsername = voteFor;
+                const voteForUser = await User.findOne({ username: voteFor });
+                if (voteForUser) {
+                    actualVoterName = voteForUser.name;
+                }
+            } else {
+                return res.status(403).json({ error: "คุณไม่มีสิทธิ์ลงคะแนนแทนกรรมการท่านอื่น" });
+            }
+        }
+
         if (result === "แก้ไข") {
             // ไม่สร้างกล่องส่งเอกสารใหม่แล้ว 
             // แต่บันทึกว่าใครเป็นคนสั่งให้แก้ไขไว้ที่กล่องเอกสารปัจจุบัน (เพื่อใช้แจ้งเตือนเวลานักศึกษาส่งไฟล์มาใหม่)
-            currentPaper.commentBy = username;
+            currentPaper.commentBy = actualVoterUsername;
+            // บันทึกหัวข้อที่ต้องแก้ไขเป็น Array
+            currentPaper.editOptions = Array.isArray(editOptions) ? editOptions : [];
+            currentPaper.editCount = (currentPaper.editCount || 0) + 1; // อัปเดตจำนวนครั้ง
             await currentPaper.save();
 
             // ✅ ส่งข้อความเข้าระบบแชทกลุ่ม
@@ -2982,12 +3089,16 @@ app.post("/api/submitPaperResult", apiLimiter,requireLogin, async (req, res) => 
             let mem2Chat = group.member2 ? group.member2.replace(" (Pending)", "") : null;
             let advChat = group.advisor ? group.advisor.replace(" (Pending)", "") : null;
 
+            let editOptionsText = currentPaper.editOptions && currentPaper.editOptions.length > 0 
+                ? `\n📌 หัวข้อที่ต้องแก้ไข: ${currentPaper.editOptions.join(", ")}` 
+                : "";
+
             const textMessage = new Message({
                 groupId: currentPaper.groupId,
                 senderUsername: "system",
                 senderName: "ระบบ",
                 type: "text",
-                text: `[ระบบแจ้งเตือน] อาจารย์ ${user} ต้องการให้แก้ไขเอกสาร: ${comment}`,
+                text: `[ระบบแจ้งเตือน] เปลี่ยนสถานะเป็น "อยู่ระหว่างการแก้ไข" ⚠️\nอาจารย์ ${actualVoterName} ให้ทำการแก้ไขเอกสาร (ครั้งที่ ${currentPaper.editCount})${editOptionsText}\n💬 รายละเอียดเพิ่มเติม: ${comment || "-"}`,
                 senderPic: null,
                 timestamp: new Date(),
                 groupMember: [mem1Chat, mem2Chat, advChat]
@@ -2995,11 +3106,11 @@ app.post("/api/submitPaperResult", apiLimiter,requireLogin, async (req, res) => 
             await textMessage.save();
             io.to(currentPaper.groupId.toString()).emit("group message", textMessage);
 
-            sendGroupNotification('alert_paper', group._id, username, user, `กลุ่ม ${group.projectName} ต้องมีการแก้ไข`, req.session.user.picture || null , currentPaper.eventId , expire, group.member1 , group.member2 , group.advisor);
+            sendGroupNotification('alert_paper', group._id, actualVoterUsername, actualVoterName, `กลุ่ม ${group.projectName} เปลี่ยนสถานะเป็น "อยู่ระหว่างการแก้ไข"`, req.session.user.picture || null , currentPaper.eventId , expire, group.member1 , group.member2 , group.advisor);
 
             const fixGroupPaper = await Group.findByIdAndUpdate(
                 currentPaper.groupId,
-                { $set: { status: group.passTimes === 0 ? "รอแก้ไขเอกสารการสอบนำเสนอหัวข้อปริญญานิพนธ์" : mem1?.branch === "ECT" || mem2?.branch === "ECT" ? "รอแก้ไขเอกสารการสอบก้าวหน้าปริญญานิพนธ์" : "รอแก้ไขเอกสารการสอบป้องกันปริญญานิพนธ์" } },
+                { $set: { status: "อยู่ระหว่างการแก้ไข" } },
                 { new: true }
             );
           
@@ -3013,23 +3124,25 @@ app.post("/api/submitPaperResult", apiLimiter,requireLogin, async (req, res) => 
         if (!examResult) {
             examResult = new Result({
                 groupId: currentPaper.groupId,
-                pass: result === "ผ่าน" ? [username] : [],
-                fail: result === "ไม่ผ่าน" ? [username] : [],
+                pass: [],
+                fail: [],
                 passTimes: group.passTimes,
                 submittedAt: new Date()
             });
-        } else {
-            // เช็คไม่ให้ลงคะแนนซ้ำ
-            if (examResult.pass.includes(username) || examResult.fail.includes(username)) {
-                return res.status(400).json({ error: "คุณได้ลงคะแนนไปแล้ว" });
-            }
-            if (result === "ผ่าน") examResult.pass.push(username);
-            else examResult.fail.push(username);
         }
+
+        // เช็คไม่ให้ลงคะแนนซ้ำ
+        if (examResult.pass.includes(actualVoterUsername) || examResult.fail.includes(actualVoterUsername)) {
+            return res.status(400).json({ error: `กรรมการ (${actualVoterUsername}) ได้ลงคะแนนไปแล้ว` });
+        }
+
+        if (result === "ผ่าน") examResult.pass.push(actualVoterUsername);
+        else examResult.fail.push(actualVoterUsername);
+
         await examResult.save();
 
         // 🔔 แจ้งเตือนเวลาอาจารย์แต่ละท่านทำการประเมินผลเสร็จสิ้น
-        sendGroupNotification('alert_group', group._id, username, user, `อาจารย์ ${user} ได้ส่งผลการประเมินการสอบสำหรับกลุ่ม ${group.projectName} เรียบร้อยแล้ว`, req.session.user.picture || null , currentPaper.eventId , expire, group.member1 , group.member2 , group.advisor);
+        sendGroupNotification('alert_group', group._id, actualVoterUsername, actualVoterName, `อาจารย์ ${actualVoterName} ได้ส่งผลการประเมินการสอบสำหรับกลุ่ม ${group.projectName} เรียบร้อยแล้ว`, req.session.user.picture || null , currentPaper.eventId , expire, group.member1 , group.member2 , group.advisor);
 
         // คำนวณจำนวนกรรมการทั้งหมด (นับจาก string ที่อาจคั่นด้วยลูกน้ำ)
         const countVoters = (str) => str ? str.split(",").filter(s => s.trim() !== "").length : 0;
@@ -4370,6 +4483,7 @@ io.on("connection", (socket) => {
 
 // Start server with error handling
 server.listen(port, '0.0.0.0', () => {
+    console.log(`Server running at http://localhost:${port}`);
 }).on('error', (err) => {
   console.error('❌ Server error:', err);
   if (err.code === 'EADDRINUSE') {

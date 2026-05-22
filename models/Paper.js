@@ -12,7 +12,7 @@ const paperSchema = new mongoose.Schema({
     fileId: mongoose.Schema.Types.ObjectId 
   },
   submittedAt: { type: Date, default: Date.now }, 
-  expireAt: { 
+  expireAt: {  
     type: Date
   },
   passTimes: { type: Number, default: 0 },
@@ -20,7 +20,9 @@ const paperSchema = new mongoose.Schema({
   director: { type: String, default: null },
   advisor: { type: String, default: null },
   greatDirector: { type: String, default: null },// เปลี่ยนเป็นอาเรย์ว่างเพื่อความปลอดภัย
-  commentBy: { type: String, default: null }
+  commentBy: { type: String, default: null },
+  editOptions: [{ type: String }], // เก็บหัวข้อการแก้ไขที่ถูกเลือกเป็น Array
+  editCount: { type: Number, default: 0 } // เก็บจำนวนครั้งที่ถูกสั่งแก้ไข
 });
 
 module.exports = mongoose.model("Paper", paperSchema);

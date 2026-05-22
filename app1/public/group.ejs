@@ -20,7 +20,6 @@
     display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
-    transition: all 0.2s ease-in-out !important;
   }
 
   .group-item.active-group {
@@ -42,7 +41,6 @@
     opacity: 0;
     visibility: hidden; /* กันการจองพื้นที่ตอนปิด */
     overflow: hidden;
-    transition: max-height 0.4s cubic-bezier(0, 1, 0, 1), opacity 0.2s ease, visibility 0.2s; 
     width: 100%;
     background-color: #fdfdfd;
     border-radius: 8px;
@@ -55,7 +53,6 @@
     visibility: visible;
     margin-top: 10px;
     border: 1px solid #d1d3e2;
-    transition: max-height 0.4s cubic-bezier(0.9, 0, 0.1, 1), opacity 0.4s ease;
 }
 
   .expand-item {
@@ -80,10 +77,9 @@
 
   .rotate-180 {
     transform: rotate(180deg);
-    transition: transform 0.3s ease;
   }
 
-  #card { box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important; border: 1px solid #eaecf4 !important; transition: margin 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important; overflow: hidden; }
+  #card { box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important; border: 1px solid #eaecf4 !important; overflow: hidden; }
 
   /* ปิด transition สำหรับ mobile เพื่อป้องกันการขยับ */
   @media (max-width: 576px) {
@@ -283,7 +279,12 @@ document.addEventListener("DOMContentLoaded", () => {
     
     currentGroupId = groupId;
     chatWithEl.textContent = groupName;
-    messagesContainer.innerHTML = '📂 กำลังโหลดข้อความ...'; // ใส่ Loading ไว้ดูว่าทำงานไหม
+    messagesContainer.innerHTML = `
+      <div class="d-flex flex-column justify-content-center align-items-center h-100 w-100 text-muted">
+        <div class="spinner-border text-primary mb-2" role="status" style="width: 2.5rem; height: 2.5rem;"></div>
+        <span class="small font-weight-bold">กำลังโหลดข้อความ...</span>
+      </div>
+    `;
     messageInput.disabled = false;
 
     // ไฮไลท์สีกลุ่ม
@@ -375,7 +376,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } else {
             // ป้องกัน XSS ด้วยการจัดการ Text ให้ปลอดภัย
-            div.innerHTML = `<div class="d-block my-1 small font-weight-bold">${sName}:</div><div>${safeText(msg.text)}</div>`;
+            div.innerHTML = `<div class="d-block my-1 small font-weight-bold">${sName}:</div><div style="white-space: pre-wrap; word-break: break-word;">${safeText(msg.text)}</div>`;
         }
 
         messagesContainer.appendChild(div);
@@ -435,7 +436,6 @@ document.addEventListener("DOMContentLoaded", () => {
       groupList.prepend(groupItem);
 
       // เพิ่ม Effect ไฮไลท์สีชั่วคราวเพื่อให้รู้ว่ามีแชทใหม่เข้ากลุ่มนี้
-      groupItem.style.transition = "background-color 0.5s";
       groupItem.style.backgroundColor = "#e8f0fe"; 
       setTimeout(() => {
         groupItem.style.backgroundColor = ""; 
@@ -604,13 +604,19 @@ window.confirmLeaveGroup = async (e, groupId) => {
       try {
         const res = await fetch(`/groups/leave/${groupId}`, { method: 'POST' });
         if (res.ok) {
-          await Swal.fire('สำเร็จ', 'ออกจากกลุ่มเรียบร้อยแล้ว', 'success');
+          const textMsg = await res.text();
+          if (textMsg === 'REQUEST_SENT') {
+            await Swal.fire('สำเร็จ', 'ส่งคำขออนุมัติไปยังอาจารย์ที่ปรึกษาแล้ว', 'success');
+          } else {
+            await Swal.fire('สำเร็จ', 'ออกจากกลุ่มเรียบร้อยแล้ว', 'success');
+          }
           window.location.reload();
         } else {
-          throw new Error('Server Error');
+          const errorMsg = await res.text();
+          throw new Error(errorMsg || 'Server Error');
         }
       } catch (err) {
-        Swal.fire('ผิดพลาด', 'ไม่สามารถออกจากกลุ่มได้', 'error');
+        Swal.fire('ผิดพลาด', err.message || 'ไม่สามารถออกจากกลุ่มได้', 'error');
       }
     }
   };
