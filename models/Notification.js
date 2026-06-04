@@ -4,7 +4,7 @@ const notificationSchema = new mongoose.Schema({
   recipient: [{ type: String, required: true }], 
   senderUsername: { type: String }, 
     senderName: { type: String },
-  type: { type: String, enum: ['new_message', 'added_to_group', 'group_alert','new_alert', 'alert_paper' , 'alert_event'] },
+  type: { type: String, enum: ['new_message', 'added_to_group', 'group_alert','new_alert', 'alert_paper' , 'alert_event', 'leave_group_request'] },
   group: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' }, 
   text: String,
   senderPic: {
