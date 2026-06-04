@@ -22,9 +22,9 @@ const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
 
 const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 นาที
+    windowMs: 5 * 60 * 1000, // 5 นาที
     max: 100, // จำกัด 100 request ต่อ IP ในช่วงเวลาที่กำหนด
-    message: "ขออภัย คุณส่งคำขอมากเกินไป กรุณาลองใหม่ในอีก 15 นาที",
+    message: "ขออภัย คุณส่งคำขอมากเกินไป กรุณาลองใหม่ในอีก 5 นาที",
     standardHeaders: true,
     legacyHeaders: false,
 });

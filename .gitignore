@@ -112,3 +112,6 @@ temp/
 
 # PDF templates (keep originals)
 # app1/src/template/*.pdf
+
+# Exclude Mobile App to prevent Filename too long errors on Windows
+/mobile_app/
