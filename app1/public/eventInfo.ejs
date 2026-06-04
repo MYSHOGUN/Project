@@ -139,34 +139,60 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <% tableData.forEach((row, index) => { %>
-                                            <tr class="schedule-row">
-                                                <% if (user.role === 'admin') { %>
-                                                    <td class="p-1"><input type="text" name="data[<%= index %>][ลำดับ]" class="form-control border-0 text-center editable-input" value="<%= index+1 %>"></td>
-                                                    <td class="p-1 font-weight-bold"><input type="text" name="data[<%= index %>][ชื่อกลุ่ม]" class="form-control border-0 editable-input" value="<%= row.groupName %>" data-toggle="tooltip" title="<%= row.groupName %>"></td>
-                                                    <td class="p-0">
-                                                        <input type="date" name="data[<%= index %>][dateOnly]" 
-                                                            class="form-control border-0 text-center editable-input" 
-                                                            value="<%= new Date(row.date).toISOString().split('T')[0] %>">
-                                                    </td>
-                                                    <td class="p-0">
-                                                        <input type="time" name="data[<%= index %>][timeOnly]" 
-                                                            class="form-control border-0 text-center font-weight-bold text-primary editable-input" 
-                                                            value="<%= (d => String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))(new Date(row.date)) %>">
-                                                    </td>
-                                                    <td class="p-1"><input type="text" name="data[<%= index %>][อาจารย์ที่ปรึกษา]" class="form-control border-0 editable-input small" value="<%= row.advisor || '' %>"></td>
-                                                    <td class="p-1"><input type="text" name="data[<%= index %>][ประธานกรรมการ]" class="form-control border-0 editable-input small" value="<%= row.greatDirector || '' %>"></td>
-                                                    <td class="p-1"><input type="text" name="data[<%= index %>][กรรมการ]" class="form-control border-0 editable-input small" value="<%= row.director || '' %>"></td>
-                                                <% } else { %>
-                                                    <td class="text-center text-muted"><%= index+1 %></td>
-                                                    <td class="font-weight-bold text-gray-800" data-toggle="tooltip" title="<%= row.groupName %>"><%= row.groupName %></td>
-                                                    <td class="text-center"><%= new Date(row.date).toLocaleDateString('th-TH', { day: '2-digit', month: 'long', year: 'numeric', calendar: 'buddhist' }) || '-' %></td>
-                                                    <td class="text-center font-weight-bold text-primary"><%= (d => String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))(new Date(row.date)) %></td>
-                                                    <td class="small"><%= row.advisor || '-' %></td>
-                                                    <td class="small"><%= row.greatDirector || '-' %></td>
-                                                    <td class="small"><%= row.director || '-' %></td>
-                                                <% } %>
+                                        <% 
+                                            // จัดกลุ่มข้อมูลตามวันที่
+                                            const groupedByDate = {};
+                                            tableData.forEach((row, index) => {
+                                                const d = new Date(row.date);
+                                                const dateKey = d.toLocaleDateString('th-TH', { day: '2-digit', month: 'long', year: 'numeric', calendar: 'buddhist' });
+                                                if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
+                                                groupedByDate[dateKey].push({ ...row, originalIndex: index });
+                                            });
+
+                                            // เรียงลำดับวันที่ (จากน้อยไปมาก)
+                                            const sortedDateKeys = Object.keys(groupedByDate).sort((a, b) => {
+                                                return new Date(groupedByDate[a][0].date) - new Date(groupedByDate[b][0].date);
+                                            });
+                                        %>
+
+                                        <% sortedDateKeys.forEach(dateKey => { %>
+                                            <!-- ส่วนหัวของแต่ละวัน -->
+                                            <tr class="bg-light group-header-row">
+                                                <td colspan="7" class="text-left font-weight-bold text-primary py-2 px-3" style="background-color: #f0f4ff;">
+                                                    <i class="fas fa-calendar-day mr-2"></i> วันที่สอบ: <%= dateKey %>
+                                                </td>
                                             </tr>
+
+                                            <% groupedByDate[dateKey].forEach((row, i) => { %>
+                                                <% const index = row.originalIndex; %>
+                                                <tr class="schedule-row">
+                                                    <% if (user.role === 'admin') { %>
+                                                        <td class="p-1"><input type="text" name="data[<%= index %>][ลำดับ]" class="form-control border-0 text-center editable-input" value="<%= index+1 %>"></td>
+                                                        <td class="p-1 font-weight-bold"><input type="text" name="data[<%= index %>][ชื่อกลุ่ม]" class="form-control border-0 editable-input" value="<%= row.groupName %>" data-toggle="tooltip" title="<%= row.groupName %>"></td>
+                                                        <td class="p-0">
+                                                            <input type="date" name="data[<%= index %>][dateOnly]" 
+                                                                class="form-control border-0 text-center editable-input" 
+                                                                value="<%= new Date(row.date).toISOString().split('T')[0] %>">
+                                                        </td>
+                                                        <td class="p-0">
+                                                            <input type="time" name="data[<%= index %>][timeOnly]" 
+                                                                class="form-control border-0 text-center font-weight-bold text-primary editable-input" 
+                                                                value="<%= (d => String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))(new Date(row.date)) %>">
+                                                        </td>
+                                                        <td class="p-1"><input type="text" name="data[<%= index %>][อาจารย์ที่ปรึกษา]" class="form-control border-0 editable-input small" value="<%= row.advisor || '' %>"></td>
+                                                        <td class="p-1"><input type="text" name="data[<%= index %>][ประธานกรรมการ]" class="form-control border-0 editable-input small" value="<%= row.greatDirector || '' %>"></td>
+                                                        <td class="p-1"><input type="text" name="data[<%= index %>][กรรมการ]" class="form-control border-0 editable-input small" value="<%= row.director || '' %>"></td>
+                                                    <% } else { %>
+                                                        <td class="text-center text-muted"><%= index+1 %></td>
+                                                        <td class="font-weight-bold text-gray-800" data-toggle="tooltip" title="<%= row.groupName %>"><%= row.groupName %></td>
+                                                        <td class="text-center"><%= dateKey %></td>
+                                                        <td class="text-center font-weight-bold text-primary"><%= (d => String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))(new Date(row.date)) %></td>
+                                                        <td class="small"><%= row.advisor || '-' %></td>
+                                                        <td class="small"><%= row.greatDirector || '-' %></td>
+                                                        <td class="small"><%= row.director || '-' %></td>
+                                                    <% } %>
+                                                </tr>
+                                            <% }) %>
                                         <% }) %>
                                     </tbody>
                                 </table>
@@ -213,7 +239,7 @@
             const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
 
             // Extract body rows and group by date
-            const bodyRows = table.querySelectorAll('tbody tr');
+            const bodyRows = table.querySelectorAll('tbody tr:not(.group-header-row)');
             const rowsByDate = {};
 
             bodyRows.forEach(tr => {

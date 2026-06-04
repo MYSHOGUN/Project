@@ -1341,34 +1341,39 @@ app.post("/groups", apiLimiter,requireLogin, async (req, res) => {
       return res.status(400).send("ข้อมูลไม่ครบ");
     }
 
-    // ตรวจสอบว่ามีใครอยู่ในกลุ่มแล้วหรือยัง
-    if(member2 != null && member2 !== "" && member2 !== "undefined"){
-      existingGroup = await Group.findOne({
-      $or: [
-        { member1: member1 },
-        { member2: member2 }
-      ]
+    // ตรวจสอบว่ามีใครอยู่ในกลุ่มที่กำลังดำเนินการอยู่แล้วหรือยัง
+    const cleanMember2 = (member2 && member2 !== 'undefined' && member2 !== '') ? member2 : null;
+    const orConditions = [{ member1: member1 }, { member2: member1 }];
+    if (cleanMember2) {
+        orConditions.push({ member1: cleanMember2 }, { member2: cleanMember2 });
+    }
+
+    existingGroup = await Group.findOne({
+      $or: orConditions,
+      status: { $nin: ['ผ่านการสอบป้องกันปริญญานิพนธ์', 'ไม่ผ่านการสอบป้องกันปริญญานิพนธ์', 'ไม่ผ่านการสอบหัวข้อปริญญานิพนธ์', 'ไม่มีสมาชิก'] }
     });
-  } else {
-      existingGroup = await Group.findOne({
-      $or: [
-        { member1: member1 }
-      ]
-    });
-  }
 
     if (existingGroup) {
-      return res.status(400).send("สมาชิกนี้มีกลุ่มอยู่แล้ว");
+      return res.status(400).send("สมาชิกคนนี้มีกลุ่มที่กำลังดำเนินการอยู่แล้ว");
     }
 
     const mem1 = await User.findOne({ username: member1 });
 
-    const mem2 = member2 === null || member2 === "" || member2 === "undefined" ? null : `${member2} (Pending)`;
-
-    const adv = advisor === null || advisor === "" || advisor === "undefined" ? null : `${advisor} (Pending)`;
+    const mem2 = cleanMember2;
+    const adv = advisor === null || advisor === '' || advisor === 'undefined' ? null : advisor;
 
     // บันทึกกลุ่มใหม่
-    const newGroup = new Group({ projectName, engName, member1: member1, member2: mem2 , advisor : adv,status , allMember: [member1]});
+    const newGroup = new Group({ 
+      projectName, 
+      engName, 
+      member1: member1, 
+      member2: mem2, 
+      member2Status: mem2 ? 'pending' : null,
+      advisor: adv, 
+      advisorStatus: adv ? 'pending' : null,
+      status, 
+      allMember: [member1] 
+    });
     await newGroup.save();
 
     // ✅ สร้างกล่อง "ส่งเอกสารได้ตลอดเวลา" ทันทีที่สร้างกลุ่มสำเร็จ
@@ -1381,19 +1386,64 @@ app.post("/groups", apiLimiter,requireLogin, async (req, res) => {
     });
     await newPaper.save();
 
-    const expireTime = new Date(Date.now() + 120 * 24 * 60 * 60 * 1000); // กำหนดเวลาหมดอายุ (120 วัน)
+    const expireTime = new Date(Date.now() + 120 * 24 * 60 * 60 * 1000);
 
-    sendGroupNotification("addGroup", newGroup._id, "ระบบ", "ระบบ", `คุณถูกเพิ่มเข้ากลุ่มโดย ${mem1.name}`, null, null , expireTime , null ,  member2 , advisor)
+    // Notifications
+    if (mem2) {
+        const newNoti = new Notification({
+            recipient: [mem2],
+            senderUsername: req.session.user.username,
+            senderName: req.session.user.name,
+            type: 'added_to_group',
+            group: newGroup._id.toString(),
+            text: `คุณถูกเชิญเข้าร่วมกลุ่ม: ${projectName}`,
+            isRead: false
+        });
+        await newNoti.save();
+        io.to(mem2).emit("new_notification", {
+            recipient: [mem2],
+            _id: newNoti._id,
+            senderName: req.session.user.name,
+            text: newNoti.text,
+            group: newGroup._id.toString(),
+            type: 'added_to_group',
+            createdAt: newNoti.createdAt
+        });
+    }
+
+    if (adv) {
+        const advisorsArr = adv.split(',').map(s => s.trim());
+        const newNoti = new Notification({
+            recipient: advisorsArr,
+            senderUsername: req.session.user.username,
+            senderName: req.session.user.name,
+            type: 'added_to_group',
+            group: newGroup._id.toString(),
+            text: `คุณถูกเชิญเป็นอาจารย์ที่ปรึกษากลุ่ม: ${projectName}`,
+            isRead: false
+        });
+        await newNoti.save();
+        advisorsArr.forEach(a => {
+            io.to(a).emit("new_notification", {
+                recipient: advisorsArr,
+                _id: newNoti._id,
+                senderName: req.session.user.name,
+                text: newNoti.text,
+                group: newGroup._id.toString(),
+                type: 'added_to_group',
+                createdAt: newNoti.createdAt
+            });
+        });
+    }
 
     await User.findOneAndUpdate(
-      { username: member1 }, // หรือฟิลด์สำหรับค้นหาผู้ใช้ เช่น { username: member1 }
+      { username: member1 },
       { $set: { group: [newGroup._id], currentGroupJoinedAt: new Date() } }
     );
 
-    // อัปเดต session.user.group = "true"
     req.session.user.group = [newGroup._id];
 
-    res.status(201).send("บันทึกกลุ่มสำเร็จ");
+    res.status(201).json({ success: true, message: "บันทึกกลุ่มสำเร็จ" });
   } catch (err) {
     console.error("❌ Error saving group:", err);
     return res.status(500).send("เกิดข้อผิดพลาดในการบันทึกกลุ่ม");
@@ -1420,21 +1470,40 @@ app.post("/group/accept-invitation/:groupId/:notiId", apiLimiter,requireLogin, a
 
     // ตรวจสอบว่ามีคนอื่นมาเสียบแทนไปก่อนหรือยังแยกตามตำแหน่ง
     if (user.role === "teacher" || user.role === "admin") {
-      if (group.advisor && group.advisor !== `${username} (Pending)`) {
+      if (group.advisorStatus === 'active') {
         return res.status(400).send("กลุ่มนี้มีอาจารย์ที่ปรึกษาแล้ว");
       }
       group.advisor = username;
+      group.advisorStatus = 'active';
       if (!group.allMember.includes(username)) {
           group.allMember.push(username);
       }
-      group.status = group.passTimes === 0 ? "รอนำเสนอหัวข้อ" : "ผ่านการสอบหัวข้อปริญญานิพนธ์";
+      // Only change status if it was initial
+      if (group.status === 'ไม่มีอาจารย์ที่ปรึกษา') {
+          group.status = group.passTimes === 0 ? "รอนำเสนอหัวข้อ" : "ผ่านการสอบหัวข้อปริญญานิพนธ์";
+      }
     } else {
-      if (group.member2 && group.member2 !== `${username} (Pending)`) {
+      if (group.member2Status === 'active') {
         return res.status(400).send("กลุ่มนี้มีสมาชิกครบแล้ว");
       }
       group.member2 = username;
+      group.member2Status = 'active';
       if (!group.allMember.includes(username)) {
           group.allMember.push(username);
+      }
+
+      // Auto-deny other invitations for student
+      try {
+        await Group.updateMany(
+            { _id: { $ne: group._id }, member2: username, member2Status: 'pending' },
+            { $set: { member2: null, member2Status: null } }
+        );
+        await Notification.updateMany(
+            { recipient: username, type: 'added_to_group', group: { $ne: groupId }, isRead: false },
+            { $set: { isRead: true } }
+        );
+      } catch (err) {
+        console.error('❌ Error auto-denying other invitations:', err);
       }
     }
     await group.save();
@@ -1626,16 +1695,18 @@ app.post("/groups/leave/:groupId", apiLimiter,async (req, res) => {
       return res.status(400).send("Group ID ไม่ถูกต้อง");
     }
 
-    const username = req.session.user.username; // สมมติใน session มี username
+    const username = req.session.user.username;
 
     group = await Group.findById(groupId);
     if (!group) return res.status(404).send("ไม่พบกลุ่ม");
 
-    // ✅ ตรวจสอบสถานะว่าต้องขออนุมัติหรือไม่ (ถ้าเป็น user และสถานะไม่ใช่รอนำเสนอหัวข้อ และไม่ใช่ไม่มีอาจารย์ที่ปรึกษา)
-    if (req.session.user.role === 'user' && group.status !== 'รอนำเสนอหัวข้อ' && group.status !== 'ไม่มีอาจารย์ที่ปรึกษา' && group.advisor) {
-        const advisorClean = group.advisor.replace(" (Pending)", "");
+    // ✅ ตรวจสอบสถานะว่าต้องขออนุมัติหรือไม่ (ถ้าเป็นนักศึกษา และสถานะมีความสำคัญ)
+    const isInitialStatus = group.status === 'ไม่มีอาจารย์ที่ปรึกษา' || group.status.includes('รอนำเสนอหัวข้อ');
+    
+    if (req.session.user.role === 'user' && !isInitialStatus && group.advisor) {
+        // ดึงรายชื่ออาจารย์ที่ปรึกษาทุกคน (รองรับกรณีคั่นด้วยคอมม่า)
+        const advisors = group.advisor.split(',').map(s => s.replace(" (Pending)", "").trim());
         
-        // ป้องกันการส่งคำขอซ้ำ
         const existingNoti = await Notification.findOne({
             type: 'leave_group_request',
             group: groupId,
@@ -1646,7 +1717,7 @@ app.post("/groups/leave/:groupId", apiLimiter,async (req, res) => {
         }
 
         const newNoti = new Notification({
-            recipient: [advisorClean],
+            recipient: advisors, // ส่งหาอาจารย์ทุกคนในที่ปรึกษา
             senderUsername: username,
             senderName: req.session.user.name,
             type: 'leave_group_request',
@@ -1656,22 +1727,46 @@ app.post("/groups/leave/:groupId", apiLimiter,async (req, res) => {
         });
         await newNoti.save();
         
+        const io = req.app.get('io');
+        if (io) {
+            advisors.forEach(adv => io.to(adv).emit("new_notification", {
+                recipient: [adv],
+                _id: newNoti._id,
+                senderName: req.session.user.name,
+                text: newNoti.text,
+                group: groupId,
+                type: 'leave_group_request',
+                createdAt: newNoti.createdAt
+            }));
+        }
+
         await createLog(req, "REQUEST_LEAVE_GROUP", { groupName: group.projectName, requestBy: username });
-        return res.status(200).send("REQUEST_SENT"); // ให้หน้าบ้านรู้ว่าต้องรออนุมัติ
+        return res.status(200).send("REQUEST_SENT");
     }
 
-    // ตรวจสอบว่า user อยู่ field ไหน
+    // ลบออกจากสมาชิกกลุ่ม
     if (group.member1 === username) {
-      group.member1 = group.member2; // เลื่อน member2 ขึ้นมาแทนที่
-      group.member2 = null; // ล้าง member2
+      group.member1 = group.member2Status === 'active' ? group.member2 : null;
+      group.member2 = null;
+      group.member2Status = null;
     } else if (group.member2 === username) {
       group.member2 = null;
-    }  else if (group.advisor === username) {
-      group.advisor = null;
-      group.status = "ไม่มีอาจารย์ที่ปรึกษา";
+      group.member2Status = null;
+    } else if (group.advisor && group.advisor.toLowerCase().includes(username.toLowerCase())) {
+      // Handle multiple advisors
+      const advs = group.advisor.split(',').map(s => s.trim());
+      const remainingAdvs = advs.filter(a => a.toLowerCase() !== username.toLowerCase());
+      group.advisor = remainingAdvs.length > 0 ? remainingAdvs.join(', ') : null;
+      if (remainingAdvs.length === 0) {
+          group.advisorStatus = null;
+          group.status = "ไม่มีอาจารย์ที่ปรึกษา";
+      }
     } else {
       return res.status(400).send("คุณไม่ได้อยู่ในกลุ่มนี้");
     }
+
+    // ✅ สำคัญ: ลบออกจาก allMember ด้วยเพื่อไม่ให้ติดค้าง
+    group.allMember = group.allMember.filter(m => m !== username);
 
     if(group.member1 === null && !group.status.includes("ไม่ผ่าน")){
       group.status = "ไม่มีสมาชิก";
